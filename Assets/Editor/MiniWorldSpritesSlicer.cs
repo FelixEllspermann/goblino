@@ -15,18 +15,12 @@ namespace RTSCL.Editor
         private const string OutFolder    = "Assets/Generated/Tiles";
         private const string DecoOutFolder = "Assets/Generated/Tiles/Decorations";
 
-        // For V1 we hardcode which sprite index represents each biome's "base" tile.
-        // These indices are into the 16x16 grid in reading order (top-to-bottom, left-to-right
-        // as Unity slices). Adjust if a particular sheet's center looks bad.
-        private static readonly Dictionary<string, int> GroundBaseIndex = new()
+        // Biome → ground sheet name. The "best" sprite within each sheet is auto-picked
+        // by max(variance + saturation) — that avoids blank pure-white corner cells that
+        // would render as missing tiles.
+        private static readonly string[] GroundSheets =
         {
-            // Indices chosen to be in-bounds for the actual pack sheets (sizes vary 5-8 sprites).
-            { "Grass",         2 },
-            { "DeadGrass",     2 },
-            { "TexturedGrass", 2 },
-            { "Winter",        3 },
-            { "Shore",         2 },
-            { "Cliff",        12 },
+            "Grass", "DeadGrass", "TexturedGrass", "Winter", "Shore", "Cliff",
             // Cliff-Water deferred to Phase 2 (transitions)
         };
 
@@ -43,11 +37,14 @@ namespace RTSCL.Editor
             foreach (var path in EnumeratePngs(GroundFolder))
             {
                 if (SliceTo16(path)) sliced++;
-                var name = Path.GetFileNameWithoutExtension(path);
-                if (GroundBaseIndex.TryGetValue(name, out int idx))
-                {
-                    if (CreateBaseTile(path, name, idx)) tilesMade++;
-                }
+            }
+            // Second pass: now that all slicing is done and sprites are stable,
+            // pick the most "interesting" sprite per ground sheet for the base tile.
+            foreach (var name in GroundSheets)
+            {
+                var path = $"{GroundFolder}/{name}.png";
+                if (!File.Exists(path)) continue;
+                if (CreateBaseTileAutoPick(path, name)) tilesMade++;
             }
 
             foreach (var path in EnumeratePngs(NatureFolder))
@@ -156,20 +153,75 @@ namespace RTSCL.Editor
             return true;
         }
 
-        private static bool CreateBaseTile(string sheetAssetPath, string biomeName, int spriteIndex)
+        private static bool CreateBaseTileAutoPick(string sheetAssetPath, string biomeName)
         {
             var sprites = LoadSlicedSprites(sheetAssetPath);
-            if (spriteIndex < 0 || spriteIndex >= sprites.Count)
+            if (sprites.Count == 0)
             {
-                Debug.LogWarning($"[Slicer] '{biomeName}' index {spriteIndex} OOB " +
-                                 $"(sheet has {sprites.Count}). Using 0.");
-                spriteIndex = 0;
+                Debug.LogWarning($"[Slicer] '{biomeName}' sheet has no sprites.");
+                return false;
             }
+
+            int bestIdx = 0;
+            float bestScore = -1f;
+            for (int i = 0; i < sprites.Count; i++)
+            {
+                float score = SpriteInterestingness(sprites[i]);
+                if (score > bestScore) { bestScore = score; bestIdx = i; }
+            }
+
             var tile = ScriptableObject.CreateInstance<Tile>();
-            tile.sprite = sprites[spriteIndex];
+            tile.sprite = sprites[bestIdx];
             var outPath = $"{OutFolder}/{biomeName}.asset";
             AssetDatabase.CreateAsset(tile, outPath);
             return true;
+        }
+
+        // Score = within-sprite color variance + average saturation. Pure-white blank
+        // corner cells have variance=0 and saturation=0, so they always lose.
+        private static float SpriteInterestingness(Sprite sprite)
+        {
+            var tex = ReadableCopy(sprite.texture);
+            try
+            {
+                var r = sprite.textureRect;
+                int x0 = Mathf.FloorToInt(r.x), y0 = Mathf.FloorToInt(r.y);
+                int w = Mathf.FloorToInt(r.width), h = Mathf.FloorToInt(r.height);
+                var pixels = tex.GetPixels(x0, y0, w, h);
+                float n = pixels.Length;
+                float sumR = 0, sumG = 0, sumB = 0;
+                foreach (var p in pixels) { sumR += p.r; sumG += p.g; sumB += p.b; }
+                float meanR = sumR / n, meanG = sumG / n, meanB = sumB / n;
+                float varSum = 0, satSum = 0;
+                foreach (var p in pixels)
+                {
+                    varSum += (p.r - meanR) * (p.r - meanR)
+                            + (p.g - meanG) * (p.g - meanG)
+                            + (p.b - meanB) * (p.b - meanB);
+                    float mx = Mathf.Max(p.r, Mathf.Max(p.g, p.b));
+                    float mn = Mathf.Min(p.r, Mathf.Min(p.g, p.b));
+                    satSum += mx > 0 ? (mx - mn) / mx : 0;
+                }
+                return (varSum / (3f * n)) + (satSum / n);
+            }
+            finally
+            {
+                Object.DestroyImmediate(tex);
+            }
+        }
+
+        private static Texture2D ReadableCopy(Texture2D src)
+        {
+            var rt = RenderTexture.GetTemporary(src.width, src.height, 0, RenderTextureFormat.ARGB32);
+            Graphics.Blit(src, rt);
+            var prev = RenderTexture.active;
+            RenderTexture.active = rt;
+            var tex = new Texture2D(src.width, src.height, TextureFormat.RGBA32, false);
+            tex.ReadPixels(new Rect(0, 0, src.width, src.height), 0, 0);
+            tex.Apply();
+            RenderTexture.active = prev;
+            RenderTexture.ReleaseTemporary(rt);
+            return tex;
         }
 
         private static int CreateDecorationTiles(string sheetAssetPath)
