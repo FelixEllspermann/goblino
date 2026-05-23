@@ -162,11 +162,17 @@ namespace RTSCL.Editor
                 return false;
             }
 
+            // Per-sheet picker: "Winter" needs a snow-white tile (low saturation, high
+            // brightness) — high-saturation Winter sprites are turquoise ice variants that
+            // look indistinguishable from water. Everything else prefers saturated/colorful.
+            bool snowPicker = biomeName == "Winter";
             int bestIdx = 0;
             float bestScore = -1f;
             for (int i = 0; i < sprites.Count; i++)
             {
-                float score = SpriteInterestingness(sprites[i]);
+                float score = snowPicker
+                    ? SpriteSnowiness(sprites[i])
+                    : SpriteInterestingness(sprites[i]);
                 if (score > bestScore) { bestScore = score; bestIdx = i; }
             }
 
@@ -203,6 +209,32 @@ namespace RTSCL.Editor
                     satSum += mx > 0 ? (mx - mn) / mx : 0;
                 }
                 return (varSum / (3f * n)) + (satSum / n);
+            }
+            finally
+            {
+                Object.DestroyImmediate(tex);
+            }
+        }
+
+        // Score for "snow" sheets: bright + color-neutral. Penalizes turquoise/blue ice
+        // variants that exist in the Winter sheet alongside true snow-white tiles.
+        private static float SpriteSnowiness(Sprite sprite)
+        {
+            var tex = ReadableCopy(sprite.texture);
+            try
+            {
+                var r = sprite.textureRect;
+                int x0 = Mathf.FloorToInt(r.x), y0 = Mathf.FloorToInt(r.y);
+                int w = Mathf.FloorToInt(r.width), h = Mathf.FloorToInt(r.height);
+                var pixels = tex.GetPixels(x0, y0, w, h);
+                float n = pixels.Length;
+                float sumR = 0, sumG = 0, sumB = 0;
+                foreach (var p in pixels) { sumR += p.r; sumG += p.g; sumB += p.b; }
+                float avgR = sumR / n, avgG = sumG / n, avgB = sumB / n;
+                float brightness = (avgR + avgG + avgB) / 3f;
+                float spread = Mathf.Max(avgR, Mathf.Max(avgG, avgB))
+                              - Mathf.Min(avgR, Mathf.Min(avgG, avgB));
+                return brightness - spread * 2f;
             }
             finally
             {
