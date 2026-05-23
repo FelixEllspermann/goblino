@@ -11,6 +11,7 @@ namespace RTSCL.World.Unity
     {
         [Header("References")]
         [SerializeField] private Tilemap _terrainMap;
+        [SerializeField] private Tilemap _decorationMap;
         [SerializeField] private Camera _camera;
         [SerializeField] private Transform _goblinsRoot;
 
@@ -59,7 +60,7 @@ namespace RTSCL.World.Unity
             sr.sortingOrder = 25;  // above buildings
 
             var goblin = go.AddComponent<Goblin>();
-            goblin.Init(kind.Name, kind.WalkFrames, _terrainMap);
+            goblin.Init(kind.Name, kind.WalkFrames, _terrainMap, _decorationMap);
             return goblin;
         }
 

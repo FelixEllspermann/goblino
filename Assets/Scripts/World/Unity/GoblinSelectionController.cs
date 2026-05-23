@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
+using UnityEngine.Tilemaps;
 
 namespace RTSCL.World.Unity
 {
@@ -9,9 +10,11 @@ namespace RTSCL.World.Unity
     {
         [SerializeField] private Camera _camera;
         [SerializeField] private BuildingPlacer _buildingPlacer;
+        [SerializeField] private Tilemap _decorationMap;
         [SerializeField] private float _clickPickRadius = 0.6f;       // world units
         [SerializeField] private float _dragThresholdPx = 6f;
         [SerializeField] private float _formationSpacing = 1.0f;
+        [SerializeField] private int _harvestSpreadRadius = 6;
 
         private readonly List<Goblin> _selected = new();
         private Vector2 _dragStartScreen;
@@ -50,15 +53,58 @@ namespace RTSCL.World.Unity
                 }
             }
 
-            // Right mouse: command selected goblins to move
+            // Right mouse: command selected goblins (harvest if tree, otherwise move)
             if (Mouse.current.rightButton.wasPressedThisFrame
                 && _selected.Count > 0 && !IsOverUI())
             {
                 Vector2 mp = Mouse.current.position.ReadValue();
                 Vector3 worldTarget = _camera.ScreenToWorldPoint(
                     new Vector3(mp.x, mp.y, -_camera.transform.position.z));
-                CommandFormation(worldTarget);
+
+                if (TryGetTreeAt(worldTarget, out var treeCell))
+                    CommandHarvest(treeCell);
+                else
+                    CommandFormation(worldTarget);
             }
+        }
+
+        private bool TryGetTreeAt(Vector3 world, out Vector3Int cell)
+        {
+            cell = default;
+            if (_decorationMap == null) return false;
+            cell = _decorationMap.WorldToCell(world);
+            var t = _decorationMap.GetTile(cell);
+            return t != null && Goblin.IsTreeTile(t.name);
+        }
+
+        private void CommandHarvest(Vector3Int clickedTree)
+        {
+            // Find up to N nearest trees around the click (one per goblin)
+            var trees = FindNearbyTrees(clickedTree, _selected.Count, _harvestSpreadRadius);
+            if (trees.Count == 0) return;
+            for (int i = 0; i < _selected.Count; i++)
+            {
+                var assigned = trees[i % trees.Count];
+                _selected[i].SetHarvestCommand(assigned);
+            }
+        }
+
+        private List<Vector3Int> FindNearbyTrees(Vector3Int origin, int maxCount, int radius)
+        {
+            var found = new List<(Vector3Int cell, int distSq)>();
+            for (int dy = -radius; dy <= radius; dy++)
+            for (int dx = -radius; dx <= radius; dx++)
+            {
+                var c = new Vector3Int(origin.x + dx, origin.y + dy, 0);
+                var t = _decorationMap.GetTile(c);
+                if (t == null) continue;
+                if (!Goblin.IsTreeTile(t.name)) continue;
+                found.Add((c, dx * dx + dy * dy));
+            }
+            found.Sort((a, b) => a.distSq.CompareTo(b.distSq));
+            var result = new List<Vector3Int>(System.Math.Min(maxCount, found.Count));
+            for (int i = 0; i < found.Count && i < maxCount; i++) result.Add(found[i].cell);
+            return result;
         }
 
         private void SelectAtPoint(Vector2 screenPos)
@@ -114,7 +160,7 @@ namespace RTSCL.World.Unity
                 Vector3 offset = new(
                     (col - (cols - 1) * 0.5f) * _formationSpacing,
                     (row - (rows - 1) * 0.5f) * _formationSpacing, 0);
-                _selected[i].SetCommand(worldCenter + offset);
+                _selected[i].SetMoveCommand(worldCenter + offset);
             }
         }
 

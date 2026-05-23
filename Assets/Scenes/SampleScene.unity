@@ -226,6 +226,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: RTSCL.World.Unity::RTSCL.World.Unity.GoblinSpawner
   _terrainMap: {fileID: 1282190478}
+  _decorationMap: {fileID: 1706478009}
   _camera: {fileID: 519420031}
   _goblinsRoot: {fileID: 424726197}
   _kinds:
@@ -437,9 +438,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: RTSCL.World.Unity::RTSCL.World.Unity.GoblinSelectionController
   _camera: {fileID: 519420031}
   _buildingPlacer: {fileID: 1966971705}
+  _decorationMap: {fileID: 1706478009}
   _clickPickRadius: 0.6
   _dragThresholdPx: 6
   _formationSpacing: 1
+  _harvestSpreadRadius: 6
 --- !u!4 &445876834
 Transform:
   m_ObjectHideFlags: 0
@@ -171324,6 +171327,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2113366328}
   - component: {fileID: 2113366327}
+  - component: {fileID: 2113366329}
   m_Layer: 0
   m_Name: WorldGenerator
   m_TagString: Untagged
@@ -171516,6 +171520,19 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2113366329
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2113366326}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 10ec0001881ca244193d025eb7a38047, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: RTSCL.World.Unity::RTSCL.World.Unity.ResourceUI
+  _showPanel: 1
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
