@@ -4,6 +4,7 @@ using RTSCL.World;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Tilemaps;
+using Random = Unity.Mathematics.Random;
 
 namespace RTSCL.World.Unity
 {

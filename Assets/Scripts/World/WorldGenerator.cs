@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Unity.Mathematics;
+using Random = Unity.Mathematics.Random;
 
 namespace RTSCL.World
 {

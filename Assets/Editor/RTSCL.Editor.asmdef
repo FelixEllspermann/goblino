@@ -1,7 +1,7 @@
 {
     "name": "RTSCL.Editor",
     "rootNamespace": "RTSCL.Editor",
-    "references": ["RTSCL.World", "RTSCL.World.Unity"],
+    "references": ["RTSCL.World", "RTSCL.World.Unity", "Unity.2D.Sprite.Editor"],
     "includePlatforms": ["Editor"],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
