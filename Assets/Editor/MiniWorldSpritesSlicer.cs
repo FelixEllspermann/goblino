@@ -20,11 +20,12 @@ namespace RTSCL.Editor
         // as Unity slices). Adjust if a particular sheet's center looks bad.
         private static readonly Dictionary<string, int> GroundBaseIndex = new()
         {
-            { "Grass",        12 },
-            { "DeadGrass",    12 },
-            { "TexturedGrass",12 },
-            { "Winter",       12 },
-            { "Shore",         5 },
+            // Indices chosen to be in-bounds for the actual pack sheets (sizes vary 5-8 sprites).
+            { "Grass",         2 },
+            { "DeadGrass",     2 },
+            { "TexturedGrass", 2 },
+            { "Winter",        3 },
+            { "Shore",         2 },
             { "Cliff",        12 },
             // Cliff-Water deferred to Phase 2 (transitions)
         };
