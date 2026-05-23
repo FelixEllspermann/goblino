@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 47af8935ae1fac344b08f26a4e7447d0, type: 3}
+  m_Name: BuildingCatalog
+  m_EditorClassIdentifier: RTSCL.World.Unity::RTSCL.World.Unity.BuildingCatalog
+  Buildings:
+  - {fileID: 11400000, guid: 9cbe4394583c4f64f8192af62d73db35, type: 2}
+  - {fileID: 11400000, guid: 4605f71b3e55eca4b995e0244e2bfa54, type: 2}
+  - {fileID: 11400000, guid: ae0c1a1444a206d48a9a0c33bbafa542, type: 2}
+  - {fileID: 11400000, guid: 4eedac618bd9e6b488555c02ada777ef, type: 2}
+  - {fileID: 11400000, guid: 49a400e246298dc439bb61c7da199136, type: 2}
+  - {fileID: 11400000, guid: dd02cd6dc95c3e74e95102c09697e99f, type: 2}
+  - {fileID: 11400000, guid: 3bbd570308aa43442ab5f3bacf315337, type: 2}
+  - {fileID: 11400000, guid: 5319164cb8c5602418aba107054e3b9b, type: 2}
+  - {fileID: 11400000, guid: 41c4927335b8c494598f8c279e6be40e, type: 2}
+  - {fileID: 11400000, guid: ea879bdb1cbbea840b1f8d9892743c10, type: 2}
+  - {fileID: 11400000, guid: b031e273db747684c987f37da5af4db1, type: 2}
+  - {fileID: 11400000, guid: b261a7bb76e6fc949a157c7030019cc7, type: 2}
+  - {fileID: 11400000, guid: 6ad21e14f17d27149aac1b882337e9a1, type: 2}

@@ -1,7 +1,7 @@
 {
     "name": "RTSCL.World.Unity",
     "rootNamespace": "RTSCL.World.Unity",
-    "references": ["RTSCL.World", "Unity.Mathematics", "Unity.InputSystem"],
+    "references": ["RTSCL.World", "Unity.Mathematics", "Unity.InputSystem", "UnityEngine.UI"],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,

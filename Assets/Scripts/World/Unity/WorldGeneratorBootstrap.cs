@@ -30,6 +30,9 @@ namespace RTSCL.World.Unity
 
         private string _seedInput = "";
         private int _lastSeed;
+        private WorldData _currentWorld;
+
+        public WorldData CurrentWorld => _currentWorld;
 
         private void Start() => Regenerate();
 
@@ -71,6 +74,7 @@ namespace RTSCL.World.Unity
                 if (rts != null) rts.SetWorldBounds(world.Width, world.Height);
             }
 
+            _currentWorld = world;
             _lastSeed = seed;
             _seedInput = seed.ToString();
             Debug.Log($"[WorldGen] Done. Spawns: {world.Spawns.Length}, " +
