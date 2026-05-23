@@ -1,0 +1,46 @@
+# Unity generated
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+[Mm]emoryCaptures/
+[Rr]ecordings/
+
+# IDE
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+.vs/
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Unity Crashlogs
+sysinfo.txt
+crashlog.txt
+
+# Generated tile assets (regenerable via slicer)
+# (intentionally tracked — leave this rule disabled)
+
+# Steam dev shim (never commit)
+steam_appid.txt
+
+# Raw Steamworks SDK sibling folder (large, redownload as needed)
+sdk/
