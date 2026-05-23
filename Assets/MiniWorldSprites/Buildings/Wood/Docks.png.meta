@@ -49,7 +49,7 @@ TextureImporter:
   nPOTScale: 0
   lightmap: 0
   compressionQuality: 50
-  spriteMode: 1
+  spriteMode: 2
   spriteExtrude: 1
   spriteMeshType: 1
   alignment: 9
@@ -147,17 +147,17 @@ TextureImporter:
         serializedVersion: 2
         x: 0
         y: 0
-        width: 32
+        width: 16
         height: 32
-      alignment: 0
+      alignment: 9
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: b4fa8d8f0b0519020800000000000000
+      spriteID: 7a1e03b0bbe0d9c4894d012c0e1789b6
       internalID: 2346745601856155467
       vertices: []
       indices: 
@@ -167,20 +167,64 @@ TextureImporter:
       name: Docks_1
       rect:
         serializedVersion: 2
-        x: 31
-        y: 0
-        width: 33
-        height: 32
-      alignment: 0
+        x: 16
+        y: 1
+        width: 16
+        height: 29
+      alignment: 9
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 79544f68984192410800000000000000
+      spriteID: 8b0c3753024abba47a95e1417da4de68
       internalID: 1452714935710926231
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Docks_2
+      rect:
+        serializedVersion: 2
+        x: 32
+        y: 1
+        width: 16
+        height: 31
+      alignment: 9
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 322ef9164174e174bb9a890ed943d6df
+      internalID: -1026820095
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Docks_3
+      rect:
+        serializedVersion: 2
+        x: 48
+        y: 0
+        width: 16
+        height: 30
+      alignment: 9
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 1f8a7d7e619bf50488825fa2d1391d4c
+      internalID: 621625574
       vertices: []
       indices: 
       edges: []
@@ -201,6 +245,8 @@ TextureImporter:
     nameFileIdTable:
       Docks_0: 2346745601856155467
       Docks_1: 1452714935710926231
+      Docks_2: -1026820095
+      Docks_3: 621625574
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

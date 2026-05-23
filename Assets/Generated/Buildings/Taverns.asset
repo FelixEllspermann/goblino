@@ -13,5 +13,5 @@ MonoBehaviour:
   m_Name: Taverns
   m_EditorClassIdentifier: RTSCL.World.Unity::RTSCL.World.Unity.BuildingDefinition
   DisplayName: Taverns
-  Sprite: {fileID: 21300000, guid: a03df09e8c133804f9d3922f1520f3c5, type: 3}
+  Sprite: {fileID: 5493797371118557054, guid: a03df09e8c133804f9d3922f1520f3c5, type: 3}
   Footprint: {x: 3, y: 4}
