@@ -60,7 +60,7 @@ TextureImporter:
   spriteMeshType: 1
   alignment: 0
   spritePivot: {x: 0.5, y: 0.5}
-  spritePixelsToUnits: 100
+  spritePixelsToUnits: 16
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spriteGenerateFallbackPhysicsShape: 1
   alphaUsage: 1
@@ -84,7 +84,7 @@ TextureImporter:
     maxTextureSize: 2048
     resizeAlgorithm: 0
     textureFormat: -1
-    textureCompression: 1
+    textureCompression: 0
     compressionQuality: 50
     crunchedCompression: 0
     allowsAlphaSplitting: 0
@@ -151,19 +151,19 @@ TextureImporter:
       name: WinterDeadTrees_0
       rect:
         serializedVersion: 2
-        x: 5
-        y: 1
-        width: 6
-        height: 8
+        x: 0
+        y: 0
+        width: 16
+        height: 16
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 749af987e92953dc0800000000000000
+      spriteID: 7600f3a8b17bad0469b1c93bc3553679
       internalID: -3659857912842442425
       vertices: []
       indices: 
@@ -173,19 +173,19 @@ TextureImporter:
       name: WinterDeadTrees_1
       rect:
         serializedVersion: 2
-        x: 21
-        y: 1
-        width: 6
-        height: 8
+        x: 16
+        y: 0
+        width: 16
+        height: 16
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 707c604898697f1d0800000000000000
+      spriteID: 2313394887937464fb977554503b3ce8
       internalID: -3317017083165358329
       vertices: []
       indices: 
@@ -200,14 +200,14 @@ TextureImporter:
         width: 16
         height: 16
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 5ba8c4659c3b4d8f0800000000000000
+      spriteID: e2f25188ac92a5e4cb2bde03dfdc7e97
       internalID: -516590379923109195
       vertices: []
       indices: 
@@ -222,14 +222,14 @@ TextureImporter:
         width: 16
         height: 16
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 12f752bc3efaa6380800000000000000
+      spriteID: d41162bc4bc8b1647808d4919f57722f
       internalID: -8977169514308993247
       vertices: []
       indices: 
@@ -239,7 +239,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 
+    spriteID: 01c60e14c799a36449d77fd00fc1c01a
     internalID: 0
     vertices: []
     indices: 

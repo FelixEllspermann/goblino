@@ -66,7 +66,7 @@ TextureImporter:
   spriteMeshType: 1
   alignment: 0
   spritePivot: {x: 0.5, y: 0.5}
-  spritePixelsToUnits: 100
+  spritePixelsToUnits: 16
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spriteGenerateFallbackPhysicsShape: 1
   alphaUsage: 1
@@ -90,7 +90,7 @@ TextureImporter:
     maxTextureSize: 2048
     resizeAlgorithm: 0
     textureFormat: -1
-    textureCompression: 1
+    textureCompression: 0
     compressionQuality: 50
     crunchedCompression: 0
     allowsAlphaSplitting: 0
@@ -157,19 +157,19 @@ TextureImporter:
       name: CoconutTrees_0
       rect:
         serializedVersion: 2
-        x: 3
+        x: 0
         y: 0
-        width: 8
-        height: 8
+        width: 16
+        height: 16
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 9b541e893b34c53f0800000000000000
+      spriteID: 684ccb6badc4ced469589e887e993d30
       internalID: -910778585992575559
       vertices: []
       indices: 
@@ -179,19 +179,19 @@ TextureImporter:
       name: CoconutTrees_1
       rect:
         serializedVersion: 2
-        x: 21
+        x: 16
         y: 0
-        width: 8
-        height: 8
+        width: 16
+        height: 16
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 5a2aba5a12c156f20800000000000000
+      spriteID: 92054cff6ff5f2d4488dba74bc10c8c0
       internalID: 3415166823269376677
       vertices: []
       indices: 
@@ -201,19 +201,19 @@ TextureImporter:
       name: CoconutTrees_2
       rect:
         serializedVersion: 2
-        x: 33
+        x: 32
         y: 0
-        width: 15
+        width: 16
         height: 16
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 7172a8750ccfd6cf0800000000000000
+      spriteID: 4b615a90744efcd46b1c8a8b4b3d7f00
       internalID: -257271700657658089
       vertices: []
       indices: 
@@ -223,19 +223,19 @@ TextureImporter:
       name: CoconutTrees_3
       rect:
         serializedVersion: 2
-        x: 49
+        x: 48
         y: 0
-        width: 15
+        width: 16
         height: 16
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 89d7b3d6f357a5de0800000000000000
+      spriteID: 4d004da30a72a564b8a2e29d644cf118
       internalID: -1343632623540666984
       vertices: []
       indices: 
@@ -247,17 +247,17 @@ TextureImporter:
         serializedVersion: 2
         x: 64
         y: 0
-        width: 15
+        width: 16
         height: 16
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: f54cd35d9f21c3b90800000000000000
+      spriteID: 00cac265d5c27534cad46a456ffe457c
       internalID: -7260907634994330529
       vertices: []
       indices: 
@@ -269,17 +269,17 @@ TextureImporter:
         serializedVersion: 2
         x: 80
         y: 0
-        width: 15
+        width: 16
         height: 16
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: f53daf85b76210c60800000000000000
+      spriteID: b864216815b5cd64991d0dddcf8f49e1
       internalID: 7782543942288593759
       vertices: []
       indices: 
@@ -289,7 +289,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 
+    spriteID: 6aecb972d0840214cb2e0de801cbe4d7
     internalID: 0
     vertices: []
     indices: 
