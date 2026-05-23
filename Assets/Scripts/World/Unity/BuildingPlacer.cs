@@ -25,9 +25,12 @@ namespace RTSCL.World.Unity
         private BuildingDefinition _selected;
         private GameObject _ghost;
         private SpriteRenderer _ghostRenderer;
-        private readonly HashSet<Vector2Int> _occupiedCells = new();
+        private readonly Dictionary<Vector2Int, BuildingDefinition> _cellOwners = new();
 
         public BuildingDefinition Selected => _selected;
+
+        public bool TryGetBuildingAt(Vector2Int cell, out BuildingDefinition def) =>
+            _cellOwners.TryGetValue(cell, out def);
 
         public void Select(BuildingDefinition def)
         {
@@ -99,7 +102,7 @@ namespace RTSCL.World.Unity
                 if (n == "DeepWater" || n == "Shore" || n == "Cliff") return false;
 
                 // Overlap with existing buildings
-                if (_occupiedCells.Contains(new Vector2Int(x, y))) return false;
+                if (_cellOwners.ContainsKey(new Vector2Int(x, y))) return false;
 
                 // Overlap with resource clusters
                 if (world != null && IsResourceCell(world, x, y)) return false;
@@ -127,12 +130,12 @@ namespace RTSCL.World.Unity
 
             for (int dy = 0; dy < _selected.Footprint.y; dy++)
             for (int dx = 0; dx < _selected.Footprint.x; dx++)
-                _occupiedCells.Add(new Vector2Int(origin.x + dx, origin.y + dy));
+                _cellOwners[new Vector2Int(origin.x + dx, origin.y + dy)] = _selected;
         }
 
         public void ClearAllPlaced()
         {
-            _occupiedCells.Clear();
+            _cellOwners.Clear();
             if (_buildingsRoot == null) return;
             for (int i = _buildingsRoot.childCount - 1; i >= 0; i--)
             {
