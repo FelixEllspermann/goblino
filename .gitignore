@@ -13,7 +13,9 @@
 *.csproj
 *.unityproj
 *.sln
+*.slnx
 *.suo
+.vsconfig
 *.tmp
 *.user
 *.userprefs
