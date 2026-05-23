@@ -144,7 +144,7 @@ TextureImporter:
   spriteMeshType: 1
   alignment: 0
   spritePivot: {x: 0.5, y: 0.5}
-  spritePixelsToUnits: 100
+  spritePixelsToUnits: 16
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spriteGenerateFallbackPhysicsShape: 1
   alphaUsage: 1
@@ -168,7 +168,7 @@ TextureImporter:
     maxTextureSize: 2048
     resizeAlgorithm: 0
     textureFormat: -1
-    textureCompression: 1
+    textureCompression: 0
     compressionQuality: 50
     crunchedCompression: 0
     allowsAlphaSplitting: 0
@@ -236,18 +236,18 @@ TextureImporter:
       rect:
         serializedVersion: 2
         x: 0
-        y: 128
-        width: 15
+        y: 144
+        width: 16
         height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: b02b7c2ada38a2070800000000000000
+      spriteID: 0cb3069c78f69c143b4ebeaac6a18b28
       internalID: 8082417263053353483
       vertices: []
       indices: 
@@ -257,19 +257,19 @@ TextureImporter:
       name: SpearGoblin_1
       rect:
         serializedVersion: 2
-        x: 1
+        x: 16
         y: 144
-        width: 15
+        width: 16
         height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 2a26bd08eac960600800000000000000
+      spriteID: a9c1e27bfc1af844f826eaadb4c047d1
       internalID: 434206687387935394
       vertices: []
       indices: 
@@ -279,19 +279,19 @@ TextureImporter:
       name: SpearGoblin_2
       rect:
         serializedVersion: 2
-        x: 16
-        y: 128
-        width: 15
-        height: 17
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 32
+        y: 144
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: efb97f320458b4c40800000000000000
+      spriteID: e07a0c3e1748e5b47aefa7c64433ce1b
       internalID: 5497634280663653374
       vertices: []
       indices: 
@@ -301,19 +301,19 @@ TextureImporter:
       name: SpearGoblin_3
       rect:
         serializedVersion: 2
-        x: 17
+        x: 48
         y: 144
-        width: 15
+        width: 16
         height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 234c03fd592540e60800000000000000
+      spriteID: 11d5291ba1935d347b0c21de85583a3b
       internalID: 7927552047727035442
       vertices: []
       indices: 
@@ -323,19 +323,19 @@ TextureImporter:
       name: SpearGoblin_4
       rect:
         serializedVersion: 2
-        x: 32
-        y: 127
-        width: 15
-        height: 17
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 64
+        y: 144
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 0d630721b0a94ce40800000000000000
+      spriteID: 9855a13400ede964cbc9bc42776b2f1d
       internalID: 5675830802738329296
       vertices: []
       indices: 
@@ -345,19 +345,19 @@ TextureImporter:
       name: SpearGoblin_5
       rect:
         serializedVersion: 2
-        x: 33
-        y: 143
-        width: 15
-        height: 17
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 0
+        y: 128
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 102a9ff4a2a557870800000000000000
+      spriteID: 7a70a3afa9eda5f4ab87ca9691583462
       internalID: 8679942994603385345
       vertices: []
       indices: 
@@ -367,19 +367,19 @@ TextureImporter:
       name: SpearGoblin_6
       rect:
         serializedVersion: 2
-        x: 48
+        x: 16
         y: 128
-        width: 15
-        height: 17
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: b99aae7e542f49ae0800000000000000
+      spriteID: 27ed318c4c7669d4fb3264ff7a50dfbd
       internalID: -1543342390223656549
       vertices: []
       indices: 
@@ -389,19 +389,19 @@ TextureImporter:
       name: SpearGoblin_7
       rect:
         serializedVersion: 2
-        x: 49
-        y: 144
-        width: 15
+        x: 32
+        y: 128
+        width: 16
         height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 968eab4163df21a50800000000000000
+      spriteID: 6d77182bb4952de419ff226d9e2b34d1
       internalID: 6490528421712160873
       vertices: []
       indices: 
@@ -411,19 +411,19 @@ TextureImporter:
       name: SpearGoblin_8
       rect:
         serializedVersion: 2
-        x: 64
-        y: 127
-        width: 15
-        height: 17
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 48
+        y: 128
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 927c3dc40db839620800000000000000
+      spriteID: 90b451e90e894bf45bce50d947f2ca7b
       internalID: 2779719121776133929
       vertices: []
       indices: 
@@ -433,19 +433,19 @@ TextureImporter:
       name: SpearGoblin_9
       rect:
         serializedVersion: 2
-        x: 65
-        y: 143
-        width: 15
-        height: 17
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 64
+        y: 128
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 8640099d703b2cf70800000000000000
+      spriteID: 2240d3b39c5c119478034104120e3818
       internalID: 9206117434594952296
       vertices: []
       indices: 
@@ -455,19 +455,19 @@ TextureImporter:
       name: SpearGoblin_10
       rect:
         serializedVersion: 2
-        x: 2
+        x: 0
         y: 112
-        width: 13
+        width: 16
         height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 54df7c4d1ef9b01c0800000000000000
+      spriteID: c11cb1d0d479f104bbaaaf03cdb4b311
       internalID: -4536356407359308475
       vertices: []
       indices: 
@@ -477,19 +477,19 @@ TextureImporter:
       name: SpearGoblin_11
       rect:
         serializedVersion: 2
-        x: 17
-        y: 96
-        width: 13
+        x: 16
+        y: 112
+        width: 16
         height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: cb0fc950e8c85dcb0800000000000000
+      spriteID: b94a581dc73177d4fb1d9dba404ee821
       internalID: -4839807682932313924
       vertices: []
       indices: 
@@ -499,19 +499,19 @@ TextureImporter:
       name: SpearGoblin_12
       rect:
         serializedVersion: 2
-        x: 18
+        x: 32
         y: 112
-        width: 13
+        width: 16
         height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: bc26670a31477cf40800000000000000
+      spriteID: 6782b112bb6e9de42a0cbebe12585096
       internalID: 5748691077007041227
       vertices: []
       indices: 
@@ -521,19 +521,19 @@ TextureImporter:
       name: SpearGoblin_13
       rect:
         serializedVersion: 2
-        x: 34
-        y: 111
-        width: 13
+        x: 48
+        y: 112
+        width: 16
         height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 8df1898f45d33a780800000000000000
+      spriteID: 98896921ca12f1a459f683c9c12fbfd6
       internalID: -8673021022228176936
       vertices: []
       indices: 
@@ -543,19 +543,19 @@ TextureImporter:
       name: SpearGoblin_14
       rect:
         serializedVersion: 2
-        x: 49
-        y: 96
-        width: 13
+        x: 64
+        y: 112
+        width: 16
         height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: bcc40edc2ad634ba0800000000000000
+      spriteID: 69eea99eeaead374bbe9e96fd225bbe0
       internalID: -6105916123778102069
       vertices: []
       indices: 
@@ -565,19 +565,19 @@ TextureImporter:
       name: SpearGoblin_15
       rect:
         serializedVersion: 2
-        x: 50
-        y: 112
-        width: 13
+        x: 0
+        y: 96
+        width: 16
         height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 820c4a3aa2b74c5c0800000000000000
+      spriteID: d37230672bd80374fa11907a5c933daf
       internalID: -4196093529738133464
       vertices: []
       indices: 
@@ -587,19 +587,19 @@ TextureImporter:
       name: SpearGoblin_16
       rect:
         serializedVersion: 2
-        x: 66
-        y: 111
-        width: 13
+        x: 16
+        y: 96
+        width: 16
         height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: b004048a69138bea0800000000000000
+      spriteID: f32231b0791bb9549b307fdb5fcbce06
       internalID: -5856876792257691637
       vertices: []
       indices: 
@@ -609,19 +609,19 @@ TextureImporter:
       name: SpearGoblin_17
       rect:
         serializedVersion: 2
-        x: 1
+        x: 32
         y: 96
-        width: 13
-        height: 15
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: d2eeea6a45230fa50800000000000000
+      spriteID: 57a19e2875b66f349af46d1fb6cfd179
       internalID: 6552792796979195437
       vertices: []
       indices: 
@@ -631,19 +631,19 @@ TextureImporter:
       name: SpearGoblin_18
       rect:
         serializedVersion: 2
-        x: 1
-        y: 80
-        width: 15
-        height: 17
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 48
+        y: 96
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 4231a9491c9b2f8a0800000000000000
+      spriteID: 02a62e9dd513e0b4d97bda361ad5a962
       internalID: -6272747089900727516
       vertices: []
       indices: 
@@ -653,19 +653,19 @@ TextureImporter:
       name: SpearGoblin_19
       rect:
         serializedVersion: 2
-        x: 33
-        y: 95
-        width: 13
+        x: 64
+        y: 96
+        width: 16
         height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 11352c500f5138900800000000000000
+      spriteID: 4d91b03cea673ba48a543b3d87871483
       internalID: 685415688923403025
       vertices: []
       indices: 
@@ -675,19 +675,19 @@ TextureImporter:
       name: SpearGoblin_20
       rect:
         serializedVersion: 2
-        x: 47
+        x: 0
         y: 80
         width: 16
         height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 1d656239a9bb35450800000000000000
+      spriteID: 919b7fc2b629a1745b3b2cc51122ab66
       internalID: 6076406594821052113
       vertices: []
       indices: 
@@ -697,19 +697,19 @@ TextureImporter:
       name: SpearGoblin_21
       rect:
         serializedVersion: 2
-        x: 65
-        y: 95
-        width: 13
+        x: 16
+        y: 80
+        width: 16
         height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 46b85e11893efb600800000000000000
+      spriteID: 8a029ff45536f4444b5563eaca61ddd7
       internalID: 486357527054093156
       vertices: []
       indices: 
@@ -719,19 +719,19 @@ TextureImporter:
       name: SpearGoblin_22
       rect:
         serializedVersion: 2
-        x: 2
-        y: 40
-        width: 14
-        height: 24
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 32
+        y: 80
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 992b71a030aae5be0800000000000000
+      spriteID: 6b1e3d8552c606347a66d0c7a37a2a6e
       internalID: -1486563896954735975
       vertices: []
       indices: 
@@ -741,19 +741,19 @@ TextureImporter:
       name: SpearGoblin_23
       rect:
         serializedVersion: 2
-        x: 16
-        y: 64
-        width: 15
-        height: 17
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 48
+        y: 80
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 63b995090802192f0800000000000000
+      spriteID: e2a9b9532bde44f42a502492e1e4ef9a
       internalID: -967956708358251722
       vertices: []
       indices: 
@@ -763,19 +763,19 @@ TextureImporter:
       name: SpearGoblin_24
       rect:
         serializedVersion: 2
-        x: 40
-        y: 64
-        width: 23
-        height: 15
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 64
+        y: 80
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: f068f52dc4c40dd60800000000000000
+      spriteID: 39f574116936a084ab6c6f2589bbb5bd
       internalID: 7912908438120662543
       vertices: []
       indices: 
@@ -785,19 +785,19 @@ TextureImporter:
       name: SpearGoblin_25
       rect:
         serializedVersion: 2
-        x: 16
-        y: 32
-        width: 14
-        height: 24
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 0
+        y: 64
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 77326ce08231fe570800000000000000
+      spriteID: 3fbcc93259de9814a829564f8e7c3f43
       internalID: 8498032084638901111
       vertices: []
       indices: 
@@ -807,19 +807,19 @@ TextureImporter:
       name: SpearGoblin_26
       rect:
         serializedVersion: 2
-        x: 33
-        y: 32
+        x: 16
+        y: 64
         width: 16
         height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 98f4adf3883497640800000000000000
+      spriteID: 97291c6dee760454a9601b35898e33f3
       internalID: 5078164307302829961
       vertices: []
       indices: 
@@ -829,19 +829,19 @@ TextureImporter:
       name: SpearGoblin_27
       rect:
         serializedVersion: 2
-        x: 42
-        y: 48
-        width: 21
-        height: 15
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 32
+        y: 64
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: e4f648e87f671d7f0800000000000000
+      spriteID: 6984958a01ad5ba45b2653a5a5909b03
       internalID: -589559270588780722
       vertices: []
       indices: 
@@ -851,19 +851,19 @@ TextureImporter:
       name: SpearGoblin_28
       rect:
         serializedVersion: 2
-        x: 1
-        y: 9
-        width: 15
-        height: 23
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 48
+        y: 64
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 734b7c6490e4d0a00800000000000000
+      spriteID: 4b4b3e7b3fc33e74585c30127b14a737
       internalID: 724320916825682999
       vertices: []
       indices: 
@@ -873,19 +873,19 @@ TextureImporter:
       name: SpearGoblin_29
       rect:
         serializedVersion: 2
-        x: 16
-        y: 0
-        width: 15
-        height: 23
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 64
+        y: 64
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: dff829b99ddcc0100800000000000000
+      spriteID: bd77def5de5caa846941120d3fc7376a
       internalID: 75661628260126717
       vertices: []
       indices: 
@@ -895,19 +895,19 @@ TextureImporter:
       name: SpearGoblin_30
       rect:
         serializedVersion: 2
-        x: 33
-        y: 17
-        width: 23
-        height: 15
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 0
+        y: 48
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: f7ac32dbe338997f0800000000000000
+      spriteID: 15197c398cd60ca4d9c213de02349fda
       internalID: -605308369420170625
       vertices: []
       indices: 
@@ -917,20 +917,416 @@ TextureImporter:
       name: SpearGoblin_31
       rect:
         serializedVersion: 2
-        x: 33
-        y: 1
-        width: 21
-        height: 15
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 16
+        y: 48
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 0174508ecb888b6b0800000000000000
+      spriteID: 6e20dffa045a4d74eabd8602f35587ac
       internalID: -5280320218164017392
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: SpearGoblin_32
+      rect:
+        serializedVersion: 2
+        x: 32
+        y: 48
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 3b8f44902de03654f85f6c00cc97a2c8
+      internalID: -1673261318
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: SpearGoblin_33
+      rect:
+        serializedVersion: 2
+        x: 48
+        y: 48
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: d36fa839cb7af0542b5499ec28e3e51a
+      internalID: -160473419
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: SpearGoblin_34
+      rect:
+        serializedVersion: 2
+        x: 64
+        y: 48
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 79e020aef89a11c4ab68052fefb5a14e
+      internalID: -54543896
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: SpearGoblin_35
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 32
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 5bd5f1d240fb0da48babd81baee1b412
+      internalID: -1932554465
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: SpearGoblin_36
+      rect:
+        serializedVersion: 2
+        x: 16
+        y: 32
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: a6a31fd27dfa2f54faa149cf45a1cbb9
+      internalID: -586550318
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: SpearGoblin_37
+      rect:
+        serializedVersion: 2
+        x: 32
+        y: 32
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 45a4243b1e4c81243a8984e50d87861d
+      internalID: -870393462
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: SpearGoblin_38
+      rect:
+        serializedVersion: 2
+        x: 48
+        y: 32
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: f6c5dde2c9d1ae64781bc68dfcef91ec
+      internalID: -1976094229
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: SpearGoblin_39
+      rect:
+        serializedVersion: 2
+        x: 64
+        y: 32
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: eebedd60a0496f84b9bfa6e403820a2d
+      internalID: 561105723
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: SpearGoblin_40
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 16
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: bd25de4bbb4da6549a2867da0cfb970b
+      internalID: 1745258521
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: SpearGoblin_41
+      rect:
+        serializedVersion: 2
+        x: 16
+        y: 16
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 56e5f8e0b87a45141801eb4ae600610c
+      internalID: -867129687
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: SpearGoblin_42
+      rect:
+        serializedVersion: 2
+        x: 32
+        y: 16
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 5e71c6536bbf31341879cddf97704976
+      internalID: 1721558235
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: SpearGoblin_43
+      rect:
+        serializedVersion: 2
+        x: 48
+        y: 16
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 47fd1a59384600342b5c53eeb189dc83
+      internalID: -1118461458
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: SpearGoblin_44
+      rect:
+        serializedVersion: 2
+        x: 64
+        y: 16
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 06895098d8dec3046bea48e5cba4a6d9
+      internalID: -883783025
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: SpearGoblin_45
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 1c5f84e2b8f785a42a11eb8770f84c75
+      internalID: -499665221
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: SpearGoblin_46
+      rect:
+        serializedVersion: 2
+        x: 16
+        y: 0
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 584eb1b3b7318ec4aaa390d02b44ff7d
+      internalID: -200605494
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: SpearGoblin_47
+      rect:
+        serializedVersion: 2
+        x: 32
+        y: 0
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: d1d7c8278462a274ca85692e753553de
+      internalID: -48332214
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: SpearGoblin_48
+      rect:
+        serializedVersion: 2
+        x: 48
+        y: 0
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 75e03da4363d8764085f46343c0e1def
+      internalID: -984170101
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: SpearGoblin_49
+      rect:
+        serializedVersion: 2
+        x: 64
+        y: 0
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 16816a5c59c07964aa349feab264717f
+      internalID: 915494049
       vertices: []
       indices: 
       edges: []
@@ -939,7 +1335,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 
+    spriteID: 1be336cf5886aa94da7d371921a12976
     internalID: 0
     vertices: []
     indices: 
@@ -975,7 +1371,25 @@ TextureImporter:
       SpearGoblin_3: 7927552047727035442
       SpearGoblin_30: -605308369420170625
       SpearGoblin_31: -5280320218164017392
+      SpearGoblin_32: -1673261318
+      SpearGoblin_33: -160473419
+      SpearGoblin_34: -54543896
+      SpearGoblin_35: -1932554465
+      SpearGoblin_36: -586550318
+      SpearGoblin_37: -870393462
+      SpearGoblin_38: -1976094229
+      SpearGoblin_39: 561105723
       SpearGoblin_4: 5675830802738329296
+      SpearGoblin_40: 1745258521
+      SpearGoblin_41: -867129687
+      SpearGoblin_42: 1721558235
+      SpearGoblin_43: -1118461458
+      SpearGoblin_44: -883783025
+      SpearGoblin_45: -499665221
+      SpearGoblin_46: -200605494
+      SpearGoblin_47: -48332214
+      SpearGoblin_48: -984170101
+      SpearGoblin_49: 915494049
       SpearGoblin_5: 8679942994603385345
       SpearGoblin_6: -1543342390223656549
       SpearGoblin_7: 6490528421712160873

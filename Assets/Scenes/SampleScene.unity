@@ -154,7 +154,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 16}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 1}
 --- !u!114 &55799547
 MonoBehaviour:
@@ -196,6 +196,78 @@ MonoBehaviour:
   m_ChildScaleWidth: 0
   m_ChildScaleHeight: 0
   m_ReverseArrangement: 0
+--- !u!1 &164504307
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 164504309}
+  - component: {fileID: 164504308}
+  m_Layer: 0
+  m_Name: GoblinSpawner
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &164504308
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 164504307}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 68a1324ad4227da4eb757ab1f6b1c3d1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: RTSCL.World.Unity::RTSCL.World.Unity.GoblinSpawner
+  _terrainMap: {fileID: 1282190478}
+  _camera: {fileID: 519420031}
+  _goblinsRoot: {fileID: 424726197}
+  _kinds:
+  - Name: ClubGoblin
+    WalkFrames:
+    - {fileID: -5372828631164573143, guid: 417511f3aedd45847acd1bf37780fd82, type: 3}
+    - {fileID: -4019641482054193755, guid: 417511f3aedd45847acd1bf37780fd82, type: 3}
+    - {fileID: 1814117541427858136, guid: 417511f3aedd45847acd1bf37780fd82, type: 3}
+    - {fileID: 8704176405440998772, guid: 417511f3aedd45847acd1bf37780fd82, type: 3}
+    - {fileID: -4699573994711803674, guid: 417511f3aedd45847acd1bf37780fd82, type: 3}
+  - Name: ArcherGoblin
+    WalkFrames:
+    - {fileID: 115046913211846132, guid: 59f7e8bfad34976468901a03ac2da98c, type: 3}
+    - {fileID: 2549431145794131919, guid: 59f7e8bfad34976468901a03ac2da98c, type: 3}
+    - {fileID: -2202073550511657383, guid: 59f7e8bfad34976468901a03ac2da98c, type: 3}
+    - {fileID: 8431135242110582471, guid: 59f7e8bfad34976468901a03ac2da98c, type: 3}
+    - {fileID: -3691415230588575583, guid: 59f7e8bfad34976468901a03ac2da98c, type: 3}
+  - Name: SpearGoblin
+    WalkFrames:
+    - {fileID: 8082417263053353483, guid: b29f2eaf7e2fcc24490a5b82a4089f63, type: 3}
+    - {fileID: 434206687387935394, guid: b29f2eaf7e2fcc24490a5b82a4089f63, type: 3}
+    - {fileID: 5497634280663653374, guid: b29f2eaf7e2fcc24490a5b82a4089f63, type: 3}
+    - {fileID: 7927552047727035442, guid: b29f2eaf7e2fcc24490a5b82a4089f63, type: 3}
+    - {fileID: 5675830802738329296, guid: b29f2eaf7e2fcc24490a5b82a4089f63, type: 3}
+  _autoSpawnCount: 10
+  _spawnOnStart: 1
+  _showSpawnButton: 1
+--- !u!4 &164504309
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 164504307}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &291943750
 GameObject:
   m_ObjectHideFlags: 0
@@ -303,6 +375,37 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 291943750}
   m_CullTransparentMesh: 1
+--- !u!1 &424726196
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 424726197}
+  m_Layer: 0
+  m_Name: GoblinsRoot
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &424726197
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 424726196}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &519420028
 GameObject:
   m_ObjectHideFlags: 0
@@ -171376,3 +171479,5 @@ SceneRoots:
   - {fileID: 1966971706}
   - {fileID: 887185640}
   - {fileID: 1575836960}
+  - {fileID: 424726197}
+  - {fileID: 164504309}

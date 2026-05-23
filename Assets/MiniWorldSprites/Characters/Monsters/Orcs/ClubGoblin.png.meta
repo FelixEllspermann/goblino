@@ -144,7 +144,7 @@ TextureImporter:
   spriteMeshType: 1
   alignment: 0
   spritePivot: {x: 0.5, y: 0.5}
-  spritePixelsToUnits: 100
+  spritePixelsToUnits: 16
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spriteGenerateFallbackPhysicsShape: 1
   alphaUsage: 1
@@ -168,7 +168,7 @@ TextureImporter:
     maxTextureSize: 2048
     resizeAlgorithm: 0
     textureFormat: -1
-    textureCompression: 1
+    textureCompression: 0
     compressionQuality: 50
     crunchedCompression: 0
     allowsAlphaSplitting: 0
@@ -237,17 +237,17 @@ TextureImporter:
         serializedVersion: 2
         x: 0
         y: 112
-        width: 14
+        width: 16
         height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 92a236093d0ef65b0800000000000000
+      spriteID: b5caf45d71558c14c80730f3340caf6a
       internalID: -5372828631164573143
       vertices: []
       indices: 
@@ -257,19 +257,19 @@ TextureImporter:
       name: ClubGoblin_1
       rect:
         serializedVersion: 2
-        x: 2
-        y: 96
-        width: 14
+        x: 16
+        y: 112
+        width: 16
         height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 5ad2cb97e5d5738c0800000000000000
+      spriteID: 41cb7cdbbddc0db46bef653de4a86467
       internalID: -4019641482054193755
       vertices: []
       indices: 
@@ -279,19 +279,19 @@ TextureImporter:
       name: ClubGoblin_2
       rect:
         serializedVersion: 2
-        x: 16
+        x: 32
         y: 112
-        width: 14
+        width: 16
         height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 8dacc95da4a0d2910800000000000000
+      spriteID: 70337368edcf0974f98ef6b0821585b5
       internalID: 1814117541427858136
       vertices: []
       indices: 
@@ -301,19 +301,19 @@ TextureImporter:
       name: ClubGoblin_3
       rect:
         serializedVersion: 2
-        x: 18
-        y: 96
-        width: 14
-        height: 17
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 48
+        y: 112
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 47da5a4f2527bc870800000000000000
+      spriteID: f28dd67a56b07184da8b5b2a9e317251
       internalID: 8704176405440998772
       vertices: []
       indices: 
@@ -323,19 +323,19 @@ TextureImporter:
       name: ClubGoblin_4
       rect:
         serializedVersion: 2
-        x: 32
-        y: 111
-        width: 14
-        height: 17
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 64
+        y: 112
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 6e81a89e952c7ceb0800000000000000
+      spriteID: f0d5d2bcc03bc83409967ed3f30cf630
       internalID: -4699573994711803674
       vertices: []
       indices: 
@@ -345,19 +345,19 @@ TextureImporter:
       name: ClubGoblin_5
       rect:
         serializedVersion: 2
-        x: 34
-        y: 95
-        width: 14
-        height: 17
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 0
+        y: 96
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 1f503a4101b63a3e0800000000000000
+      spriteID: 4b4ca081b031e974a887bd5c016ca27e
       internalID: -2043672089086196239
       vertices: []
       indices: 
@@ -367,19 +367,19 @@ TextureImporter:
       name: ClubGoblin_6
       rect:
         serializedVersion: 2
-        x: 48
-        y: 112
-        width: 14
+        x: 16
+        y: 96
+        width: 16
         height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 2dca9971ac1be1ab0800000000000000
+      spriteID: 9bb07b4b6812f9e4c944fdc4203d439e
       internalID: -5035391851816178478
       vertices: []
       indices: 
@@ -389,19 +389,19 @@ TextureImporter:
       name: ClubGoblin_7
       rect:
         serializedVersion: 2
-        x: 50
+        x: 32
         y: 96
-        width: 14
-        height: 17
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 8070990605272fe50800000000000000
+      spriteID: 79f41b227dca1dd4db2919b05d9c1fdd
       internalID: 6841656473472796424
       vertices: []
       indices: 
@@ -411,19 +411,19 @@ TextureImporter:
       name: ClubGoblin_8
       rect:
         serializedVersion: 2
-        x: 64
-        y: 111
-        width: 14
-        height: 17
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 48
+        y: 96
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 934191fe8b62c3fb0800000000000000
+      spriteID: 0a63f315151a522449b197779c4c3be0
       internalID: -4666812538135440327
       vertices: []
       indices: 
@@ -433,19 +433,19 @@ TextureImporter:
       name: ClubGoblin_9
       rect:
         serializedVersion: 2
-        x: 66
-        y: 95
-        width: 14
-        height: 17
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 64
+        y: 96
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 1ff77f03168690ed0800000000000000
+      spriteID: 23356e5357b715d49b45887d597c4520
       internalID: -2447310155856510991
       vertices: []
       indices: 
@@ -455,19 +455,19 @@ TextureImporter:
       name: ClubGoblin_10
       rect:
         serializedVersion: 2
-        x: 2
+        x: 0
         y: 80
-        width: 11
-        height: 15
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 92c50bcd0a5ff41b0800000000000000
+      spriteID: 48d3b8fe3dbe2064fa9dacbc93ceac6d
       internalID: -5670043334590047191
       vertices: []
       indices: 
@@ -477,19 +477,19 @@ TextureImporter:
       name: ClubGoblin_11
       rect:
         serializedVersion: 2
-        x: 18
+        x: 16
         y: 80
-        width: 11
+        width: 16
         height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 45ca931b799cf9b10800000000000000
+      spriteID: 709d4c6d18b3b7f4392546b13a4c79d1
       internalID: 1990531213671640148
       vertices: []
       indices: 
@@ -499,19 +499,19 @@ TextureImporter:
       name: ClubGoblin_12
       rect:
         serializedVersion: 2
-        x: 19
-        y: 64
-        width: 11
+        x: 32
+        y: 80
+        width: 16
         height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 2cb9714d8027bf780800000000000000
+      spriteID: 816b9098b14bdfb41bcf7ac6b5bd0ee6
       internalID: -8648193277191283774
       vertices: []
       indices: 
@@ -521,19 +521,19 @@ TextureImporter:
       name: ClubGoblin_13
       rect:
         serializedVersion: 2
-        x: 33
-        y: 79
-        width: 12
+        x: 48
+        y: 80
+        width: 16
         height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: d8875c84369010630800000000000000
+      spriteID: 46fe495dcfeeda34386f20c3d49786ef
       internalID: 3891401875052132493
       vertices: []
       indices: 
@@ -543,19 +543,19 @@ TextureImporter:
       name: ClubGoblin_14
       rect:
         serializedVersion: 2
-        x: 50
+        x: 64
         y: 80
-        width: 11
+        width: 16
         height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 9f885b45f6ee50fe0800000000000000
+      spriteID: 9a49be4b5fcf5d74cbaeff2cebfdc0c2
       internalID: -1223309561831257863
       vertices: []
       indices: 
@@ -565,19 +565,19 @@ TextureImporter:
       name: ClubGoblin_15
       rect:
         serializedVersion: 2
-        x: 51
+        x: 0
         y: 64
-        width: 11
+        width: 16
         height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 4fba889901e8a8510800000000000000
+      spriteID: aa7d6bdf895c97049ba2f1920073bb75
       internalID: 1552209223529049076
       vertices: []
       indices: 
@@ -587,19 +587,19 @@ TextureImporter:
       name: ClubGoblin_16
       rect:
         serializedVersion: 2
-        x: 66
-        y: 79
-        width: 11
+        x: 16
+        y: 64
+        width: 16
         height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: d6ee38a4dbf0596a0800000000000000
+      spriteID: e9da9ae9aab191d498c92f3e37239587
       internalID: -6443226386210230675
       vertices: []
       indices: 
@@ -609,19 +609,19 @@ TextureImporter:
       name: ClubGoblin_17
       rect:
         serializedVersion: 2
-        x: 0
-        y: 48
-        width: 14
-        height: 17
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 32
+        y: 64
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: be984bf1963a80c60800000000000000
+      spriteID: 191ebf429b4acfa45b802b963d22cc9e
       internalID: 7784651627808721387
       vertices: []
       indices: 
@@ -631,19 +631,19 @@ TextureImporter:
       name: ClubGoblin_18
       rect:
         serializedVersion: 2
-        x: 3
+        x: 48
         y: 64
-        width: 11
-        height: 15
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 3055ca21c9199c9f0800000000000000
+      spriteID: 1de384585219efb48a149c8d2d140e66
       internalID: -447666588432444157
       vertices: []
       indices: 
@@ -653,19 +653,19 @@ TextureImporter:
       name: ClubGoblin_19
       rect:
         serializedVersion: 2
-        x: 16
-        y: 47
-        width: 14
-        height: 17
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 64
+        y: 64
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 5030aa0b53f5f61b0800000000000000
+      spriteID: 5c6002c2ef5cf1a46978bf2131044e6f
       internalID: -5661201522379586811
       vertices: []
       indices: 
@@ -675,19 +675,19 @@ TextureImporter:
       name: ClubGoblin_20
       rect:
         serializedVersion: 2
-        x: 34
-        y: 47
-        width: 12
-        height: 17
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 0
+        y: 48
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 6c63a94dce62236f0800000000000000
+      spriteID: e4535d2b1935bfa44a61022def2ff57a
       internalID: -706459392922732858
       vertices: []
       indices: 
@@ -697,19 +697,19 @@ TextureImporter:
       name: ClubGoblin_21
       rect:
         serializedVersion: 2
-        x: 35
-        y: 63
-        width: 11
+        x: 16
+        y: 48
+        width: 16
         height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 9555649f5bf205f10800000000000000
+      spriteID: 088389813c2f72c48b4492eeaa4eb604
       internalID: 2256355871930340697
       vertices: []
       indices: 
@@ -719,19 +719,19 @@ TextureImporter:
       name: ClubGoblin_22
       rect:
         serializedVersion: 2
-        x: 67
-        y: 63
-        width: 11
+        x: 32
+        y: 48
+        width: 16
         height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: f94a7df772ac91500800000000000000
+      spriteID: 2ae0326416ea99244a931d2f44dfc877
       internalID: 367547115604780191
       vertices: []
       indices: 
@@ -741,19 +741,19 @@ TextureImporter:
       name: ClubGoblin_23
       rect:
         serializedVersion: 2
-        x: 2
-        y: 32
-        width: 14
-        height: 17
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 48
+        y: 48
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 7bfb01e31b59a9fb0800000000000000
+      spriteID: f940b26015d06de40b7c3e6e97d2780b
       internalID: -4640231877568839753
       vertices: []
       indices: 
@@ -763,19 +763,19 @@ TextureImporter:
       name: ClubGoblin_24
       rect:
         serializedVersion: 2
-        x: 2
-        y: 16
-        width: 11
+        x: 64
+        y: 48
+        width: 16
         height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 3e97edf0b91ce9660800000000000000
+      spriteID: 377709198551b4f4f83890dacbb4471a
       internalID: 7394560509919263203
       vertices: []
       indices: 
@@ -785,19 +785,19 @@ TextureImporter:
       name: ClubGoblin_25
       rect:
         serializedVersion: 2
-        x: 18
+        x: 0
         y: 32
-        width: 14
+        width: 16
         height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 3ee2d07d260fd0340800000000000000
+      spriteID: 894ee0fb1d3241444b46d17749e65c29
       internalID: 4831782282543836899
       vertices: []
       indices: 
@@ -807,19 +807,19 @@ TextureImporter:
       name: ClubGoblin_26
       rect:
         serializedVersion: 2
-        x: 33
+        x: 16
         y: 32
-        width: 13
+        width: 16
         height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 7425368f573fad870800000000000000
+      spriteID: f5701f7d547285b41bd09dd62995aba0
       internalID: 8708540517478257223
       vertices: []
       indices: 
@@ -829,19 +829,19 @@ TextureImporter:
       name: ClubGoblin_27
       rect:
         serializedVersion: 2
-        x: 3
-        y: 0
-        width: 11
+        x: 32
+        y: 32
+        width: 16
         height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 420c6854796e2a150800000000000000
+      spriteID: 254e2c2600215ed4996ada243d7b65db
       internalID: 5882517600680198180
       vertices: []
       indices: 
@@ -851,19 +851,19 @@ TextureImporter:
       name: ClubGoblin_28
       rect:
         serializedVersion: 2
-        x: 18
-        y: 16
-        width: 15
-        height: 15
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 48
+        y: 32
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 1a93ce579feba9d80800000000000000
+      spriteID: 3d45546043b12244ba6eb90a84697ba7
       internalID: -8243066189313721951
       vertices: []
       indices: 
@@ -873,19 +873,19 @@ TextureImporter:
       name: ClubGoblin_29
       rect:
         serializedVersion: 2
-        x: 34
-        y: 16
-        width: 15
-        height: 15
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 64
+        y: 32
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 30db39d831ad4b4d0800000000000000
+      spriteID: 8ce0f5985f50ae945821050cf2ef6b0b
       internalID: -3119628864346407677
       vertices: []
       indices: 
@@ -895,19 +895,19 @@ TextureImporter:
       name: ClubGoblin_30
       rect:
         serializedVersion: 2
-        x: 15
-        y: 0
-        width: 15
-        height: 15
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 0
+        y: 16
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 72b6a698384dd2dd0800000000000000
+      spriteID: d0f590e69e133734984cb54198e9fa50
       internalID: -2509115755964241113
       vertices: []
       indices: 
@@ -917,20 +917,196 @@ TextureImporter:
       name: ClubGoblin_31
       rect:
         serializedVersion: 2
-        x: 31
-        y: 0
-        width: 15
-        height: 15
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 16
+        y: 16
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 10bcb1323a313d1d0800000000000000
+      spriteID: bd9d56c8ebfe38c45a22f2c552e73432
       internalID: -3327294108307043583
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ClubGoblin_32
+      rect:
+        serializedVersion: 2
+        x: 32
+        y: 16
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 5ab4fd219ea628641953dce177eba733
+      internalID: -1307218606
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ClubGoblin_33
+      rect:
+        serializedVersion: 2
+        x: 48
+        y: 16
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: efc5add6a716c5b41be7380281fbc1a7
+      internalID: -414556127
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ClubGoblin_34
+      rect:
+        serializedVersion: 2
+        x: 64
+        y: 16
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: f22a5554479fdcc46ae90f498444fbbc
+      internalID: -1587715615
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ClubGoblin_35
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: af5fc05ec2b7b394bab18241a6931f6a
+      internalID: -1592235485
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ClubGoblin_36
+      rect:
+        serializedVersion: 2
+        x: 16
+        y: 0
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: fcb1c18009c2a02479347b3f589144ea
+      internalID: -862406299
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ClubGoblin_37
+      rect:
+        serializedVersion: 2
+        x: 32
+        y: 0
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 606ea64edd1a36541bcd365c3e364783
+      internalID: 778454637
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ClubGoblin_38
+      rect:
+        serializedVersion: 2
+        x: 48
+        y: 0
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 8b33234a841db6d4ba30d841c86fcfea
+      internalID: 647972403
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ClubGoblin_39
+      rect:
+        serializedVersion: 2
+        x: 64
+        y: 0
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: c74d1b93a6d36d8409ab9f76960a7b56
+      internalID: 1554580495
       vertices: []
       indices: 
       edges: []
@@ -939,7 +1115,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 
+    spriteID: 790f05b9ded8a684699685b5d2730a64
     internalID: 0
     vertices: []
     indices: 
@@ -975,6 +1151,14 @@ TextureImporter:
       ClubGoblin_3: 8704176405440998772
       ClubGoblin_30: -2509115755964241113
       ClubGoblin_31: -3327294108307043583
+      ClubGoblin_32: -1307218606
+      ClubGoblin_33: -414556127
+      ClubGoblin_34: -1587715615
+      ClubGoblin_35: -1592235485
+      ClubGoblin_36: -862406299
+      ClubGoblin_37: 778454637
+      ClubGoblin_38: 647972403
+      ClubGoblin_39: 1554580495
       ClubGoblin_4: -4699573994711803674
       ClubGoblin_5: -2043672089086196239
       ClubGoblin_6: -5035391851816178478
