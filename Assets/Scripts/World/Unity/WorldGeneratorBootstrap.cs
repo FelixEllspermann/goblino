@@ -25,10 +25,22 @@ namespace RTSCL.World.Unity
         [SerializeField] private Camera _cameraToFit;
         [SerializeField] private bool _autoFitCamera = true;
 
+        [Header("Runtime UI")]
+        [SerializeField] private bool _showRuntimePanel = true;
+
+        private string _seedInput = "";
+        private int _lastSeed;
+
         private void Start() => Regenerate();
 
         [ContextMenu("Regenerate")]
         public void Regenerate()
+        {
+            int effectiveSeed = _seed < 0 ? Random.Range(1, int.MaxValue) : _seed;
+            RegenerateWithSeed(effectiveSeed);
+        }
+
+        public void RegenerateWithSeed(int seed)
         {
             if (_terrainMap == null || _decorationMap == null || _resolver == null)
             {
@@ -37,11 +49,10 @@ namespace RTSCL.World.Unity
                 return;
             }
 
-            int effectiveSeed = _seed < 0 ? Random.Range(1, int.MaxValue) : _seed;
-            Debug.Log($"[WorldGen] Generating with seed {effectiveSeed}…");
+            Debug.Log($"[WorldGen] Generating with seed {seed}…");
 
             WorldData world;
-            try { world = new WorldGenerator().Generate(effectiveSeed, _config); }
+            try { world = new WorldGenerator().Generate(seed, _config); }
             catch (System.Exception e)
             {
                 Debug.LogError($"[WorldGen] Generation failed: {e.Message}", this);
@@ -54,8 +65,48 @@ namespace RTSCL.World.Unity
             if (_autoFitCamera && _cameraToFit != null)
                 CameraFitter.Fit(_cameraToFit, world.Width, world.Height);
 
+            _lastSeed = seed;
+            _seedInput = seed.ToString();
             Debug.Log($"[WorldGen] Done. Spawns: {world.Spawns.Length}, " +
                       $"Clusters: {world.Resources.Count}.");
+        }
+
+        private void OnGUI()
+        {
+            if (!_showRuntimePanel) return;
+            if (!Application.isPlaying) return;
+
+            const int width = 240;
+            const int height = 110;
+            GUILayout.BeginArea(new Rect(10, 10, width, height), GUI.skin.box);
+            GUILayout.Label($"<b>World Generator</b>  (last: {_lastSeed})", RichLabel());
+
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Seed:", GUILayout.Width(40));
+            _seedInput = GUILayout.TextField(_seedInput, GUILayout.Width(160));
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Generate"))
+            {
+                if (int.TryParse(_seedInput, out int parsed)) RegenerateWithSeed(parsed);
+                else Debug.LogWarning($"[WorldGen] '{_seedInput}' is not a valid int seed.");
+            }
+            if (GUILayout.Button("Random"))
+            {
+                RegenerateWithSeed(Random.Range(1, int.MaxValue));
+            }
+            GUILayout.EndHorizontal();
+
+            GUILayout.EndArea();
+        }
+
+        private static GUIStyle s_richLabel;
+        private static GUIStyle RichLabel()
+        {
+            if (s_richLabel == null)
+                s_richLabel = new GUIStyle(GUI.skin.label) { richText = true };
+            return s_richLabel;
         }
     }
 }

@@ -169432,20 +169432,8 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 80097172f5022514cb91e51f8bda3140, type: 2}
     - {fileID: 11400000, guid: 30db464f846360d4e99dfb37d2033018, type: 2}
     - {fileID: 11400000, guid: 6b11f17bd68913d46adf62dbc8e7aa54, type: 2}
-    ShoreDensity: 0.03
-    ShoreTiles:
-    - {fileID: 11400000, guid: 8b6d4d360ae641142aaca403f7babf21, type: 2}
-    - {fileID: 11400000, guid: c4803fe1ec8ae3344814437ab4163f41, type: 2}
-    - {fileID: 11400000, guid: b1a2f14fc6b84fa4bbda8efab55e3a64, type: 2}
-    - {fileID: 11400000, guid: 3f8f86c9278f5b14c97734cd6779f57a, type: 2}
-    - {fileID: 11400000, guid: 7abb2433894fd13498ae2617e737462c, type: 2}
-    - {fileID: 11400000, guid: 5d99cb6f4bdf0cd49a8162f8c660b8b6, type: 2}
-    - {fileID: 11400000, guid: a6bd1dab9b36ef946a44157dee59d46f, type: 2}
-    - {fileID: 11400000, guid: 37b6419974e8952458d80506da48c7db, type: 2}
-    - {fileID: 11400000, guid: 84cf04cd1775a294daa773fbca14843a, type: 2}
-    - {fileID: 11400000, guid: 80097172f5022514cb91e51f8bda3140, type: 2}
-    - {fileID: 11400000, guid: 30db464f846360d4e99dfb37d2033018, type: 2}
-    - {fileID: 11400000, guid: 6b11f17bd68913d46adf62dbc8e7aa54, type: 2}
+    ShoreDensity: 0
+    ShoreTiles: []
     CliffDensity: 0.05
     CliffTiles:
     - {fileID: 11400000, guid: 8b6d4d360ae641142aaca403f7babf21, type: 2}
@@ -169461,7 +169449,7 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 30db464f846360d4e99dfb37d2033018, type: 2}
     - {fileID: 11400000, guid: 6b11f17bd68913d46adf62dbc8e7aa54, type: 2}
     SpawnReservedRadius: 2
-  _seed: -1
+  _seed: 3
   _config:
     Width: 128
     Height: 128
@@ -169469,7 +169457,7 @@ MonoBehaviour:
     ElevationScale: 40
     MoistureScale: 30
     TemperatureScale: 60
-    FalloffStrength: 1.2
+    FalloffStrength: 0.7
     DeepWaterMax: 0.3
     ShoreMax: 0.4
     CliffMin: 0.85
@@ -169494,6 +169482,7 @@ MonoBehaviour:
     MaxRegenerationAttempts: 5
   _cameraToFit: {fileID: 519420031}
   _autoFitCamera: 1
+  _showRuntimePanel: 1
 --- !u!4 &2113366328
 Transform:
   m_ObjectHideFlags: 0
