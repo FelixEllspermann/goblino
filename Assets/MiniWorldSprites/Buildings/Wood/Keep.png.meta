@@ -145,7 +145,7 @@ TextureImporter:
         x: 0
         y: 0
         width: 32
-        height: 64
+        height: 32
       alignment: 9
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -154,7 +154,7 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 7a9ec4056e17d454cb4c980629315100
+      spriteID: b477e4952a3d1dc439c561ea908aceda
       internalID: 2690118100993212408
       vertices: []
       indices: 
@@ -167,7 +167,7 @@ TextureImporter:
         x: 32
         y: 0
         width: 32
-        height: 64
+        height: 32
       alignment: 9
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -176,7 +176,7 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 13c02da7bf3645e479a8ea549241f0d4
+      spriteID: f65c4d36720617441a7efc2a175d2f28
       internalID: -42219213
       vertices: []
       indices: 
@@ -189,7 +189,7 @@ TextureImporter:
         x: 64
         y: 0
         width: 32
-        height: 64
+        height: 32
       alignment: 9
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -198,8 +198,74 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 32f6e5e6ff1ea21408be2f1726012abd
+      spriteID: ac1ad97e8f84061449884ba8d407f57b
       internalID: 1004347586
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Keep_3
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 32
+        width: 32
+        height: 32
+      alignment: 9
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 4cf7b85eeba327f479f74ad07e1f3dc6
+      internalID: -22207178
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Keep_4
+      rect:
+        serializedVersion: 2
+        x: 32
+        y: 32
+        width: 32
+        height: 32
+      alignment: 9
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 097027e1038df2e40aa34752c77b618c
+      internalID: -1909772228
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Keep_5
+      rect:
+        serializedVersion: 2
+        x: 64
+        y: 32
+        width: 32
+        height: 32
+      alignment: 9
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: fa7edb3acc3095f4987fe20f1c9243b1
+      internalID: -1733810141
       vertices: []
       indices: 
       edges: []
@@ -221,6 +287,9 @@ TextureImporter:
       Keep_0: 2690118100993212408
       Keep_1: -42219213
       Keep_2: 1004347586
+      Keep_3: -22207178
+      Keep_4: -1909772228
+      Keep_5: -1733810141
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

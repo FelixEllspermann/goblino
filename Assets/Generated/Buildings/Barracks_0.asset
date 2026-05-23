@@ -14,4 +14,4 @@ MonoBehaviour:
   m_EditorClassIdentifier: RTSCL.World.Unity::RTSCL.World.Unity.BuildingDefinition
   DisplayName: Barracks_0
   Sprite: {fileID: 5002096206624228670, guid: 7be36373a77df1b4fbc434d0ebf1768b, type: 3}
-  Footprint: {x: 1, y: 5}
+  Footprint: {x: 1, y: 1}

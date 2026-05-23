@@ -10,8 +10,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d4876abf20970884f8ec4d7fb315398a, type: 3}
-  m_Name: Keep_4
+  m_Name: Barracks_4
   m_EditorClassIdentifier: RTSCL.World.Unity::RTSCL.World.Unity.BuildingDefinition
-  DisplayName: Keep_4
-  Sprite: {fileID: -1909772228, guid: 7a748a1f612b9c54289b61e19a715640, type: 3}
-  Footprint: {x: 2, y: 2}
+  DisplayName: Barracks_4
+  Sprite: {fileID: -942950360, guid: 7be36373a77df1b4fbc434d0ebf1768b, type: 3}
+  Footprint: {x: 1, y: 1}
