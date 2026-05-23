@@ -14,4 +14,4 @@ MonoBehaviour:
   m_EditorClassIdentifier: RTSCL.World.Unity::RTSCL.World.Unity.BuildingDefinition
   DisplayName: Keep_2
   Sprite: {fileID: 1004347586, guid: 7a748a1f612b9c54289b61e19a715640, type: 3}
-  Footprint: {x: 1, y: 4}
+  Footprint: {x: 2, y: 4}

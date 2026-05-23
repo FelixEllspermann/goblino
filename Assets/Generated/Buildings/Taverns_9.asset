@@ -1,0 +1,17 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d4876abf20970884f8ec4d7fb315398a, type: 3}
+  m_Name: Taverns_9
+  m_EditorClassIdentifier: RTSCL.World.Unity::RTSCL.World.Unity.BuildingDefinition
+  DisplayName: Taverns_9
+  Sprite: {fileID: 1512716372, guid: a03df09e8c133804f9d3922f1520f3c5, type: 3}
+  Footprint: {x: 1, y: 1}

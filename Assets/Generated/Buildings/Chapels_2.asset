@@ -14,4 +14,4 @@ MonoBehaviour:
   m_EditorClassIdentifier: RTSCL.World.Unity::RTSCL.World.Unity.BuildingDefinition
   DisplayName: Chapels_2
   Sprite: {fileID: 564469235, guid: ac7d02dfd8cd5064887025d7bc38213f, type: 3}
-  Footprint: {x: 1, y: 2}
+  Footprint: {x: 1, y: 1}

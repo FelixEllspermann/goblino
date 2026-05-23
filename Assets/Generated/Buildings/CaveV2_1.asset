@@ -14,4 +14,4 @@ MonoBehaviour:
   m_EditorClassIdentifier: RTSCL.World.Unity::RTSCL.World.Unity.BuildingDefinition
   DisplayName: CaveV2_1
   Sprite: {fileID: 1993162147, guid: 666622fcdff33b544af611619c92bcb4, type: 3}
-  Footprint: {x: 1, y: 2}
+  Footprint: {x: 1, y: 1}

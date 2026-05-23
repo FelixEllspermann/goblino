@@ -145,7 +145,7 @@ TextureImporter:
         x: 0
         y: 0
         width: 16
-        height: 32
+        height: 16
       alignment: 9
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -154,7 +154,7 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 419f3b90653e5e1418ab200f36d66c1c
+      spriteID: d1a2a5eb353f0df4facf7eb24889a0a5
       internalID: 7236604235761787574
       vertices: []
       indices: 
@@ -167,7 +167,7 @@ TextureImporter:
         x: 16
         y: 0
         width: 16
-        height: 32
+        height: 16
       alignment: 9
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -176,7 +176,7 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 7b81932caa968424ebc5dd04fd5da3f3
+      spriteID: 98c6fb1eb5c101748bde641fb4b8bb98
       internalID: 227335912
       vertices: []
       indices: 
@@ -189,7 +189,7 @@ TextureImporter:
         x: 32
         y: 0
         width: 16
-        height: 32
+        height: 16
       alignment: 9
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -198,8 +198,74 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 36572f6e74a54714b832f790cbbdb0d7
+      spriteID: eb8cbcc1447c6d54c992862dc5980101
       internalID: 564469235
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Chapels_3
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 16
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 7fe2e7fb8e814024495a16a1d9ca5c95
+      internalID: 1610704689
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Chapels_4
+      rect:
+        serializedVersion: 2
+        x: 16
+        y: 16
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 0a29abc1af4390d49af6b57d99bd7f19
+      internalID: 1714500023
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Chapels_5
+      rect:
+        serializedVersion: 2
+        x: 32
+        y: 16
+        width: 16
+        height: 16
+      alignment: 9
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: ce6e679f2bc87e5409ada5135f453e12
+      internalID: -1104252001
       vertices: []
       indices: 
       edges: []
@@ -221,6 +287,9 @@ TextureImporter:
       Chapels_0: 7236604235761787574
       Chapels_1: 227335912
       Chapels_2: 564469235
+      Chapels_3: 1610704689
+      Chapels_4: 1714500023
+      Chapels_5: -1104252001
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
