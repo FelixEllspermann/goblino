@@ -65,6 +65,12 @@ namespace RTSCL.World.Unity
             if (_autoFitCamera && _cameraToFit != null)
                 CameraFitter.Fit(_cameraToFit, world.Width, world.Height);
 
+            if (_cameraToFit != null)
+            {
+                var rts = _cameraToFit.GetComponent<RTSCamera2D>();
+                if (rts != null) rts.SetWorldBounds(world.Width, world.Height);
+            }
+
             _lastSeed = seed;
             _seedInput = seed.ToString();
             Debug.Log($"[WorldGen] Done. Spawns: {world.Spawns.Length}, " +
