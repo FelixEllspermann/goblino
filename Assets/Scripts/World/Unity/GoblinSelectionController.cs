@@ -79,6 +79,11 @@ namespace RTSCL.World.Unity
                     foreach (var g in _selected)
                         if (IsWorker(g)) g.SetBuildCommand(buildOrigin);
                 }
+                else if (TryGetGoblinAt(worldTarget, out var enemy))
+                {
+                    ClickFeedback.Spawn(enemy.transform.position, new Color(1f, 0.3f, 0.3f, 0.9f)); // red = attack
+                    CommandAttack(enemy);
+                }
                 else
                 {
                     ClickFeedback.Spawn(worldTarget, new Color(1f, 1f, 1f, 0.85f));    // white = move
@@ -200,6 +205,29 @@ namespace RTSCL.World.Unity
                     (row - (rows - 1) * 0.5f) * _formationSpacing, 0);
                 _selected[i].SetMoveCommand(worldCenter + offset);
             }
+        }
+
+        private bool TryGetGoblinAt(Vector3 worldPos, out Goblin target)
+        {
+            target = null;
+            float bestDistSq = _clickPickRadius * _clickPickRadius;
+            foreach (var g in Goblin.All)
+            {
+                if (g == null) continue;
+                // Don't pick a currently-selected goblin (so right-click on your own selection
+                // doesn't accidentally target one of your own as the victim).
+                if (_selected.Contains(g)) continue;
+                float d = (g.transform.position - worldPos).sqrMagnitude;
+                if (d < bestDistSq) { bestDistSq = d; target = g; }
+            }
+            return target != null;
+        }
+
+        private void CommandAttack(Goblin target)
+        {
+            foreach (var g in _selected)
+                if (g != null && g.AttackDamage > 0)
+                    g.SetAttackCommand(target);
         }
 
         private static bool IsOverUI()
