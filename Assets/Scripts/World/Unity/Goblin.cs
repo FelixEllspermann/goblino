@@ -18,6 +18,8 @@ namespace RTSCL.World.Unity
         public float AttackInterval { get; private set; } = 1.5f;
         public int  AttackRange { get; private set; } = 1;
 
+        public bool IsIdle => _state == State.Idle;
+
         private Sprite[] _frames;
         private Tilemap _terrainMap;
         private Tilemap _decorationMap;
@@ -127,7 +129,12 @@ namespace RTSCL.World.Unity
         {
             if (CurrentHp <= 0) return;
             CurrentHp = Mathf.Max(0, CurrentHp - damage);
-            // Death + retaliate handled in later tasks.
+            // Death handled in Task 7.
+            if (CurrentHp <= 0) return;
+
+            // Auto-retaliate: only when idle and capable
+            if (IsIdle && AttackDamage > 0 && attacker != null && attacker.CurrentHp > 0)
+                SetAttackCommand(attacker);
         }
 
         // Returns the world position of the passable cell adjacent to the tree closest to the goblin.
