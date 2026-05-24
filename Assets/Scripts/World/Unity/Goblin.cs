@@ -24,15 +24,23 @@ namespace RTSCL.World.Unity
         private Vector3Int _treeCell;
         private float _harvestTimer;
 
+        // Headbutt anim state
+        private float _hitAnimT = -1f;       // -1 = not animating
+        private Vector3 _hitHomePos;
+        private Vector3 _hitDir;
+
         private float _moveSpeed = 2.0f;
         private float _frameTimer;
         private int _frameIndex;
 
         private const float FrameDuration = 0.18f;
         private const float TargetReachedEpsilon = 0.05f;
-        private const float ChopDuration = 2.0f;
-        private const int WoodPerTree = 5;
+        private const float ChopTickDuration = 2.0f;   // hit every 2s
+        private const int WoodPerHit = 1;
         private const int AutoFindRadius = 12;
+        private const float HitAnimDuration = 0.32f;
+        private const float HitLungeAmount = 0.30f;    // world units lurch forward
+        private const float HitTiltDegrees = 18f;
 
         public void Init(string kind, Sprite[] walkFrames, Tilemap terrainMap, Tilemap decorationMap)
         {
@@ -48,12 +56,14 @@ namespace RTSCL.World.Unity
 
         public void SetMoveCommand(Vector3 worldTarget)
         {
+            ResetHitAnim();
             _moveTarget = worldTarget;
             _state = State.MovingToPoint;
         }
 
         public void SetHarvestCommand(Vector3Int treeCell)
         {
+            ResetHitAnim();
             _treeCell = treeCell;
             _moveTarget = CellCenter(treeCell);
             _state = State.MovingToTree;
@@ -103,18 +113,72 @@ namespace RTSCL.World.Unity
                     ShowIdleFrame();
                     if (!IsTreeStillThere(_treeCell))
                     {
+                        ResetHitAnim();
                         FindNextTreeOrIdle();
                         break;
                     }
                     _harvestTimer += Time.deltaTime;
-                    if (_harvestTimer >= ChopDuration)
+                    if (_harvestTimer >= ChopTickDuration)
                     {
-                        ChopTree(_treeCell);
-                        FindNextTreeOrIdle();
+                        _harvestTimer = 0f;
+                        HitTree(_treeCell);
                     }
+                    UpdateHitAnim();
                     break;
                 }
             }
+        }
+
+        private void HitTree(Vector3Int cell)
+        {
+            var tile = _decorationMap.GetTile(cell) as UnityEngine.Tilemaps.Tile;
+            var sprite = tile != null ? tile.sprite : null;
+
+            int remaining = TreeHP.Hit(cell, 1);
+            ResourceBank.AddWood(WoodPerHit);
+            StartHitAnim(cell);
+            TreeHitEffect.Spawn(_decorationMap, cell, sprite);
+
+            if (remaining <= 0)
+            {
+                _decorationMap.SetTile(cell, null);
+                // FindNext on next frame via the IsTreeStillThere check
+            }
+        }
+
+        private void StartHitAnim(Vector3Int cell)
+        {
+            _hitAnimT = 0f;
+            _hitHomePos = transform.position;
+            Vector3 treeWorld = CellCenter(cell);
+            _hitDir = (treeWorld - _hitHomePos).sqrMagnitude > 0.0001f
+                ? (treeWorld - _hitHomePos).normalized
+                : Vector3.up;
+        }
+
+        private void UpdateHitAnim()
+        {
+            if (_hitAnimT < 0f) return;
+            _hitAnimT += Time.deltaTime / HitAnimDuration;
+            if (_hitAnimT >= 1f)
+            {
+                ResetHitAnim();
+                return;
+            }
+            float sin = Mathf.Sin(_hitAnimT * Mathf.PI);
+            transform.position = _hitHomePos + _hitDir * (HitLungeAmount * sin);
+            float tilt = sin * HitTiltDegrees * (_hitDir.x >= 0f ? -1f : 1f);
+            transform.rotation = Quaternion.Euler(0f, 0f, tilt);
+        }
+
+        private void ResetHitAnim()
+        {
+            if (_hitAnimT >= 0f)
+            {
+                transform.position = _hitHomePos;
+                transform.rotation = Quaternion.identity;
+            }
+            _hitAnimT = -1f;
         }
 
         /// <summary>Returns true when target is reached.</summary>
@@ -155,12 +219,6 @@ namespace RTSCL.World.Unity
             if (_decorationMap == null) return false;
             var t = _decorationMap.GetTile(cell);
             return t != null && IsTreeTile(t.name);
-        }
-
-        private void ChopTree(Vector3Int cell)
-        {
-            _decorationMap.SetTile(cell, null);
-            ResourceBank.AddWood(WoodPerTree);
         }
 
         private void FindNextTreeOrIdle()
