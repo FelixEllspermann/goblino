@@ -35,6 +35,7 @@ namespace RTSCL.World.Unity
             if (_buildingPlacer != null) _buildingPlacer.ClearAllPlaced();
             ResourceBank.Reset();
             TreeHP.Clear();
+            GoblinProduction.Clear();
 
             if (world.Spawns == null || world.Spawns.Length == 0) return;
 

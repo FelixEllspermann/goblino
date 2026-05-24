@@ -91,6 +91,43 @@ namespace RTSCL.World.Unity
             }
         }
 
+        /// <summary>Spawn one goblin of the given kind on the first free cell ringing the footprint.</summary>
+        public Goblin SpawnByKindAroundFootprint(string kindName, Vector2Int origin, Vector2Int footprint)
+        {
+            if (_terrainMap == null) return null;
+            var kind = FindKind(kindName);
+            if (kind == null)
+            {
+                Debug.LogWarning($"[GoblinSpawner] Kind '{kindName}' not configured");
+                return null;
+            }
+
+            var occupied = new HashSet<Vector2Int>();
+            for (int dy = 0; dy < footprint.y; dy++)
+            for (int dx = 0; dx < footprint.x; dx++)
+                occupied.Add(new Vector2Int(origin.x + dx, origin.y + dy));
+
+            for (int ring = 1; ring < 12; ring++)
+            {
+                var cells = CollectFootprintRing(origin, footprint, ring);
+                foreach (var c in cells)
+                {
+                    if (occupied.Contains(c)) continue;
+                    if (!IsPassable(new Vector3Int(c.x, c.y, 0))) continue;
+                    return SpawnAt(new Vector3(c.x + 0.5f, c.y + 0.5f, 0f), kind);
+                }
+            }
+            return null;
+        }
+
+        private GoblinKind FindKind(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return null;
+            foreach (var k in _kinds)
+                if (k != null && k.Name == name) return k;
+            return null;
+        }
+
         /// <summary>Cells exactly at Chebyshev distance `ring` outside a rectangular footprint, in clockwise order.</summary>
         private static List<Vector2Int> CollectFootprintRing(Vector2Int origin, Vector2Int footprint, int ring)
         {

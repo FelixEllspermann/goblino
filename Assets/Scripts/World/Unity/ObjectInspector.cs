@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
@@ -13,41 +14,69 @@ namespace RTSCL.World.Unity
         [SerializeField] private Tilemap _decorationMap;
         [SerializeField] private Tilemap _terrainMap;
         [SerializeField] private BuildingPlacer _placer;
-        [SerializeField] private GoblinSpawner _goblinSpawner;
 
         [Header("Popup UI")]
         [SerializeField] private GameObject _popupRoot;
         [SerializeField] private Text _nameLabel;
         [SerializeField] private Text _descriptionLabel;
-        [SerializeField] private Button _actionButton;
-        [SerializeField] private Text _actionButtonLabel;
+        [SerializeField] private RectTransform _unitCardsContainer;
+        [SerializeField] private Image _progressFill;
+        [SerializeField] private Text _progressLabel;
+        [SerializeField] private GameObject _progressRow;
 
-        [Header("Spawn Cost")]
-        [SerializeField] private int _goblinWoodCost = 20;
+        [Header("Unit Cards Style")]
+        [SerializeField] private Sprite _cardSprite;
+        [SerializeField] private Font _cardFont;
+        [SerializeField] private Color _cardEnabledBg = new(0.18f, 0.18f, 0.22f, 0.95f);
+        [SerializeField] private Color _cardDisabledBg = new(0.10f, 0.10f, 0.12f, 0.7f);
+        [SerializeField] private Color _cardTextNormal = Color.white;
+        [SerializeField] private Color _cardTextDisabled = new(0.55f, 0.55f, 0.55f, 1f);
 
-        // Currently-displayed selection (for the action button to know what to act on)
+        [Header("Units")]
+        [SerializeField] private List<GoblinUnitDefinition> _units = new();
+
         private enum SelKind { None, Building, Decoration }
         private SelKind _selKind = SelKind.None;
         private Vector2Int _selOrigin;
         private BuildingDefinition _selDef;
 
+        private struct CardRefs
+        {
+            public GameObject Root;
+            public Button Button;
+            public Image Bg;
+            public Image Icon;
+            public Text Name;
+            public Text Cost;
+            public GoblinUnitDefinition Def;
+        }
+        private readonly List<CardRefs> _cards = new();
+
         private void Start()
         {
             if (_popupRoot != null) _popupRoot.SetActive(false);
-            if (_actionButton != null) _actionButton.onClick.AddListener(OnActionButton);
-            ResourceBank.OnWoodChanged += _ => RefreshActionButton();
+            if (_progressRow != null) _progressRow.SetActive(false);
+            BuildUnitCards();
+            ResourceBank.OnWoodChanged += _ => Refresh();
+            GoblinProduction.OnChanged += Refresh;
+        }
+
+        private void OnDestroy()
+        {
+            GoblinProduction.OnChanged -= Refresh;
         }
 
         private void Update()
         {
             if (_camera == null || Mouse.current == null) return;
-
-            // Don't inspect while the user is placing a building
             if (_placer != null && _placer.Selected != null) return;
 
-            if (!Mouse.current.leftButton.wasPressedThisFrame) return;
+            // Live-update the progress bar while a production is running for the
+            // currently-displayed keep.
+            if (_selKind == SelKind.Building && _selDef != null && _selDef.name.StartsWith("Keep"))
+                UpdateProgressUI();
 
-            // Ignore clicks over UI (palette, popup itself, buttons)
+            if (!Mouse.current.leftButton.wasPressedThisFrame) return;
             if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return;
 
             Vector2 mp = Mouse.current.position.ReadValue();
@@ -56,7 +85,6 @@ namespace RTSCL.World.Unity
             Vector3Int cell = (_terrainMap != null ? _terrainMap : _decorationMap).WorldToCell(world);
             Vector2Int cell2 = new(cell.x, cell.y);
 
-            // Priority: building > decoration > nothing
             if (_placer != null && _placer.TryGetBuildingAt(cell2, out var building) && building != null)
             {
                 _selKind = SelKind.Building;
@@ -73,7 +101,7 @@ namespace RTSCL.World.Unity
                 {
                     _selKind = SelKind.Decoration;
                     _selDef = null;
-                    Show(deco.name, DescribeDecoration(deco.name), showAction: false);
+                    Show(deco.name, DescribeDecoration(deco.name), showCards: false);
                     return;
                 }
             }
@@ -87,18 +115,21 @@ namespace RTSCL.World.Unity
             string desc = DescribeBuilding(def);
             if (BuildingHP.TryGet(origin, out int cur, out int max))
                 desc += $"\nHP: {cur} / {max}";
-
             bool isKeep = def.name.StartsWith("Keep");
-            Show(def.DisplayName, desc, showAction: isKeep);
-            RefreshActionButton();
+            Show(def.DisplayName, desc, showCards: isKeep);
+            Refresh();
         }
 
-        private void Show(string title, string description, bool showAction)
+        private void Show(string title, string description, bool showCards)
         {
             if (_popupRoot == null) return;
             if (_nameLabel != null)        _nameLabel.text = title;
             if (_descriptionLabel != null) _descriptionLabel.text = description;
-            if (_actionButton != null)     _actionButton.gameObject.SetActive(showAction);
+            if (_unitCardsContainer != null)
+                _unitCardsContainer.gameObject.SetActive(showCards);
+            if (_progressRow != null)
+                _progressRow.SetActive(showCards && _selKind == SelKind.Building
+                                       && GoblinProduction.IsBusy(_selOrigin));
             _popupRoot.SetActive(true);
         }
 
@@ -109,36 +140,151 @@ namespace RTSCL.World.Unity
             _selDef = null;
         }
 
-        private void RefreshActionButton()
+        private void Refresh()
         {
-            if (_actionButton == null || _selKind != SelKind.Building || _selDef == null) return;
+            if (_selKind != SelKind.Building || _selDef == null) return;
             bool isKeep = _selDef.name.StartsWith("Keep");
-            if (!isKeep) { _actionButton.gameObject.SetActive(false); return; }
-
-            bool affordable = ResourceBank.Wood >= _goblinWoodCost;
-            _actionButton.interactable = affordable;
-            if (_actionButtonLabel != null)
-                _actionButtonLabel.text = affordable
-                    ? $"Spawn Goblin ({_goblinWoodCost} Wood)"
-                    : $"Spawn Goblin ({_goblinWoodCost} Wood) — need {_goblinWoodCost - ResourceBank.Wood} more";
+            if (!isKeep) return;
+            bool busy = GoblinProduction.IsBusy(_selOrigin);
+            foreach (var card in _cards)
+            {
+                bool affordable = ResourceBank.Wood >= card.Def.WoodCost;
+                bool enabled = affordable && !busy;
+                card.Button.interactable = enabled;
+                if (card.Bg != null)
+                    card.Bg.color = enabled ? _cardEnabledBg : _cardDisabledBg;
+                Color t = enabled ? _cardTextNormal : _cardTextDisabled;
+                if (card.Name != null) card.Name.color = t;
+                if (card.Cost != null) card.Cost.color = enabled ? new Color(0.85f, 0.75f, 0.45f) : _cardTextDisabled;
+                if (card.Icon != null) card.Icon.color = enabled ? Color.white : new Color(0.7f, 0.7f, 0.7f, 0.7f);
+            }
+            UpdateProgressUI();
         }
 
-        private void OnActionButton()
+        private void UpdateProgressUI()
         {
-            if (_selKind != SelKind.Building || _selDef == null || _goblinSpawner == null) return;
+            if (_progressRow == null) return;
+            var slot = GoblinProduction.Get(_selOrigin);
+            if (slot == null)
+            {
+                _progressRow.SetActive(false);
+                return;
+            }
+            _progressRow.SetActive(true);
+            if (_progressFill != null) _progressFill.fillAmount = slot.Progress;
+            if (_progressLabel != null) _progressLabel.text = $"Producing {slot.Def.DisplayName}…";
+        }
+
+        private void BuildUnitCards()
+        {
+            if (_unitCardsContainer == null) return;
+            // Clear any pre-existing children
+            for (int i = _unitCardsContainer.childCount - 1; i >= 0; i--)
+                DestroyImmediate(_unitCardsContainer.GetChild(i).gameObject);
+            _cards.Clear();
+
+            foreach (var unit in _units)
+            {
+                if (unit == null) continue;
+                _cards.Add(CreateCard(unit));
+            }
+        }
+
+        private CardRefs CreateCard(GoblinUnitDefinition unit)
+        {
+            var card = new GameObject($"Card_{unit.name}");
+            card.transform.SetParent(_unitCardsContainer, false);
+
+            var bg = card.AddComponent<Image>();
+            bg.sprite = _cardSprite;
+            bg.type = Image.Type.Sliced;
+            bg.color = _cardEnabledBg;
+
+            var btn = card.AddComponent<Button>();
+            btn.targetGraphic = bg;
+
+            var layout = card.AddComponent<HorizontalLayoutGroup>();
+            layout.padding = new RectOffset(10, 10, 8, 8);
+            layout.spacing = 12;
+            layout.childForceExpandHeight = false;
+            layout.childForceExpandWidth = false;
+            layout.childControlHeight = true;
+            layout.childControlWidth = true;
+            layout.childAlignment = TextAnchor.MiddleLeft;
+
+            var cardLE = card.AddComponent<LayoutElement>();
+            cardLE.preferredHeight = 64;
+            cardLE.flexibleWidth = 1;
+
+            // Icon
+            var iconGo = new GameObject("Icon");
+            iconGo.transform.SetParent(card.transform, false);
+            var icon = iconGo.AddComponent<Image>();
+            icon.sprite = unit.Icon;
+            icon.preserveAspect = true;
+            var iconLE = iconGo.AddComponent<LayoutElement>();
+            iconLE.preferredWidth = 48;
+            iconLE.preferredHeight = 48;
+            iconLE.flexibleWidth = 0;
+
+            // Text column (Name above Cost)
+            var textGo = new GameObject("Texts");
+            textGo.transform.SetParent(card.transform, false);
+            var tlayout = textGo.AddComponent<VerticalLayoutGroup>();
+            tlayout.spacing = 2;
+            tlayout.childForceExpandHeight = false;
+            tlayout.childForceExpandWidth = true;
+            tlayout.childControlHeight = true;
+            tlayout.childControlWidth = true;
+            tlayout.childAlignment = TextAnchor.MiddleLeft;
+            var textLE = textGo.AddComponent<LayoutElement>();
+            textLE.flexibleWidth = 1;
+
+            var nameGo = new GameObject("Name");
+            nameGo.transform.SetParent(textGo.transform, false);
+            var nameText = nameGo.AddComponent<Text>();
+            nameText.text = unit.DisplayName;
+            nameText.font = _cardFont;
+            nameText.fontSize = 16;
+            nameText.color = _cardTextNormal;
+            nameText.alignment = TextAnchor.MiddleLeft;
+            nameText.horizontalOverflow = HorizontalWrapMode.Overflow;
+
+            var costGo = new GameObject("Cost");
+            costGo.transform.SetParent(textGo.transform, false);
+            var costText = costGo.AddComponent<Text>();
+            costText.text = $"{unit.WoodCost} Wood";
+            costText.font = _cardFont;
+            costText.fontSize = 12;
+            costText.color = new Color(0.85f, 0.75f, 0.45f);
+            costText.alignment = TextAnchor.MiddleLeft;
+            costText.horizontalOverflow = HorizontalWrapMode.Overflow;
+
+            var captured = unit;
+            btn.onClick.AddListener(() => OnUnitClicked(captured));
+
+            return new CardRefs
+            {
+                Root = card,
+                Button = btn,
+                Bg = bg,
+                Icon = icon,
+                Name = nameText,
+                Cost = costText,
+                Def = unit,
+            };
+        }
+
+        private void OnUnitClicked(GoblinUnitDefinition unit)
+        {
+            if (_selKind != SelKind.Building || _selDef == null) return;
             if (!_selDef.name.StartsWith("Keep")) return;
-            if (ResourceBank.Wood < _goblinWoodCost) return;
+            if (GoblinProduction.IsBusy(_selOrigin)) return;
+            if (ResourceBank.Wood < unit.WoodCost) return;
 
-            // Spend wood
-            ResourceBank.AddWood(-_goblinWoodCost);
-
-            // Spawn one goblin near the keep's center
-            Vector3 center = new(
-                _selOrigin.x + _selDef.Footprint.x * 0.5f,
-                _selOrigin.y + _selDef.Footprint.y * 0.5f, 0f);
-            _goblinSpawner.SpawnGroupAt(center, 1);
-
-            RefreshActionButton();
+            ResourceBank.AddWood(-unit.WoodCost);
+            GoblinProduction.TryStart(_selOrigin, unit);
+            Refresh();
         }
 
         private static string DescribeBuilding(BuildingDefinition def)
