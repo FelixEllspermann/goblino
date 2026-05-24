@@ -26,7 +26,7 @@ namespace RTSCL.World.Unity
         private SpriteRenderer _renderer;
         private GameObject _selectionRing;
 
-        private enum State { Idle, MovingToPoint, MovingToTree, Harvesting, MovingToBuild, Building, MovingToAttack, Attacking }
+        private enum State { Idle, MovingToPoint, MovingToTree, Harvesting, MovingToBuild, Building, MovingToAttack, Attacking, Dying }
         private State _state = State.Idle;
 
         private Vector3 _moveTarget;
@@ -129,8 +129,7 @@ namespace RTSCL.World.Unity
         {
             if (CurrentHp <= 0) return;
             CurrentHp = Mathf.Max(0, CurrentHp - damage);
-            // Death handled in Task 7.
-            if (CurrentHp <= 0) return;
+            if (CurrentHp <= 0) { EnterDying(); return; }
 
             // Auto-retaliate: only when idle and capable
             if (IsIdle && AttackDamage > 0 && attacker != null && attacker.CurrentHp > 0)
@@ -347,6 +346,19 @@ namespace RTSCL.World.Unity
                 transform.rotation = Quaternion.identity;
             }
             _hitAnimT = -1f;
+        }
+
+        private void EnterDying()
+        {
+            if (_state == State.Dying) return;
+            _state = State.Dying;
+            // Free population
+            PopulationManager.RemoveUsed(PopulationCost);
+            // Drop from selection + active list
+            Goblin.All.Remove(this);
+            SetSelected(false);
+            // For now: instant destroy. Animation comes in Task 8.
+            Destroy(gameObject);
         }
 
         /// <summary>Returns true when target is reached.</summary>
