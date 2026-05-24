@@ -31,6 +31,7 @@ namespace RTSCL.Lobby
 
         private Callback<LobbyCreated_t> _cbLobbyCreated;
         private Callback<LobbyEnter_t> _cbLobbyEntered;
+        private CallResult<LobbyMatchList_t> _crLobbyList;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void Bootstrap()
@@ -45,6 +46,7 @@ namespace RTSCL.Lobby
         {
             _cbLobbyCreated = Callback<LobbyCreated_t>.Create(OnSteamLobbyCreated);
             _cbLobbyEntered = Callback<LobbyEnter_t>.Create(OnSteamLobbyEntered);
+            _crLobbyList = CallResult<LobbyMatchList_t>.Create(OnSteamLobbyMatchList);
         }
 
         // Public API — all methods no-op if Steam isn't initialized.
@@ -54,7 +56,15 @@ namespace RTSCL.Lobby
             if (!SteamManager.Initialized) { RaiseError("Steam not running"); return; }
             SteamMatchmaking.CreateLobby(ELobbyType.k_ELobbyTypePublic, 4);
         }
-        public static void RequestLobbyList(){ /* Task 3 */ }
+        public static void RequestLobbyList()
+        {
+            if (_instance == null) return;
+            if (!SteamManager.Initialized) { RaiseError("Steam not running"); return; }
+            SteamMatchmaking.AddRequestLobbyListStringFilter(
+                LobbyDataGameVersion, GameVersion, ELobbyComparison.k_ELobbyComparisonEqual);
+            var call = SteamMatchmaking.RequestLobbyList();
+            _instance._crLobbyList.Set(call);
+        }
         public static void JoinLobby(CSteamID id) { /* Task 4 */ }
         public static void LeaveLobby()      { /* Task 5 */ }
 
@@ -70,6 +80,26 @@ namespace RTSCL.Lobby
             SteamMatchmaking.SetLobbyData(id, LobbyDataHostName, SteamFriends.GetPersonaName());
             RaiseLobbyCreated(id);
             // LobbyEnter_t fires next for the creator
+        }
+
+        private void OnSteamLobbyMatchList(LobbyMatchList_t e, bool ioFailure)
+        {
+            var list = new List<LobbyInfo>();
+            if (ioFailure) { RaiseError("Lobby list IO failure"); RaiseLobbyListReceived(list); return; }
+            int n = (int)e.m_nLobbiesMatching;
+            for (int i = 0; i < n; i++)
+            {
+                var id = SteamMatchmaking.GetLobbyByIndex(i);
+                var host = SteamMatchmaking.GetLobbyData(id, LobbyDataHostName);
+                list.Add(new LobbyInfo
+                {
+                    Id = id,
+                    HostName = string.IsNullOrEmpty(host) ? "(unknown)" : host,
+                    CurrentMembers = SteamMatchmaking.GetNumLobbyMembers(id),
+                    MaxMembers = SteamMatchmaking.GetLobbyMemberLimit(id),
+                });
+            }
+            RaiseLobbyListReceived(list);
         }
 
         private void OnSteamLobbyEntered(LobbyEnter_t e)
