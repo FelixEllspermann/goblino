@@ -44,6 +44,12 @@ namespace RTSCL.World.Unity
         private Vector3 _hitHomePos;
         private Vector3 _hitDir;
 
+        // Death hop-arc state
+        private Vector3 _dieStartPos;
+        private Vector3 _dieVelocity;
+        private const float DeathGravity = -10f;
+        private const float DeathHopVelocity = 3f;
+
         private float _moveSpeed = 2.0f;
         private float _frameTimer;
         private int _frameIndex;
@@ -293,6 +299,17 @@ namespace RTSCL.World.Unity
                     UpdateHitAnim();
                     break;
                 }
+
+                case State.Dying:
+                    _dieVelocity.y += DeathGravity * Time.deltaTime;
+                    transform.position += _dieVelocity * Time.deltaTime;
+                    if (transform.position.y <= _dieStartPos.y && _dieVelocity.y <= 0f)
+                    {
+                        // Snap to ground, destroy. Burst comes in Task 9.
+                        transform.position = _dieStartPos;
+                        Destroy(gameObject);
+                    }
+                    break;
             }
         }
 
@@ -352,13 +369,12 @@ namespace RTSCL.World.Unity
         {
             if (_state == State.Dying) return;
             _state = State.Dying;
-            // Free population
             PopulationManager.RemoveUsed(PopulationCost);
-            // Drop from selection + active list
             Goblin.All.Remove(this);
             SetSelected(false);
-            // For now: instant destroy. Animation comes in Task 8.
-            Destroy(gameObject);
+
+            _dieStartPos = transform.position;
+            _dieVelocity = new Vector3(0f, DeathHopVelocity, 0f);
         }
 
         /// <summary>Returns true when target is reached.</summary>
