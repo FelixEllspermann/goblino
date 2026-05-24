@@ -16,7 +16,7 @@ namespace RTSCL.World.Unity
             var fx = go.AddComponent<ClickFeedback>();
             fx._renderer = go.AddComponent<SpriteRenderer>();
             fx._renderer.sprite = RingSprite();
-            fx._renderer.sortingOrder = 50;
+            fx._renderer.sortingOrder = 60;  // above fog (45)
             fx._startColor = color;
             fx._renderer.color = color;
             go.transform.localScale = new Vector3(0.5f, 0.5f, 1f);

@@ -32,6 +32,8 @@ namespace RTSCL.World.Unity
         public bool TryGetBuildingAt(Vector2Int cell, out BuildingDefinition def) =>
             _cellOwners.TryGetValue(cell, out def);
 
+        public IEnumerable<KeyValuePair<Vector2Int, BuildingDefinition>> AllOccupied => _cellOwners;
+
         public void Select(BuildingDefinition def)
         {
             CancelGhost();
