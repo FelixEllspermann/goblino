@@ -16,5 +16,9 @@ MonoBehaviour:
   Icon: {fileID: -697968371510223532, guid: 893be7a1426f90b43b8bb1220da96544, type: 3}
   WoodCost: 50
   PopulationCost: 1
+  MaxHp: 20
+  AttackDamage: 0
+  AttackInterval: 1.5
+  AttackRange: 1
   SpawnDuration: 3
   SpawnerKindName: FarmerGoblin

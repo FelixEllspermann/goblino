@@ -16,5 +16,9 @@ MonoBehaviour:
   Icon: {fileID: -5372828631164573143, guid: 417511f3aedd45847acd1bf37780fd82, type: 3}
   WoodCost: 150
   PopulationCost: 3
+  MaxHp: 40
+  AttackDamage: 5
+  AttackInterval: 1.5
+  AttackRange: 1
   SpawnDuration: 8
   SpawnerKindName: ClubGoblin
