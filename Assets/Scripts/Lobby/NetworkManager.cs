@@ -19,6 +19,7 @@ namespace RTSCL.Lobby
 
         private static NetworkManager _instance;
         private readonly Dictionary<HSteamNetConnection, CSteamID> _connections = new();
+        private Callback<SteamNetConnectionStatusChangedCallback_t> _cbStatus;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void Bootstrap()
@@ -33,6 +34,8 @@ namespace RTSCL.Lobby
         {
             LobbyManager.OnLobbyEntered += HandleLobbyEntered;
             LobbyManager.OnLobbyLeft    += HandleLobbyLeft;
+            _cbStatus = Callback<SteamNetConnectionStatusChangedCallback_t>.Create(OnSteamStatusChanged);
+            if (SteamManager.Initialized) SteamNetworkingUtils.InitRelayNetworkAccess();
         }
 
         private void OnDisable()
@@ -55,6 +58,22 @@ namespace RTSCL.Lobby
         {
             Disconnect();
             NetworkSession.Reset();
+        }
+
+        private void OnSteamStatusChanged(SteamNetConnectionStatusChangedCallback_t e)
+        {
+            var conn = e.m_hConn;
+            var remote = e.m_info.m_identityRemote.GetSteamID();
+            var state = e.m_info.m_eState;
+            Debug.Log($"[Net] Status change: conn={conn.m_HSteamNetConnection} state={state} remote={remote}");
+
+            if (state == ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_ClosedByPeer
+             || state == ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_ProblemDetectedLocally)
+            {
+                if (_connections.Remove(conn))
+                    OnDisconnected?.Invoke(remote);
+                SteamNetworkingSockets.CloseConnection(conn, 0, string.Empty, false);
+            }
         }
 
         // Public API — actual implementations come in later tasks.
