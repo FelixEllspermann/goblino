@@ -32,6 +32,7 @@ namespace RTSCL.Lobby
         private Callback<LobbyCreated_t> _cbLobbyCreated;
         private Callback<LobbyEnter_t> _cbLobbyEntered;
         private Callback<LobbyChatUpdate_t> _cbLobbyChat;
+        private Callback<GameLobbyJoinRequested_t> _cbJoinRequested;
         private CallResult<LobbyMatchList_t> _crLobbyList;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
@@ -43,12 +44,38 @@ namespace RTSCL.Lobby
             _instance = go.AddComponent<LobbyManager>();
         }
 
+        private void Awake()
+        {
+            // Steam launches the app with "+connect_lobby <id>" when joining from the friends list while the app isn't running.
+            var args = System.Environment.GetCommandLineArgs();
+            for (int i = 0; i < args.Length - 1; i++)
+            {
+                if (args[i] != "+connect_lobby") continue;
+                if (!ulong.TryParse(args[i + 1], out ulong id)) continue;
+                // Defer the JoinLobby until Steam is initialized.
+                _pendingJoinId = new CSteamID(id);
+                return;
+            }
+        }
+
+        private CSteamID _pendingJoinId = CSteamID.Nil;
+
+        private void Update()
+        {
+            if (_pendingJoinId == CSteamID.Nil) return;
+            if (!SteamManager.Initialized) return;
+            var id = _pendingJoinId;
+            _pendingJoinId = CSteamID.Nil;
+            JoinLobby(id);
+        }
+
         private void OnEnable()
         {
             _cbLobbyCreated = Callback<LobbyCreated_t>.Create(OnSteamLobbyCreated);
             _cbLobbyEntered = Callback<LobbyEnter_t>.Create(OnSteamLobbyEntered);
             _crLobbyList = CallResult<LobbyMatchList_t>.Create(OnSteamLobbyMatchList);
             _cbLobbyChat = Callback<LobbyChatUpdate_t>.Create(OnSteamLobbyChat);
+            _cbJoinRequested = Callback<GameLobbyJoinRequested_t>.Create(OnSteamGameLobbyJoinRequested);
         }
 
         // Public API — all methods no-op if Steam isn't initialized.
@@ -144,6 +171,12 @@ namespace RTSCL.Lobby
             }
             _currentLobby = new CSteamID(e.m_ulSteamIDLobby);
             RaiseLobbyEntered(_currentLobby);
+        }
+
+        private void OnSteamGameLobbyJoinRequested(GameLobbyJoinRequested_t e)
+        {
+            // Triggered when user clicks "Join Game" in Steam Friends overlay while app is running.
+            JoinLobby(e.m_steamIDLobby);
         }
 
         private void OnSteamLobbyChat(LobbyChatUpdate_t e)
