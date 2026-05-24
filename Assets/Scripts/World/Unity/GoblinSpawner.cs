@@ -44,10 +44,11 @@ namespace RTSCL.World.Unity
             }
         }
 
-        /// <summary>Spawn N goblins distributed evenly in rings around a building footprint (skipping the footprint cells).</summary>
-        public void SpawnAroundFootprint(Vector2Int origin, Vector2Int footprint, int count)
+        /// <summary>Spawn N goblins distributed evenly in rings around a building footprint (skipping the footprint cells). If kindName is set, all spawned goblins are of that kind; otherwise a random kind per goblin.</summary>
+        public void SpawnAroundFootprint(Vector2Int origin, Vector2Int footprint, int count, string kindName = null)
         {
             if (_terrainMap == null || count <= 0) return;
+            var forcedKind = string.IsNullOrEmpty(kindName) ? null : FindKind(kindName);
 
             var occupied = new HashSet<Vector2Int>();
             for (int dy = 0; dy < footprint.y; dy++)
@@ -72,7 +73,7 @@ namespace RTSCL.World.Unity
                 {
                     foreach (var c in available)
                     {
-                        SpawnAt(new Vector3(c.x + 0.5f, c.y + 0.5f, 0f));
+                        SpawnAt(new Vector3(c.x + 0.5f, c.y + 0.5f, 0f), forcedKind);
                         spawned++;
                         if (spawned >= count) break;
                     }
@@ -84,7 +85,7 @@ namespace RTSCL.World.Unity
                     {
                         int idx = (i * available.Count) / remaining;
                         var c = available[idx];
-                        SpawnAt(new Vector3(c.x + 0.5f, c.y + 0.5f, 0f));
+                        SpawnAt(new Vector3(c.x + 0.5f, c.y + 0.5f, 0f), forcedKind);
                         spawned++;
                     }
                 }

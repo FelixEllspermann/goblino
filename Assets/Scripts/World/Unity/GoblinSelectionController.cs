@@ -72,7 +72,8 @@ namespace RTSCL.World.Unity
                 {
                     Vector3 c = new(buildOrigin.x + 0.5f, buildOrigin.y + 0.5f, 0f);
                     ClickFeedback.Spawn(c, new Color(1f, 0.7f, 0.2f, 0.9f));  // orange = build
-                    foreach (var g in _selected) g.SetBuildCommand(buildOrigin);
+                    foreach (var g in _selected)
+                        if (IsWorker(g)) g.SetBuildCommand(buildOrigin);
                 }
                 else
                 {
@@ -103,15 +104,23 @@ namespace RTSCL.World.Unity
 
         private void CommandHarvest(Vector3Int clickedTree)
         {
-            // Find up to N nearest trees around the click (one per goblin)
-            var trees = FindNearbyTrees(clickedTree, _selected.Count, _harvestSpreadRadius);
+            // Only worker units (Farmer Goblins) can harvest
+            var workers = new List<Goblin>();
+            foreach (var g in _selected) if (IsWorker(g)) workers.Add(g);
+            if (workers.Count == 0) return;
+
+            // Find up to N nearest trees around the click (one per worker)
+            var trees = FindNearbyTrees(clickedTree, workers.Count, _harvestSpreadRadius);
             if (trees.Count == 0) return;
-            for (int i = 0; i < _selected.Count; i++)
+            for (int i = 0; i < workers.Count; i++)
             {
                 var assigned = trees[i % trees.Count];
-                _selected[i].SetHarvestCommand(assigned);
+                workers[i].SetHarvestCommand(assigned);
             }
         }
+
+        private static bool IsWorker(Goblin g) =>
+            g != null && g.Kind == "FarmerGoblin";
 
         private List<Vector3Int> FindNearbyTrees(Vector3Int origin, int maxCount, int radius)
         {

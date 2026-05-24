@@ -50,9 +50,9 @@ namespace RTSCL.World.Unity
                     mainCell.y - def.Footprint.y / 2);
                 _buildingPlacer.PlaceForce(def, keepOrigin, charge: false, requireConstruction: false);
 
-                // 3. Spawn goblins evenly distributed around the keep
+                // 3. Spawn N starting Farmer Goblins evenly distributed around the keep
                 if (_goblinSpawner != null)
-                    _goblinSpawner.SpawnAroundFootprint(keepOrigin, def.Footprint, _startingGoblins);
+                    _goblinSpawner.SpawnAroundFootprint(keepOrigin, def.Footprint, _startingGoblins, "FarmerGoblin");
             }
             else
             {
