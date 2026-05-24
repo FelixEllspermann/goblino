@@ -18,9 +18,9 @@ namespace RTSCL.World.Unity
         [Header("Goblin Kinds")]
         [SerializeField] private List<GoblinKind> _kinds = new();
 
-        [Header("Auto-Spawn")]
+        [Header("Auto-Spawn (legacy random scatter, disabled by default)")]
         [SerializeField] private int _autoSpawnCount = 10;
-        [SerializeField] private bool _spawnOnStart = true;
+        [SerializeField] private bool _spawnOnStart = false;
 
         [Header("Runtime UI")]
         [SerializeField] private bool _showSpawnButton = true;
@@ -43,6 +43,42 @@ namespace RTSCL.World.Unity
         {
             for (int i = 0; i < _autoSpawnCount; i++)
                 SpawnAtRandomLand();
+        }
+
+        /// <summary>Spawn N goblins in passable cells around a center world position.</summary>
+        public void SpawnGroupAt(Vector3 centerWorld, int count)
+        {
+            if (_terrainMap == null) return;
+            var center = _terrainMap.WorldToCell(centerWorld);
+            var spawned = 0;
+            // Spiral outward from center until we've placed N
+            for (int ring = 1; ring < 12 && spawned < count; ring++)
+            {
+                for (int dx = -ring; dx <= ring && spawned < count; dx++)
+                for (int dy = -ring; dy <= ring && spawned < count; dy++)
+                {
+                    if (Mathf.Abs(dx) != ring && Mathf.Abs(dy) != ring) continue; // edge of ring only
+                    var c = new Vector3Int(center.x + dx, center.y + dy, 0);
+                    if (!IsPassable(c)) continue;
+                    SpawnAt(new Vector3(c.x + 0.5f, c.y + 0.5f, 0f));
+                    spawned++;
+                }
+            }
+        }
+
+        private bool IsPassable(Vector3Int cell)
+        {
+            var t = _terrainMap.GetTile(cell);
+            if (t == null) return false;
+            var n = t.name;
+            return n != "DeepWater" && n != "Cliff" && n != "Shore";
+        }
+
+        public void ClearAllGoblins()
+        {
+            var copy = new List<Goblin>(Goblin.All);
+            foreach (var g in copy)
+                if (g != null) DestroyImmediate(g.gameObject);
         }
 
         public Goblin SpawnAt(Vector3 worldPos, GoblinKind kind = null)

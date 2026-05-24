@@ -119,18 +119,22 @@ namespace RTSCL.World.Unity
             return false;
         }
 
-        private void Place(Vector2Int origin)
+        private void Place(Vector2Int origin) => PlaceForce(_selected, origin);
+
+        /// <summary>Place a building bypassing validation — used for scripted/main-base placement.</summary>
+        public void PlaceForce(BuildingDefinition def, Vector2Int origin)
         {
-            var go = new GameObject($"Building_{_selected.name}_{origin.x}_{origin.y}");
+            if (def == null || def.Sprite == null) return;
+            var go = new GameObject($"Building_{def.name}_{origin.x}_{origin.y}");
             if (_buildingsRoot != null) go.transform.SetParent(_buildingsRoot, false);
             go.transform.position = _terrainMap.CellToWorld(new Vector3Int(origin.x, origin.y, 0));
             var sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite = _selected.Sprite;
+            sr.sprite = def.Sprite;
             sr.sortingOrder = 15;
 
-            for (int dy = 0; dy < _selected.Footprint.y; dy++)
-            for (int dx = 0; dx < _selected.Footprint.x; dx++)
-                _cellOwners[new Vector2Int(origin.x + dx, origin.y + dy)] = _selected;
+            for (int dy = 0; dy < def.Footprint.y; dy++)
+            for (int dx = 0; dx < def.Footprint.x; dx++)
+                _cellOwners[new Vector2Int(origin.x + dx, origin.y + dy)] = def;
         }
 
         public void ClearAllPlaced()

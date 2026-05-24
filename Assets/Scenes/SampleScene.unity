@@ -252,7 +252,7 @@ MonoBehaviour:
     - {fileID: 7927552047727035442, guid: b29f2eaf7e2fcc24490a5b82a4089f63, type: 3}
     - {fileID: 5675830802738329296, guid: b29f2eaf7e2fcc24490a5b82a4089f63, type: 3}
   _autoSpawnCount: 10
-  _spawnOnStart: 1
+  _spawnOnStart: 0
   _showSpawnButton: 1
 --- !u!4 &164504309
 Transform:
@@ -695,6 +695,57 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 619394800}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &626648819
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 626648821}
+  - component: {fileID: 626648820}
+  m_Layer: 0
+  m_Name: MainBaseSetup
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &626648820
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 626648819}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 31e29769a530fc24ba7d9a1b4437f25d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: RTSCL.World.Unity::RTSCL.World.Unity.MainBaseSetup
+  _worldSource: {fileID: 2113366327}
+  _buildingPlacer: {fileID: 1966971705}
+  _catalog: {fileID: 11400000, guid: fd7836c091ac0674d93cda3809ca517e, type: 2}
+  _goblinSpawner: {fileID: 164504308}
+  _terrainMap: {fileID: 1282190478}
+  _mainBuildingName: Keep_0
+  _startingGoblins: 5
+--- !u!4 &626648821
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 626648819}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -171548,3 +171599,4 @@ SceneRoots:
   - {fileID: 424726197}
   - {fileID: 164504309}
   - {fileID: 445876834}
+  - {fileID: 626648821}
