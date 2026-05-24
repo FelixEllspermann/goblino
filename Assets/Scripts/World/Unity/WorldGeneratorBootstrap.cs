@@ -25,11 +25,6 @@ namespace RTSCL.World.Unity
         [SerializeField] private Camera _cameraToFit;
         [SerializeField] private bool _autoFitCamera = true;
 
-        [Header("Runtime UI")]
-        [SerializeField] private bool _showRuntimePanel = true;
-
-        private string _seedInput = "";
-        private int _lastSeed;
         private WorldData _currentWorld;
 
         public WorldData CurrentWorld => _currentWorld;
@@ -75,48 +70,8 @@ namespace RTSCL.World.Unity
             }
 
             _currentWorld = world;
-            _lastSeed = seed;
-            _seedInput = seed.ToString();
             Debug.Log($"[WorldGen] Done. Spawns: {world.Spawns.Length}, " +
                       $"Clusters: {world.Resources.Count}.");
-        }
-
-        private void OnGUI()
-        {
-            if (!_showRuntimePanel) return;
-            if (!Application.isPlaying) return;
-
-            const int width = 240;
-            const int height = 110;
-            GUILayout.BeginArea(new Rect(10, 10, width, height), GUI.skin.box);
-            GUILayout.Label($"<b>World Generator</b>  (last: {_lastSeed})", RichLabel());
-
-            GUILayout.BeginHorizontal();
-            GUILayout.Label("Seed:", GUILayout.Width(40));
-            _seedInput = GUILayout.TextField(_seedInput, GUILayout.Width(160));
-            GUILayout.EndHorizontal();
-
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button("Generate"))
-            {
-                if (int.TryParse(_seedInput, out int parsed)) RegenerateWithSeed(parsed);
-                else Debug.LogWarning($"[WorldGen] '{_seedInput}' is not a valid int seed.");
-            }
-            if (GUILayout.Button("Random"))
-            {
-                RegenerateWithSeed(Random.Range(1, int.MaxValue));
-            }
-            GUILayout.EndHorizontal();
-
-            GUILayout.EndArea();
-        }
-
-        private static GUIStyle s_richLabel;
-        private static GUIStyle RichLabel()
-        {
-            if (s_richLabel == null)
-                s_richLabel = new GUIStyle(GUI.skin.label) { richText = true };
-            return s_richLabel;
         }
     }
 }
