@@ -126,7 +126,7 @@ TextureImporter:
   spriteMeshType: 1
   alignment: 0
   spritePivot: {x: 0.5, y: 0.5}
-  spritePixelsToUnits: 100
+  spritePixelsToUnits: 16
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spriteGenerateFallbackPhysicsShape: 1
   alphaUsage: 1
@@ -217,19 +217,19 @@ TextureImporter:
       name: FarmerGoblin_0
       rect:
         serializedVersion: 2
-        x: 1
+        x: 0
         y: 96
-        width: 14
+        width: 16
         height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 45ddcafc6715056f0800000000000000
+      spriteID: 70412ed46e8eb4d429110cd50adf1335
       internalID: -697968371510223532
       vertices: []
       indices: 
@@ -239,19 +239,19 @@ TextureImporter:
       name: FarmerGoblin_1
       rect:
         serializedVersion: 2
-        x: 1
-        y: 80
-        width: 14
+        x: 16
+        y: 96
+        width: 16
         height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 4aa085f5bfdd696e0800000000000000
+      spriteID: 2743ec7eca648ae4cb78597029e17766
       internalID: -1831032126773392732
       vertices: []
       indices: 
@@ -261,19 +261,19 @@ TextureImporter:
       name: FarmerGoblin_2
       rect:
         serializedVersion: 2
-        x: 17
+        x: 32
         y: 96
-        width: 14
+        width: 16
         height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: c1d03adb168b53710800000000000000
+      spriteID: 0ef3311ed36192b42b77c26460b8434a
       internalID: 1672445566570925340
       vertices: []
       indices: 
@@ -283,19 +283,19 @@ TextureImporter:
       name: FarmerGoblin_3
       rect:
         serializedVersion: 2
-        x: 17
-        y: 80
-        width: 14
-        height: 17
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 48
+        y: 96
+        width: 16
+        height: 16
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 7b60a55001b6b2710800000000000000
+      spriteID: c454b1285dd6b7447b42ac6a244f7403
       internalID: 1669545803424335543
       vertices: []
       indices: 
@@ -305,19 +305,19 @@ TextureImporter:
       name: FarmerGoblin_4
       rect:
         serializedVersion: 2
-        x: 33
-        y: 95
-        width: 14
-        height: 17
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 64
+        y: 96
+        width: 16
+        height: 16
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 280854ac3a12e8470800000000000000
+      spriteID: 5b8a82928f185cd4e9227e9856d067d3
       internalID: 8398687342449492098
       vertices: []
       indices: 
@@ -327,19 +327,19 @@ TextureImporter:
       name: FarmerGoblin_5
       rect:
         serializedVersion: 2
-        x: 33
-        y: 79
-        width: 14
-        height: 17
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 0
+        y: 80
+        width: 16
+        height: 16
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: a5b24bac06645e370800000000000000
+      spriteID: 47bb9cc024a14f84c86dc4c4d8cd0c1f
       internalID: 8351158465560062810
       vertices: []
       indices: 
@@ -349,19 +349,19 @@ TextureImporter:
       name: FarmerGoblin_6
       rect:
         serializedVersion: 2
-        x: 49
-        y: 96
-        width: 14
+        x: 16
+        y: 80
+        width: 16
         height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 51cf37a9b864fe630800000000000000
+      spriteID: 85af593c7123b344b96102ffdfaaac90
       internalID: 3958460162887646229
       vertices: []
       indices: 
@@ -371,19 +371,19 @@ TextureImporter:
       name: FarmerGoblin_7
       rect:
         serializedVersion: 2
-        x: 49
+        x: 32
         y: 80
-        width: 14
-        height: 17
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        width: 16
+        height: 16
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 172e14a6095c47d00800000000000000
+      spriteID: fb078598dd5f17245bfd05be5a31bdff
       internalID: 969617043840164465
       vertices: []
       indices: 
@@ -393,19 +393,19 @@ TextureImporter:
       name: FarmerGoblin_8
       rect:
         serializedVersion: 2
-        x: 65
-        y: 95
-        width: 14
-        height: 17
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 48
+        y: 80
+        width: 16
+        height: 16
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 9b5a11af165e80320800000000000000
+      spriteID: dd665bca826657b479ab44d57f10262d
       internalID: 2524519800111211961
       vertices: []
       indices: 
@@ -415,19 +415,19 @@ TextureImporter:
       name: FarmerGoblin_9
       rect:
         serializedVersion: 2
-        x: 65
-        y: 79
-        width: 14
-        height: 17
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 64
+        y: 80
+        width: 16
+        height: 16
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: a228e4ee90c7c28f0800000000000000
+      spriteID: cf96cbccdc5fbf8468c6943e9017caa9
       internalID: -563939471233482198
       vertices: []
       indices: 
@@ -439,17 +439,17 @@ TextureImporter:
         serializedVersion: 2
         x: 0
         y: 64
-        width: 13
-        height: 15
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        width: 16
+        height: 16
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 5e2cc95cb8ce8f020800000000000000
+      spriteID: 71d1021fec13726419a42bfac2525310
       internalID: 2375908888497930981
       vertices: []
       indices: 
@@ -459,19 +459,19 @@ TextureImporter:
       name: FarmerGoblin_11
       rect:
         serializedVersion: 2
-        x: 0
-        y: 48
-        width: 15
-        height: 17
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 16
+        y: 64
+        width: 16
+        height: 16
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 9bdcd1fe71e149c40800000000000000
+      spriteID: 4f8e350778c3a7e4083cf348a5f267d4
       internalID: 5518068531580489145
       vertices: []
       indices: 
@@ -481,19 +481,19 @@ TextureImporter:
       name: FarmerGoblin_12
       rect:
         serializedVersion: 2
-        x: 15
-        y: 32
+        x: 32
+        y: 64
         width: 16
-        height: 32
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        height: 16
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 220985b0ee97845c0800000000000000
+      spriteID: 553d3e911a4588b4083007d4b15e0d05
       internalID: -4230997786615050206
       vertices: []
       indices: 
@@ -503,19 +503,19 @@ TextureImporter:
       name: FarmerGoblin_13
       rect:
         serializedVersion: 2
-        x: 16
+        x: 48
         y: 64
-        width: 13
+        width: 16
         height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 37d35f6a6fb891070800000000000000
+      spriteID: 20a098b491a47fd4b996f645a1864602
       internalID: 8077641298145000819
       vertices: []
       indices: 
@@ -525,19 +525,19 @@ TextureImporter:
       name: FarmerGoblin_14
       rect:
         serializedVersion: 2
-        x: 32
-        y: 63
-        width: 13
+        x: 64
+        y: 64
+        width: 16
         height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 6032fe85266dedaf0800000000000000
+      spriteID: bf858fa365a5e114fbd529808dd53fa2
       internalID: -369622401510595834
       vertices: []
       indices: 
@@ -547,19 +547,19 @@ TextureImporter:
       name: FarmerGoblin_15
       rect:
         serializedVersion: 2
-        x: 33
-        y: 47
-        width: 14
-        height: 17
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 0
+        y: 48
+        width: 16
+        height: 16
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 1fee790e86135bba0800000000000000
+      spriteID: 10c7b97a87bb76b47a35942da7b75b30
       internalID: -6073894195924832527
       vertices: []
       indices: 
@@ -569,19 +569,19 @@ TextureImporter:
       name: FarmerGoblin_16
       rect:
         serializedVersion: 2
-        x: 48
-        y: 64
-        width: 13
+        x: 16
+        y: 48
+        width: 16
         height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 0de3ee20b56ea4ce0800000000000000
+      spriteID: 8041a1d23387b5d42b28fd45b567a21d
       internalID: -1420069453916389680
       vertices: []
       indices: 
@@ -591,19 +591,19 @@ TextureImporter:
       name: FarmerGoblin_17
       rect:
         serializedVersion: 2
-        x: 64
-        y: 63
-        width: 13
+        x: 32
+        y: 48
+        width: 16
         height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 8ce0cbad036d92ff0800000000000000
+      spriteID: 8866b5878682d1748bffbc4aeb772f94
       internalID: -60281614676259128
       vertices: []
       indices: 
@@ -613,19 +613,19 @@ TextureImporter:
       name: FarmerGoblin_18
       rect:
         serializedVersion: 2
-        x: 0
-        y: 16
-        width: 13
+        x: 48
+        y: 48
+        width: 16
         height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 532b782c3f84baca0800000000000000
+      spriteID: a28cdfea76e2d8d47b5240c0cbbbb93a
       internalID: -6004625466390498763
       vertices: []
       indices: 
@@ -635,19 +635,19 @@ TextureImporter:
       name: FarmerGoblin_19
       rect:
         serializedVersion: 2
-        x: 1
-        y: 32
-        width: 14
-        height: 17
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 64
+        y: 48
+        width: 16
+        height: 16
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: a0e4fd1d7bd1d95e0800000000000000
+      spriteID: ad424b3bb1f37164a855fd4b4faf282e
       internalID: -1901330792343187958
       vertices: []
       indices: 
@@ -657,19 +657,19 @@ TextureImporter:
       name: FarmerGoblin_20
       rect:
         serializedVersion: 2
-        x: 31
+        x: 0
         y: 32
         width: 16
         height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 9c429cc5669c4da60800000000000000
+      spriteID: 5f39005d4387f364aa7ee62347646362
       internalID: 7697999104563553481
       vertices: []
       indices: 
@@ -679,19 +679,19 @@ TextureImporter:
       name: FarmerGoblin_21
       rect:
         serializedVersion: 2
-        x: 3
-        y: 0
-        width: 13
+        x: 16
+        y: 32
+        width: 16
         height: 16
-      alignment: 0
-      pivot: {x: 0, y: 0}
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: b568a90c9b75fbd60800000000000000
+      spriteID: 7c599403032a14f44807a77fedf847bc
       internalID: 7908135925997799003
       vertices: []
       indices: 
@@ -701,19 +701,19 @@ TextureImporter:
       name: FarmerGoblin_22
       rect:
         serializedVersion: 2
-        x: 16
-        y: 16
-        width: 17
-        height: 15
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 32
+        y: 32
+        width: 16
+        height: 16
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 41cc8c56cb1f4b850800000000000000
+      spriteID: 759c0e96e12665d4f9a67d325230a90e
       internalID: 6391999562609380372
       vertices: []
       indices: 
@@ -723,19 +723,19 @@ TextureImporter:
       name: FarmerGoblin_23
       rect:
         serializedVersion: 2
-        x: 32
-        y: 16
-        width: 15
-        height: 15
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 48
+        y: 32
+        width: 16
+        height: 16
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: a3719c4dc22a59140800000000000000
+      spriteID: cf793044bfeb0664ca96a38003d2c7fb
       internalID: 4725861697427412794
       vertices: []
       indices: 
@@ -745,19 +745,19 @@ TextureImporter:
       name: FarmerGoblin_24
       rect:
         serializedVersion: 2
-        x: 15
-        y: 0
-        width: 17
-        height: 15
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 64
+        y: 32
+        width: 16
+        height: 16
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: f285902e4606f8f40800000000000000
+      spriteID: ea27833af6fe1e54cb8c9d3940876e12
       internalID: 5732906837071190063
       vertices: []
       indices: 
@@ -767,20 +767,218 @@ TextureImporter:
       name: FarmerGoblin_25
       rect:
         serializedVersion: 2
-        x: 33
-        y: 0
-        width: 15
-        height: 15
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 0
+        y: 16
+        width: 16
+        height: 16
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 497f5156a535a98b0800000000000000
+      spriteID: 75b7c2978cdc30842910e9fafe5f7347
       internalID: -5144707976609269868
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: FarmerGoblin_26
+      rect:
+        serializedVersion: 2
+        x: 16
+        y: 16
+        width: 16
+        height: 16
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 9a19c6ffe6904da4ea92939273d3258e
+      internalID: -1744063894
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: FarmerGoblin_27
+      rect:
+        serializedVersion: 2
+        x: 32
+        y: 16
+        width: 16
+        height: 16
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 61e7b28c911d17341a55c660d90960a6
+      internalID: -171712593
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: FarmerGoblin_28
+      rect:
+        serializedVersion: 2
+        x: 48
+        y: 16
+        width: 16
+        height: 16
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: c16e17c4c1f830641a679298bcc5415f
+      internalID: 2063773590
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: FarmerGoblin_29
+      rect:
+        serializedVersion: 2
+        x: 64
+        y: 16
+        width: 16
+        height: 16
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 4e6b4e1c44ef03a4682ce774a66ab9f7
+      internalID: -1435071116
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: FarmerGoblin_30
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 16
+        height: 16
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: c314ea3504fe20b40a6d8f8d0c8e4b43
+      internalID: -1585674100
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: FarmerGoblin_31
+      rect:
+        serializedVersion: 2
+        x: 16
+        y: 0
+        width: 16
+        height: 16
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 73c965f4fef6ae842837975e03c0e7ac
+      internalID: 1557842670
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: FarmerGoblin_32
+      rect:
+        serializedVersion: 2
+        x: 32
+        y: 0
+        width: 16
+        height: 16
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 7f72409ded796a0448215c32fafb9794
+      internalID: 563063038
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: FarmerGoblin_33
+      rect:
+        serializedVersion: 2
+        x: 48
+        y: 0
+        width: 16
+        height: 16
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 2757f36824cb7724d97d8f1e39107666
+      internalID: 1693163746
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: FarmerGoblin_34
+      rect:
+        serializedVersion: 2
+        x: 64
+        y: 0
+        width: 16
+        height: 16
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 9db79ddeb3059274ab0b2103805c5be2
+      internalID: 1340351844
       vertices: []
       indices: 
       edges: []
@@ -789,7 +987,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 
+    spriteID: 2e8bc81cb967b884db45bcab6cabad1b
     internalID: 0
     vertices: []
     indices: 
@@ -818,7 +1016,16 @@ TextureImporter:
       FarmerGoblin_23: 4725861697427412794
       FarmerGoblin_24: 5732906837071190063
       FarmerGoblin_25: -5144707976609269868
+      FarmerGoblin_26: -1744063894
+      FarmerGoblin_27: -171712593
+      FarmerGoblin_28: 2063773590
+      FarmerGoblin_29: -1435071116
       FarmerGoblin_3: 1669545803424335543
+      FarmerGoblin_30: -1585674100
+      FarmerGoblin_31: 1557842670
+      FarmerGoblin_32: 563063038
+      FarmerGoblin_33: 1693163746
+      FarmerGoblin_34: 1340351844
       FarmerGoblin_4: 8398687342449492098
       FarmerGoblin_5: 8351158465560062810
       FarmerGoblin_6: 3958460162887646229
