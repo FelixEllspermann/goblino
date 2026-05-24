@@ -26,11 +26,15 @@ namespace RTSCL.World.Unity
         private GameObject _ghost;
         private SpriteRenderer _ghostRenderer;
         private readonly Dictionary<Vector2Int, BuildingDefinition> _cellOwners = new();
+        private readonly Dictionary<Vector2Int, Vector2Int> _cellToOrigin = new();
 
         public BuildingDefinition Selected => _selected;
 
         public bool TryGetBuildingAt(Vector2Int cell, out BuildingDefinition def) =>
             _cellOwners.TryGetValue(cell, out def);
+
+        public bool TryGetBuildingOrigin(Vector2Int cell, out Vector2Int origin) =>
+            _cellToOrigin.TryGetValue(cell, out origin);
 
         public IEnumerable<KeyValuePair<Vector2Int, BuildingDefinition>> AllOccupied => _cellOwners;
 
@@ -136,12 +140,20 @@ namespace RTSCL.World.Unity
 
             for (int dy = 0; dy < def.Footprint.y; dy++)
             for (int dx = 0; dx < def.Footprint.x; dx++)
-                _cellOwners[new Vector2Int(origin.x + dx, origin.y + dy)] = def;
+            {
+                var c = new Vector2Int(origin.x + dx, origin.y + dy);
+                _cellOwners[c] = def;
+                _cellToOrigin[c] = origin;
+            }
+
+            BuildingHP.Register(origin, BuildingHP.MaxHpFor(def));
         }
 
         public void ClearAllPlaced()
         {
             _cellOwners.Clear();
+            _cellToOrigin.Clear();
+            BuildingHP.Clear();
             if (_buildingsRoot == null) return;
             for (int i = _buildingsRoot.childCount - 1; i >= 0; i--)
             {
