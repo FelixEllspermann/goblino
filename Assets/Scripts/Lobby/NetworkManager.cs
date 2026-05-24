@@ -22,6 +22,7 @@ namespace RTSCL.Lobby
         private Callback<SteamNetConnectionStatusChangedCallback_t> _cbStatus;
         private HSteamListenSocket _listenSocket = HSteamListenSocket.Invalid;
         private HSteamNetPollGroup _pollGroup = HSteamNetPollGroup.Invalid;
+        private HSteamNetConnection _serverConnection = HSteamNetConnection.Invalid;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void Bootstrap()
@@ -54,7 +55,7 @@ namespace RTSCL.Lobby
             NetworkSession.HostPlayer  = owner;
             NetworkSession.IsHost      = owner == NetworkSession.LocalPlayer;
             if (NetworkSession.IsHost) StartListening();
-            // ConnectToHost added in Task 5.
+            else                       ConnectToHost(owner);
         }
 
         private void HandleLobbyLeft()
@@ -85,9 +86,13 @@ namespace RTSCL.Lobby
 
             if (state == ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_Connected)
             {
-                if (_listenSocket != HSteamListenSocket.Invalid) // host-side: a guest just connected
+                if (_listenSocket != HSteamListenSocket.Invalid)
                 {
                     _connections[conn] = remote;
+                    OnConnected?.Invoke(remote);
+                }
+                else if (conn == _serverConnection)
+                {
                     OnConnected?.Invoke(remote);
                 }
             }
@@ -97,6 +102,13 @@ namespace RTSCL.Lobby
             {
                 if (_connections.Remove(conn))
                     OnDisconnected?.Invoke(remote);
+                if (conn == _serverConnection)
+                {
+                    _serverConnection = HSteamNetConnection.Invalid;
+                    OnDisconnected?.Invoke(remote);
+                    // Client lost the host → bail out of the lobby
+                    LobbyManager.LeaveLobby();
+                }
                 SteamNetworkingSockets.CloseConnection(conn, 0, string.Empty, false);
             }
         }
@@ -114,10 +126,23 @@ namespace RTSCL.Lobby
             Debug.Log($"[Net] Listen socket created: {_listenSocket.m_HSteamListenSocket}");
         }
 
-        private void ConnectToHost(CSteamID host) { /* Task 5 */ }
+        private void ConnectToHost(CSteamID host)
+        {
+            if (_serverConnection != HSteamNetConnection.Invalid) return; // idempotent
+            var identity = new SteamNetworkingIdentity();
+            identity.SetSteamID(host);
+            var opts = Array.Empty<SteamNetworkingConfigValue_t>();
+            _serverConnection = SteamNetworkingSockets.ConnectP2P(ref identity, 0, opts.Length, opts);
+            Debug.Log($"[Net] Connecting to host {host} conn={_serverConnection.m_HSteamNetConnection}");
+        }
 
         private void Disconnect()
         {
+            if (_serverConnection != HSteamNetConnection.Invalid)
+            {
+                SteamNetworkingSockets.CloseConnection(_serverConnection, 0, "disconnect", false);
+                _serverConnection = HSteamNetConnection.Invalid;
+            }
             foreach (var conn in _connections.Keys)
                 SteamNetworkingSockets.CloseConnection(conn, 0, "disconnect", false);
             _connections.Clear();
