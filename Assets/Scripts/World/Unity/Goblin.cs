@@ -85,6 +85,7 @@ namespace RTSCL.World.Unity
             CurrentHp = MaxHp;
 
             BuildSelectionRing();
+            GoblinHealthBar.AttachTo(this);
         }
 
         public void SetMoveCommand(Vector3 worldTarget)
