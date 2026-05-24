@@ -24,7 +24,7 @@ namespace RTSCL.World.Unity
         private SpriteRenderer _renderer;
         private GameObject _selectionRing;
 
-        private enum State { Idle, MovingToPoint, MovingToTree, Harvesting, MovingToBuild, Building }
+        private enum State { Idle, MovingToPoint, MovingToTree, Harvesting, MovingToBuild, Building, MovingToAttack, Attacking }
         private State _state = State.Idle;
 
         private Vector3 _moveTarget;
@@ -32,6 +32,8 @@ namespace RTSCL.World.Unity
         private Vector2Int _buildOrigin;
         private float _harvestTimer;
         private float _buildTimer;
+        private Goblin _attackTarget;
+        private float _attackTimer;
         private const float BuildTickDuration = 1.0f;
         private const int BuildProgressPerTick = 10;
 
@@ -101,6 +103,24 @@ namespace RTSCL.World.Unity
             _moveTarget = new Vector3(buildingOrigin.x + 0.5f, buildingOrigin.y + 0.5f, 0f);
             _state = State.MovingToBuild;
             _buildTimer = 0f;
+        }
+
+        public void SetAttackCommand(Goblin target)
+        {
+            if (target == null || target == this) return;
+            if (AttackDamage <= 0) return;   // non-combatants (Farmers) ignore
+            if (target.CurrentHp <= 0) return;
+            ResetHitAnim();
+            _attackTarget = target;
+            _attackTimer = 0f;
+            _state = State.MovingToAttack;
+        }
+
+        private static int ChebyshevDistance(Vector3 a, Vector3 b)
+        {
+            int dx = Mathf.Abs(Mathf.FloorToInt(a.x) - Mathf.FloorToInt(b.x));
+            int dy = Mathf.Abs(Mathf.FloorToInt(a.y) - Mathf.FloorToInt(b.y));
+            return Mathf.Max(dx, dy);
         }
 
         public void TakeDamage(int damage, Goblin attacker)
@@ -229,6 +249,40 @@ namespace RTSCL.World.Unity
                         _buildTimer = 0f;
                         BuildingConstruction.AddProgress(_buildOrigin, BuildProgressPerTick, out _);
                         StartHitAnim(new Vector3Int(_buildOrigin.x, _buildOrigin.y, 0));
+                    }
+                    UpdateHitAnim();
+                    break;
+                }
+
+                case State.MovingToAttack:
+                {
+                    if (_attackTarget == null || _attackTarget.CurrentHp <= 0) { _state = State.Idle; break; }
+                    if (ChebyshevDistance(transform.position, _attackTarget.transform.position) <= AttackRange)
+                    {
+                        _state = State.Attacking;
+                        _attackTimer = AttackInterval; // first hit immediately
+                        break;
+                    }
+                    StepToward(_attackTarget.transform.position);
+                    break;
+                }
+
+                case State.Attacking:
+                {
+                    if (_attackTarget == null || _attackTarget.CurrentHp <= 0) { _state = State.Idle; break; }
+                    if (ChebyshevDistance(transform.position, _attackTarget.transform.position) > AttackRange)
+                    {
+                        _state = State.MovingToAttack;
+                        break;
+                    }
+                    _attackTimer += Time.deltaTime;
+                    if (_attackTimer >= AttackInterval)
+                    {
+                        _attackTimer = 0f;
+                        _attackTarget.TakeDamage(AttackDamage, this);
+                        StartHitAnim(new Vector3Int(
+                            Mathf.FloorToInt(_attackTarget.transform.position.x),
+                            Mathf.FloorToInt(_attackTarget.transform.position.y), 0));
                     }
                     UpdateHitAnim();
                     break;
