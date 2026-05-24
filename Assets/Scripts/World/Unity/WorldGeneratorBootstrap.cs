@@ -32,7 +32,13 @@ namespace RTSCL.World.Unity
 
         public WorldData CurrentWorld => _currentWorld;
 
-        private void Start() => Regenerate();
+        private void Start()
+        {
+            if (RTSCL.Lobby.NetworkSession.GameSeed != 0)
+                RegenerateWithSeed(RTSCL.Lobby.NetworkSession.GameSeed);
+            else
+                Regenerate();
+        }
 
         [ContextMenu("Regenerate")]
         public void Regenerate()
