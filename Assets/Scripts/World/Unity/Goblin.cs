@@ -103,6 +103,13 @@ namespace RTSCL.World.Unity
             _buildTimer = 0f;
         }
 
+        public void TakeDamage(int damage, Goblin attacker)
+        {
+            if (CurrentHp <= 0) return;
+            CurrentHp = Mathf.Max(0, CurrentHp - damage);
+            // Death + retaliate handled in later tasks.
+        }
+
         // Returns the world position of the passable cell adjacent to the tree closest to the goblin.
         // Falls back to the tree cell center if no adjacent cell is passable.
         private Vector3 FindAdjacentStandingSpot(Vector3Int treeCell)
