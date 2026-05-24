@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -6,6 +7,8 @@ namespace RTSCL.World.Unity
     public static class BuildingConstruction
     {
         public const int MaxProgress = 100;
+
+        public static event Action<Vector2Int> OnCompleted;
 
         private struct Site
         {
@@ -42,6 +45,7 @@ namespace RTSCL.World.Unity
                 if (sr != null) sr.color = s.OriginalColor;
                 _sites.Remove(origin);
                 justCompleted = true;
+                OnCompleted?.Invoke(origin);
                 return true;
             }
             if (sr != null)

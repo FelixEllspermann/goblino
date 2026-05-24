@@ -15,6 +15,7 @@ namespace RTSCL.World.Unity
         [Header("Main Base")]
         [SerializeField] private string _mainBuildingName = "Keep_0";
         [SerializeField] private int _startingGoblins = 5;
+        [SerializeField] private GoblinUnitDefinition _startingUnitDef;
 
         // Subscribe to "world ready" by polling on Update — keeps things decoupled.
         private WorldData _knownWorld;
@@ -36,6 +37,7 @@ namespace RTSCL.World.Unity
             ResourceBank.Reset();
             TreeHP.Clear();
             GoblinProduction.Clear();
+            PopulationManager.Reset();
 
             if (world.Spawns == null || world.Spawns.Length == 0) return;
 
@@ -52,7 +54,11 @@ namespace RTSCL.World.Unity
 
                 // 3. Spawn N starting Farmer Goblins evenly distributed around the keep
                 if (_goblinSpawner != null)
+                {
                     _goblinSpawner.SpawnAroundFootprint(keepOrigin, def.Footprint, _startingGoblins, "FarmerGoblin");
+                    int popPerUnit = _startingUnitDef != null ? _startingUnitDef.PopulationCost : 1;
+                    PopulationManager.AddUsed(_startingGoblins * popPerUnit);
+                }
             }
             else
             {

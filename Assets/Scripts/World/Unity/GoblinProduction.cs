@@ -29,6 +29,9 @@ namespace RTSCL.World.Unity
         {
             if (def == null) return false;
             if (_slots.ContainsKey(origin)) return false;
+            if (!PopulationManager.CanAfford(def.PopulationCost)) return false;
+            // Reserve population now so the cap accounting is honest while producing.
+            PopulationManager.AddUsed(def.PopulationCost);
             _slots[origin] = new Slot { Def = def, Elapsed = 0f };
             OnChanged?.Invoke();
             return true;
@@ -59,6 +62,9 @@ namespace RTSCL.World.Unity
         public static void Clear()
         {
             if (_slots.Count == 0) return;
+            // Release any reserved population from in-progress productions.
+            foreach (var s in _slots.Values)
+                if (s.Def != null) PopulationManager.RemoveUsed(s.Def.PopulationCost);
             _slots.Clear();
             OnChanged?.Invoke();
         }

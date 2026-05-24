@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -8,6 +9,9 @@ namespace RTSCL.World.Unity
 {
     public sealed class GoblinSelectionController : MonoBehaviour
     {
+        public IReadOnlyList<Goblin> Selection => _selected;
+        public event Action OnSelectionChanged;
+
         [SerializeField] private Camera _camera;
         [SerializeField] private BuildingPlacer _buildingPlacer;
         [SerializeField] private Tilemap _decorationMap;
@@ -179,6 +183,7 @@ namespace RTSCL.World.Unity
                 _selected.Add(g);
                 g.SetSelected(true);
             }
+            OnSelectionChanged?.Invoke();
         }
 
         private void CommandFormation(Vector3 worldCenter)

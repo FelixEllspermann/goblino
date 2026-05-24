@@ -14,3 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: RTSCL.World.Unity::RTSCL.World.Unity.BuildingCatalog
   Buildings:
   - {fileID: 11400000, guid: 511d7f791386b2a40ba7a9adba89f7ec, type: 2}
+  - {fileID: 11400000, guid: 617f10b7a32d7824cafd0b5a1fd4a3ac, type: 2}
+  - {fileID: 11400000, guid: f0a3ae8163462354c908b2fea93341ab, type: 2}

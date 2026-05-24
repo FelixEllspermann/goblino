@@ -8,6 +8,7 @@ namespace RTSCL.World.Unity
         public string DisplayName;
         public Sprite Icon;
         public int WoodCost = 50;
+        public int PopulationCost = 1;
         [Tooltip("Seconds to produce one unit at a keep")]
         public float SpawnDuration = 3f;
         [Tooltip("Name must match a GoblinSpawner kind so walk frames are applied")]

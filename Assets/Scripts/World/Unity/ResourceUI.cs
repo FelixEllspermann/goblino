@@ -6,21 +6,31 @@ namespace RTSCL.World.Unity
     public sealed class ResourceUI : MonoBehaviour
     {
         [SerializeField] private Text _woodLabel;
+        [SerializeField] private Text _populationLabel;
 
         private void OnEnable()
         {
-            ResourceBank.OnWoodChanged += UpdateLabel;
-            UpdateLabel(ResourceBank.Wood);
+            ResourceBank.OnWoodChanged += UpdateWood;
+            PopulationManager.OnChanged += UpdatePopulation;
+            UpdateWood(ResourceBank.Wood);
+            UpdatePopulation();
         }
 
         private void OnDisable()
         {
-            ResourceBank.OnWoodChanged -= UpdateLabel;
+            ResourceBank.OnWoodChanged -= UpdateWood;
+            PopulationManager.OnChanged -= UpdatePopulation;
         }
 
-        private void UpdateLabel(int wood)
+        private void UpdateWood(int wood)
         {
             if (_woodLabel != null) _woodLabel.text = wood.ToString();
+        }
+
+        private void UpdatePopulation()
+        {
+            if (_populationLabel != null)
+                _populationLabel.text = $"{PopulationManager.Used} / {PopulationManager.Cap}";
         }
     }
 }

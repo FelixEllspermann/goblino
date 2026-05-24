@@ -30,6 +30,15 @@ namespace RTSCL.World.Unity
 
         public BuildingDefinition Selected => _selected;
 
+        private void OnEnable() => BuildingConstruction.OnCompleted += OnConstructionCompleted;
+        private void OnDisable() => BuildingConstruction.OnCompleted -= OnConstructionCompleted;
+
+        private void OnConstructionCompleted(Vector2Int origin)
+        {
+            if (_cellOwners.TryGetValue(origin, out var def) && def != null)
+                PopulationManager.AddCap(def.PopulationProvided);
+        }
+
         public bool TryGetBuildingAt(Vector2Int cell, out BuildingDefinition def) =>
             _cellOwners.TryGetValue(cell, out def);
 
@@ -157,6 +166,7 @@ namespace RTSCL.World.Unity
 
             BuildingHP.Register(origin, BuildingHP.MaxHpFor(def));
             if (requireConstruction) BuildingConstruction.Register(origin, go);
+            else PopulationManager.AddCap(def.PopulationProvided); // instant-place (e.g. starting keep)
         }
 
         public void ClearAllPlaced()
