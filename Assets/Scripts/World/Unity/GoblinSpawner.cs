@@ -21,6 +21,7 @@ namespace RTSCL.World.Unity
         {
             public string Name = "Goblin";
             public Sprite[] WalkFrames;
+            public GoblinUnitDefinition Definition;
         }
 
         /// <summary>Spawn N goblins in passable cells around a center world position.</summary>
@@ -175,7 +176,7 @@ namespace RTSCL.World.Unity
             sr.sortingOrder = 25;  // above buildings
 
             var goblin = go.AddComponent<Goblin>();
-            goblin.Init(kind.Name, kind.WalkFrames, _terrainMap, _decorationMap);
+            goblin.Init(kind.Name, kind.WalkFrames, _terrainMap, _decorationMap, kind.Definition);
             return goblin;
         }
 

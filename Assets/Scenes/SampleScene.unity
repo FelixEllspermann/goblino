@@ -239,6 +239,7 @@ MonoBehaviour:
     - {fileID: 1814117541427858136, guid: 417511f3aedd45847acd1bf37780fd82, type: 3}
     - {fileID: 8704176405440998772, guid: 417511f3aedd45847acd1bf37780fd82, type: 3}
     - {fileID: -4699573994711803674, guid: 417511f3aedd45847acd1bf37780fd82, type: 3}
+    Definition: {fileID: 11400000, guid: b8d35062be9a7d5fc41bf0e7d6e4f5fc, type: 2}
   - Name: ArcherGoblin
     WalkFrames:
     - {fileID: 115046913211846132, guid: 59f7e8bfad34976468901a03ac2da98c, type: 3}
@@ -246,6 +247,7 @@ MonoBehaviour:
     - {fileID: -2202073550511657383, guid: 59f7e8bfad34976468901a03ac2da98c, type: 3}
     - {fileID: 8431135242110582471, guid: 59f7e8bfad34976468901a03ac2da98c, type: 3}
     - {fileID: -3691415230588575583, guid: 59f7e8bfad34976468901a03ac2da98c, type: 3}
+    Definition: {fileID: 0}
   - Name: SpearGoblin
     WalkFrames:
     - {fileID: 8082417263053353483, guid: b29f2eaf7e2fcc24490a5b82a4089f63, type: 3}
@@ -253,6 +255,7 @@ MonoBehaviour:
     - {fileID: 5497634280663653374, guid: b29f2eaf7e2fcc24490a5b82a4089f63, type: 3}
     - {fileID: 7927552047727035442, guid: b29f2eaf7e2fcc24490a5b82a4089f63, type: 3}
     - {fileID: 5675830802738329296, guid: b29f2eaf7e2fcc24490a5b82a4089f63, type: 3}
+    Definition: {fileID: 0}
   - Name: FarmerGoblin
     WalkFrames:
     - {fileID: -697968371510223532, guid: 893be7a1426f90b43b8bb1220da96544, type: 3}
@@ -260,6 +263,7 @@ MonoBehaviour:
     - {fileID: 1672445566570925340, guid: 893be7a1426f90b43b8bb1220da96544, type: 3}
     - {fileID: 1669545803424335543, guid: 893be7a1426f90b43b8bb1220da96544, type: 3}
     - {fileID: 8398687342449492098, guid: 893be7a1426f90b43b8bb1220da96544, type: 3}
+    Definition: {fileID: 11400000, guid: c9e4617fcfab8e60d52cf1f8e7f5060d, type: 2}
 --- !u!4 &164504309
 Transform:
   m_ObjectHideFlags: 0

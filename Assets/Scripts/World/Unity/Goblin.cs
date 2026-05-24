@@ -11,6 +11,13 @@ namespace RTSCL.World.Unity
         public string Kind { get; private set; } = "Goblin";
         public bool IsSelected { get; private set; }
 
+        public int  CurrentHp { get; private set; }
+        public int  MaxHp { get; private set; } = 20;
+        public int  PopulationCost { get; private set; } = 1;
+        public int  AttackDamage { get; private set; }
+        public float AttackInterval { get; private set; } = 1.5f;
+        public int  AttackRange { get; private set; } = 1;
+
         private Sprite[] _frames;
         private Tilemap _terrainMap;
         private Tilemap _decorationMap;
@@ -46,7 +53,8 @@ namespace RTSCL.World.Unity
         private const float HitLungeAmount = 0.30f;    // world units lurch forward
         private const float HitTiltDegrees = 18f;
 
-        public void Init(string kind, Sprite[] walkFrames, Tilemap terrainMap, Tilemap decorationMap)
+        public void Init(string kind, Sprite[] walkFrames, Tilemap terrainMap, Tilemap decorationMap,
+                         GoblinUnitDefinition def = null)
         {
             Kind = kind;
             _frames = walkFrames;
@@ -55,6 +63,17 @@ namespace RTSCL.World.Unity
             _renderer = GetComponent<SpriteRenderer>();
             _renderer.sprite = walkFrames[0];
             _moveTarget = transform.position;
+
+            if (def != null)
+            {
+                MaxHp = def.MaxHp;
+                PopulationCost = def.PopulationCost;
+                AttackDamage = def.AttackDamage;
+                AttackInterval = def.AttackInterval;
+                AttackRange = def.AttackRange;
+            }
+            CurrentHp = MaxHp;
+
             BuildSelectionRing();
         }
 
