@@ -1,24 +1,26 @@
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace RTSCL.World.Unity
 {
     public sealed class ResourceUI : MonoBehaviour
     {
-        [SerializeField] private bool _showPanel = true;
+        [SerializeField] private Text _woodLabel;
 
-        private void OnGUI()
+        private void OnEnable()
         {
-            if (!_showPanel || !Application.isPlaying) return;
-            GUILayout.BeginArea(new Rect(10, 130, 180, 36), GUI.skin.box);
-            GUILayout.Label($"<b>Wood:</b> {ResourceBank.Wood}", Rich());
-            GUILayout.EndArea();
+            ResourceBank.OnWoodChanged += UpdateLabel;
+            UpdateLabel(ResourceBank.Wood);
         }
 
-        private static GUIStyle s_rich;
-        private static GUIStyle Rich()
+        private void OnDisable()
         {
-            if (s_rich == null) s_rich = new GUIStyle(GUI.skin.label) { richText = true };
-            return s_rich;
+            ResourceBank.OnWoodChanged -= UpdateLabel;
+        }
+
+        private void UpdateLabel(int wood)
+        {
+            if (_woodLabel != null) _woodLabel.text = wood.ToString();
         }
     }
 }
