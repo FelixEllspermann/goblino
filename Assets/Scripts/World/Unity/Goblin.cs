@@ -90,6 +90,7 @@ namespace RTSCL.World.Unity
 
         public void SetMoveCommand(Vector3 worldTarget)
         {
+            if (_state == State.Dying) return;
             ResetHitAnim();
             _moveTarget = worldTarget;
             _state = State.MovingToPoint;
@@ -97,6 +98,7 @@ namespace RTSCL.World.Unity
 
         public void SetHarvestCommand(Vector3Int treeCell)
         {
+            if (_state == State.Dying) return;
             ResetHitAnim();
             _treeCell = treeCell;
             _moveTarget = FindAdjacentStandingSpot(treeCell);
@@ -106,6 +108,7 @@ namespace RTSCL.World.Unity
 
         public void SetBuildCommand(Vector2Int buildingOrigin)
         {
+            if (_state == State.Dying) return;
             ResetHitAnim();
             _buildOrigin = buildingOrigin;
             // Walk to the origin cell center — close enough to "build" the structure
@@ -116,6 +119,7 @@ namespace RTSCL.World.Unity
 
         public void SetAttackCommand(Goblin target)
         {
+            if (_state == State.Dying) return;
             if (target == null || target == this) return;
             if (AttackDamage <= 0) return;   // non-combatants (Farmers) ignore
             if (target.CurrentHp <= 0) return;
