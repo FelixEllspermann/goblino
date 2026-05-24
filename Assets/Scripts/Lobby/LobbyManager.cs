@@ -65,7 +65,14 @@ namespace RTSCL.Lobby
             var call = SteamMatchmaking.RequestLobbyList();
             _instance._crLobbyList.Set(call);
         }
-        public static void JoinLobby(CSteamID id) { /* Task 4 */ }
+        public static void JoinLobby(CSteamID id)
+        {
+            if (_instance == null) return;
+            if (!SteamManager.Initialized) { RaiseError("Steam not running"); return; }
+            if (id == CSteamID.Nil) { RaiseError("Invalid lobby id"); return; }
+            SteamMatchmaking.JoinLobby(id);
+            // LobbyEnter_t fires asynchronously
+        }
         public static void LeaveLobby()      { /* Task 5 */ }
 
         private void OnSteamLobbyCreated(LobbyCreated_t e)
