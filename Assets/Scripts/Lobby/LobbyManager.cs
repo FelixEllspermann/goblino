@@ -163,13 +163,16 @@ namespace RTSCL.Lobby
         private void OnSteamLobbyEntered(LobbyEnter_t e)
         {
             var resp = (EChatRoomEnterResponse)e.m_EChatRoomEnterResponse;
+            var enteredId = new CSteamID(e.m_ulSteamIDLobby);
             if (resp != EChatRoomEnterResponse.k_EChatRoomEnterResponseSuccess)
             {
                 RaiseError($"Enter lobby failed: {resp}");
-                _currentLobby = CSteamID.Nil;
+                // Only clear if the failed lobby is our current one. A stale callback
+                // for a different lobby must not corrupt state.
+                if (enteredId == _currentLobby) _currentLobby = CSteamID.Nil;
                 return;
             }
-            _currentLobby = new CSteamID(e.m_ulSteamIDLobby);
+            _currentLobby = enteredId;
             RaiseLobbyEntered(_currentLobby);
         }
 
