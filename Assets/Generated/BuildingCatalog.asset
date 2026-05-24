@@ -12,4 +12,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 47af8935ae1fac344b08f26a4e7447d0, type: 3}
   m_Name: BuildingCatalog
   m_EditorClassIdentifier: RTSCL.World.Unity::RTSCL.World.Unity.BuildingCatalog
-  Buildings: []
+  Buildings:
+  - {fileID: 11400000, guid: 511d7f791386b2a40ba7a9adba89f7ec, type: 2}

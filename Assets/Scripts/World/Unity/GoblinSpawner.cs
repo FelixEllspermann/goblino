@@ -44,6 +44,69 @@ namespace RTSCL.World.Unity
             }
         }
 
+        /// <summary>Spawn N goblins distributed evenly in rings around a building footprint (skipping the footprint cells).</summary>
+        public void SpawnAroundFootprint(Vector2Int origin, Vector2Int footprint, int count)
+        {
+            if (_terrainMap == null || count <= 0) return;
+
+            var occupied = new HashSet<Vector2Int>();
+            for (int dy = 0; dy < footprint.y; dy++)
+            for (int dx = 0; dx < footprint.x; dx++)
+                occupied.Add(new Vector2Int(origin.x + dx, origin.y + dy));
+
+            int spawned = 0;
+            for (int ring = 1; ring < 12 && spawned < count; ring++)
+            {
+                var ringCells = CollectFootprintRing(origin, footprint, ring);
+                var available = new List<Vector2Int>(ringCells.Count);
+                foreach (var c in ringCells)
+                {
+                    if (occupied.Contains(c)) continue;
+                    if (!IsPassable(new Vector3Int(c.x, c.y, 0))) continue;
+                    available.Add(c);
+                }
+                if (available.Count == 0) continue;
+
+                int remaining = count - spawned;
+                if (remaining >= available.Count)
+                {
+                    foreach (var c in available)
+                    {
+                        SpawnAt(new Vector3(c.x + 0.5f, c.y + 0.5f, 0f));
+                        spawned++;
+                        if (spawned >= count) break;
+                    }
+                }
+                else
+                {
+                    // Pick `remaining` cells evenly spaced around the ring
+                    for (int i = 0; i < remaining; i++)
+                    {
+                        int idx = (i * available.Count) / remaining;
+                        var c = available[idx];
+                        SpawnAt(new Vector3(c.x + 0.5f, c.y + 0.5f, 0f));
+                        spawned++;
+                    }
+                }
+            }
+        }
+
+        /// <summary>Cells exactly at Chebyshev distance `ring` outside a rectangular footprint, in clockwise order.</summary>
+        private static List<Vector2Int> CollectFootprintRing(Vector2Int origin, Vector2Int footprint, int ring)
+        {
+            int minX = origin.x - ring;
+            int maxX = origin.x + footprint.x - 1 + ring;
+            int minY = origin.y - ring;
+            int maxY = origin.y + footprint.y - 1 + ring;
+
+            var list = new List<Vector2Int>();
+            for (int x = minX; x <= maxX; x++)         list.Add(new Vector2Int(x, maxY));      // top row L→R
+            for (int y = maxY - 1; y > minY; y--)      list.Add(new Vector2Int(maxX, y));      // right col T→B
+            for (int x = maxX; x >= minX; x--)         list.Add(new Vector2Int(x, minY));      // bottom row R→L
+            for (int y = minY + 1; y < maxY; y++)      list.Add(new Vector2Int(minX, y));      // left col B→T
+            return list;
+        }
+
         private bool IsPassable(Vector3Int cell)
         {
             var t = _terrainMap.GetTile(cell);

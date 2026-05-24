@@ -23,7 +23,10 @@ namespace RTSCL.World.Unity
 
         [Header("Camera")]
         [SerializeField] private Camera _cameraToFit;
+        [Tooltip("Center camera on the first spawn point (Keep) at startup")]
         [SerializeField] private bool _autoFitCamera = true;
+        [Tooltip("Orthographic size at game start — smaller = more zoomed in. 8 ≈ keep + a few rings of vision")]
+        [SerializeField] private float _startOrthoSize = 8f;
 
         private WorldData _currentWorld;
 
@@ -60,13 +63,25 @@ namespace RTSCL.World.Unity
             new TilePainter(_terrainMap, _resolver).Paint(world);
             new DecorationPlacer(_decorationMap, _decorationConfig).Place(world, world.Seed);
 
-            if (_autoFitCamera && _cameraToFit != null)
-                CameraFitter.Fit(_cameraToFit, world.Width, world.Height);
-
             if (_cameraToFit != null)
             {
                 var rts = _cameraToFit.GetComponent<RTSCamera2D>();
                 if (rts != null) rts.SetWorldBounds(world.Width, world.Height);
+
+                if (_autoFitCamera && world.Spawns != null && world.Spawns.Length > 0)
+                {
+                    var s = world.Spawns[0];
+                    var focusPos = new Vector3(s.x + 0.5f, s.y + 0.5f, 0f);
+                    if (rts != null)
+                        rts.FocusOn(focusPos, _startOrthoSize);
+                    else
+                    {
+                        _cameraToFit.orthographic = true;
+                        _cameraToFit.orthographicSize = _startOrthoSize;
+                        _cameraToFit.transform.position =
+                            new Vector3(focusPos.x, focusPos.y, -10f);
+                    }
+                }
             }
 
             _currentWorld = world;

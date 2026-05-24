@@ -44,21 +44,24 @@ namespace RTSCL.World.Unity
             if (def != null && _buildingPlacer != null)
             {
                 // Offset so the keep is centered on the spawn cell
-                var origin = new Vector2Int(
+                var keepOrigin = new Vector2Int(
                     mainCell.x - def.Footprint.x / 2,
                     mainCell.y - def.Footprint.y / 2);
-                _buildingPlacer.PlaceForce(def, origin, charge: false, requireConstruction: false);
+                _buildingPlacer.PlaceForce(def, keepOrigin, charge: false, requireConstruction: false);
+
+                // 3. Spawn goblins evenly distributed around the keep
+                if (_goblinSpawner != null)
+                    _goblinSpawner.SpawnAroundFootprint(keepOrigin, def.Footprint, _startingGoblins);
             }
             else
             {
                 Debug.LogWarning($"[MainBaseSetup] Building '{_mainBuildingName}' not in catalog.");
-            }
-
-            // 3. Spawn N starting goblins around the keep
-            if (_goblinSpawner != null)
-            {
-                var center = new Vector3(mainCell.x + 0.5f, mainCell.y + 0.5f, 0f);
-                _goblinSpawner.SpawnGroupAt(center, _startingGoblins);
+                // Fallback: no keep, spawn around mainCell
+                if (_goblinSpawner != null)
+                {
+                    var c = new Vector3(mainCell.x + 0.5f, mainCell.y + 0.5f, 0f);
+                    _goblinSpawner.SpawnGroupAt(c, _startingGoblins);
+                }
             }
         }
 

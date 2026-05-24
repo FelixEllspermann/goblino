@@ -27,6 +27,7 @@ namespace RTSCL.World.Unity
         private bool _dragging;
         private Vector2 _dragStartMouse;
         private Vector3 _dragStartCamera;
+        private bool _userInteracted;
 
         private void Reset() => _camera = GetComponent<Camera>();
 
@@ -36,13 +37,27 @@ namespace RTSCL.World.Unity
             _mapHeight = height;
         }
 
+        /// <summary>Programmatically center camera on a world point — bypasses edge-clamp until user pans/zooms.</summary>
+        public void FocusOn(Vector3 worldPos, float orthoSize)
+        {
+            if (_camera == null) return;
+            _camera.orthographic = true;
+            _camera.orthographicSize = orthoSize;
+            _camera.transform.position = new Vector3(worldPos.x, worldPos.y, -10f);
+            _userInteracted = false;
+        }
+
         private void LateUpdate()
         {
             if (_camera == null || !_camera.orthographic) return;
             bool typing = GUIUtility.keyboardControl != 0;
             HandleZoom();
             HandlePan(typing);
-            ClampCamera();
+            // Always clamp ortho size (handles window resize), but only clamp
+            // position once the user has interacted — keeps initial focus exact
+            // even when spawn is near a map edge.
+            _camera.orthographicSize = Mathf.Clamp(_camera.orthographicSize, _minOrthoSize, MaxOrtho());
+            if (_userInteracted) ClampPosition();
         }
 
         private void HandleZoom()
@@ -51,6 +66,7 @@ namespace RTSCL.World.Unity
             float scroll = Mouse.current.scroll.ReadValue().y;
             if (Mathf.Abs(scroll) < 0.01f) return;
             _camera.orthographicSize -= Mathf.Sign(scroll) * _zoomStep;
+            _userInteracted = true;
         }
 
         private float MaxOrtho()
@@ -69,6 +85,7 @@ namespace RTSCL.World.Unity
                     _dragging = true;
                     _dragStartMouse = Mouse.current.position.ReadValue();
                     _dragStartCamera = _camera.transform.position;
+                    _userInteracted = true;
                 }
                 else if (!middle.isPressed)
                 {
@@ -114,12 +131,12 @@ namespace RTSCL.World.Unity
                 float speed = _panSpeed * (_camera.orthographicSize / 20f);
                 _camera.transform.position += new Vector3(delta.x, delta.y, 0)
                                               * speed * Time.unscaledDeltaTime;
+                _userInteracted = true;
             }
         }
 
-        private void ClampCamera()
+        private void ClampPosition()
         {
-            _camera.orthographicSize = Mathf.Clamp(_camera.orthographicSize, _minOrthoSize, MaxOrtho());
             float halfH = _camera.orthographicSize;
             float halfW = halfH * Mathf.Max(_camera.aspect, 0.01f);
 
