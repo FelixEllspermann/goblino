@@ -113,8 +113,84 @@ namespace RTSCL.Lobby
             }
         }
 
-        // Public API — actual implementations come in later tasks.
-        public static void SendToAll(byte[] payload) { /* Task 6 */ }
+        // Public API
+        public static void SendToAll(byte[] payload)
+        {
+            if (_instance == null || payload == null || payload.Length == 0) return;
+            _instance.SendToAllImpl(payload);
+        }
+
+        private void SendToAllImpl(byte[] payload)
+        {
+            int flags = Constants.k_nSteamNetworkingSend_Reliable;
+            if (NetworkSession.IsHost)
+            {
+                foreach (var conn in _connections.Keys)
+                {
+                    var res = SteamNetworkingSockets.SendMessageToConnection(
+                        conn, payload, (uint)payload.Length, flags, out _);
+                    if (res != EResult.k_EResultOK)
+                        Debug.LogWarning($"[Net] SendToConnection failed: {res}");
+                }
+            }
+            else if (_serverConnection != HSteamNetConnection.Invalid)
+            {
+                var res = SteamNetworkingSockets.SendMessageToConnection(
+                    _serverConnection, payload, (uint)payload.Length, flags, out _);
+                if (res != EResult.k_EResultOK)
+                    Debug.LogWarning($"[Net] SendToServer failed: {res}");
+            }
+        }
+
+        private void Update()
+        {
+            if (!SteamManager.Initialized) return;
+            var msgs = new System.IntPtr[64];
+
+            if (NetworkSession.IsHost && _pollGroup != HSteamNetPollGroup.Invalid)
+            {
+                int n = SteamNetworkingSockets.ReceiveMessagesOnPollGroup(_pollGroup, msgs, msgs.Length);
+                for (int i = 0; i < n; i++) DispatchAndRelease(msgs[i]);
+            }
+            else if (!NetworkSession.IsHost && _serverConnection != HSteamNetConnection.Invalid)
+            {
+                int n = SteamNetworkingSockets.ReceiveMessagesOnConnection(_serverConnection, msgs, msgs.Length);
+                for (int i = 0; i < n; i++) DispatchAndRelease(msgs[i]);
+            }
+        }
+
+        private void DispatchAndRelease(System.IntPtr ptr)
+        {
+            var msg = System.Runtime.InteropServices.Marshal.PtrToStructure<SteamNetworkingMessage_t>(ptr);
+            var data = new byte[msg.m_cbSize];
+            System.Runtime.InteropServices.Marshal.Copy(msg.m_pData, data, 0, msg.m_cbSize);
+            var sender = msg.m_identityPeer.GetSteamID();
+            RouteMessage(sender, data);
+            SteamNetworkingMessage_t.Release(ptr);
+        }
+
+        private void RouteMessage(CSteamID sender, byte[] payload)
+        {
+            if (payload == null || payload.Length == 0) return;
+            switch ((NetMessageType)payload[0])
+            {
+                case NetMessageType.GameStart:
+                    if (NetworkSession.GameSeed != 0)
+                    {
+                        Debug.LogWarning("[Net] Duplicate GameStart ignored");
+                        return;
+                    }
+                    if (NetMessages.TryUnpackGameStart(payload, out int seed))
+                    {
+                        NetworkSession.GameSeed = seed;
+                        NetworkSession.RaiseGameStartReceived();
+                    }
+                    break;
+                default:
+                    Debug.LogWarning($"[Net] Unknown message type: {payload[0]}");
+                    break;
+            }
+        }
 
         // Internal lifecycle methods invoked by HandleLobbyEntered/Left in later tasks
         private void StartListening()
