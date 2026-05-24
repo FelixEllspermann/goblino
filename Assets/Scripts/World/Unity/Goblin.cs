@@ -17,12 +17,16 @@ namespace RTSCL.World.Unity
         private SpriteRenderer _renderer;
         private GameObject _selectionRing;
 
-        private enum State { Idle, MovingToPoint, MovingToTree, Harvesting }
+        private enum State { Idle, MovingToPoint, MovingToTree, Harvesting, MovingToBuild, Building }
         private State _state = State.Idle;
 
         private Vector3 _moveTarget;
         private Vector3Int _treeCell;
+        private Vector2Int _buildOrigin;
         private float _harvestTimer;
+        private float _buildTimer;
+        private const float BuildTickDuration = 1.0f;
+        private const int BuildProgressPerTick = 10;
 
         // Headbutt anim state
         private float _hitAnimT = -1f;       // -1 = not animating
@@ -68,6 +72,16 @@ namespace RTSCL.World.Unity
             _moveTarget = FindAdjacentStandingSpot(treeCell);
             _state = State.MovingToTree;
             _harvestTimer = 0f;
+        }
+
+        public void SetBuildCommand(Vector2Int buildingOrigin)
+        {
+            ResetHitAnim();
+            _buildOrigin = buildingOrigin;
+            // Walk to the origin cell center — close enough to "build" the structure
+            _moveTarget = new Vector3(buildingOrigin.x + 0.5f, buildingOrigin.y + 0.5f, 0f);
+            _state = State.MovingToBuild;
+            _buildTimer = 0f;
         }
 
         // Returns the world position of the passable cell adjacent to the tree closest to the goblin.
@@ -154,6 +168,41 @@ namespace RTSCL.World.Unity
                     {
                         _harvestTimer = 0f;
                         HitTree(_treeCell);
+                    }
+                    UpdateHitAnim();
+                    break;
+                }
+
+                case State.MovingToBuild:
+                {
+                    if (!BuildingConstruction.IsUnderConstruction(_buildOrigin))
+                    {
+                        _state = State.Idle;
+                        break;
+                    }
+                    if (StepToward(_moveTarget))
+                    {
+                        _state = State.Building;
+                        _buildTimer = 0f;
+                    }
+                    break;
+                }
+
+                case State.Building:
+                {
+                    ShowIdleFrame();
+                    if (!BuildingConstruction.IsUnderConstruction(_buildOrigin))
+                    {
+                        ResetHitAnim();
+                        _state = State.Idle;
+                        break;
+                    }
+                    _buildTimer += Time.deltaTime;
+                    if (_buildTimer >= BuildTickDuration)
+                    {
+                        _buildTimer = 0f;
+                        BuildingConstruction.AddProgress(_buildOrigin, BuildProgressPerTick, out _);
+                        StartHitAnim(new Vector3Int(_buildOrigin.x, _buildOrigin.y, 0));
                     }
                     UpdateHitAnim();
                     break;

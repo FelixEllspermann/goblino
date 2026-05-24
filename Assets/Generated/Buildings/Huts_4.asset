@@ -15,3 +15,4 @@ MonoBehaviour:
   DisplayName: Huts_4
   Sprite: {fileID: 2093442419, guid: 6570d8dc9e44fb24ababf43d74f4c8c3, type: 3}
   Footprint: {x: 1, y: 1}
+  WoodCost: 20

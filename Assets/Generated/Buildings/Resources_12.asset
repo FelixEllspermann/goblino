@@ -15,3 +15,4 @@ MonoBehaviour:
   DisplayName: Resources_12
   Sprite: {fileID: -469565172, guid: 684b114cbb93cab4a9c846580e6081a4, type: 3}
   Footprint: {x: 1, y: 1}
+  WoodCost: 100

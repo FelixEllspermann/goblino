@@ -15,3 +15,4 @@ MonoBehaviour:
   DisplayName: Taverns_5
   Sprite: {fileID: -258065525, guid: a03df09e8c133804f9d3922f1520f3c5, type: 3}
   Footprint: {x: 1, y: 1}
+  WoodCost: 70

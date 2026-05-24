@@ -15,3 +15,4 @@ MonoBehaviour:
   DisplayName: Market_1
   Sprite: {fileID: 1455624456, guid: 6ca68bad97652c244b2e85db0191858f, type: 3}
   Footprint: {x: 1, y: 1}
+  WoodCost: 80

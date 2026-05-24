@@ -47,7 +47,7 @@ namespace RTSCL.World.Unity
                 var origin = new Vector2Int(
                     mainCell.x - def.Footprint.x / 2,
                     mainCell.y - def.Footprint.y / 2);
-                _buildingPlacer.PlaceForce(def, origin);
+                _buildingPlacer.PlaceForce(def, origin, charge: false, requireConstruction: false);
             }
             else
             {

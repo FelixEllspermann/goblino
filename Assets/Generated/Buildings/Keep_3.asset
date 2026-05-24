@@ -15,3 +15,4 @@ MonoBehaviour:
   DisplayName: Keep_3
   Sprite: {fileID: -22207178, guid: 7a748a1f612b9c54289b61e19a715640, type: 3}
   Footprint: {x: 2, y: 2}
+  WoodCost: 300

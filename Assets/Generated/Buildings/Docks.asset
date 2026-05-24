@@ -15,3 +15,4 @@ MonoBehaviour:
   DisplayName: Docks
   Sprite: {fileID: 2346745601856155467, guid: 99c13e2f0a88930479f583c7eda50140, type: 3}
   Footprint: {x: 2, y: 2}
+  WoodCost: 80

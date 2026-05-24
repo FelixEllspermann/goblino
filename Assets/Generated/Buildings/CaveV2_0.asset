@@ -15,3 +15,4 @@ MonoBehaviour:
   DisplayName: CaveV2_0
   Sprite: {fileID: -6582857968547708429, guid: 666622fcdff33b544af611619c92bcb4, type: 3}
   Footprint: {x: 1, y: 1}
+  WoodCost: 30

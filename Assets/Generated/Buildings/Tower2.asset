@@ -15,3 +15,4 @@ MonoBehaviour:
   DisplayName: Tower2
   Sprite: {fileID: -2560009122603031383, guid: 36d3c12076a81bf4c88cd335468fd7f0, type: 3}
   Footprint: {x: 3, y: 6}
+  WoodCost: 120

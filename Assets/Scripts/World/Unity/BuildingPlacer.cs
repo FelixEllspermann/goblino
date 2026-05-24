@@ -94,6 +94,9 @@ namespace RTSCL.World.Unity
 
         private bool IsValid(Vector2Int origin)
         {
+            // Affordability
+            if (_selected.WoodCost > 0 && ResourceBank.Wood < _selected.WoodCost) return false;
+
             var world = _worldSource != null ? _worldSource.CurrentWorld : null;
             for (int dy = 0; dy < _selected.Footprint.y; dy++)
             for (int dx = 0; dx < _selected.Footprint.x; dx++)
@@ -101,16 +104,13 @@ namespace RTSCL.World.Unity
                 int x = origin.x + dx;
                 int y = origin.y + dy;
 
-                // Terrain biome check
                 var t = _terrainMap.GetTile(new Vector3Int(x, y, 0));
                 if (t == null) return false;
                 string n = t.name;
                 if (n == "DeepWater" || n == "Shore" || n == "Cliff") return false;
 
-                // Overlap with existing buildings
                 if (_cellOwners.ContainsKey(new Vector2Int(x, y))) return false;
 
-                // Overlap with resource clusters
                 if (world != null && IsResourceCell(world, x, y)) return false;
             }
             return true;
@@ -125,12 +125,21 @@ namespace RTSCL.World.Unity
             return false;
         }
 
-        private void Place(Vector2Int origin) => PlaceForce(_selected, origin);
+        private void Place(Vector2Int origin) =>
+            PlaceForce(_selected, origin, charge: true, requireConstruction: true);
 
-        /// <summary>Place a building bypassing validation — used for scripted/main-base placement.</summary>
-        public void PlaceForce(BuildingDefinition def, Vector2Int origin)
+        /// <summary>Place a building. charge=true deducts WoodCost; requireConstruction=true makes it built-by-goblins.</summary>
+        public void PlaceForce(BuildingDefinition def, Vector2Int origin,
+                               bool charge = true, bool requireConstruction = true)
         {
             if (def == null || def.Sprite == null) return;
+
+            if (charge && def.WoodCost > 0)
+            {
+                if (ResourceBank.Wood < def.WoodCost) return;
+                ResourceBank.AddWood(-def.WoodCost);
+            }
+
             var go = new GameObject($"Building_{def.name}_{origin.x}_{origin.y}");
             if (_buildingsRoot != null) go.transform.SetParent(_buildingsRoot, false);
             go.transform.position = _terrainMap.CellToWorld(new Vector3Int(origin.x, origin.y, 0));
@@ -147,6 +156,7 @@ namespace RTSCL.World.Unity
             }
 
             BuildingHP.Register(origin, BuildingHP.MaxHpFor(def));
+            if (requireConstruction) BuildingConstruction.Register(origin, go);
         }
 
         public void ClearAllPlaced()
@@ -154,6 +164,7 @@ namespace RTSCL.World.Unity
             _cellOwners.Clear();
             _cellToOrigin.Clear();
             BuildingHP.Clear();
+            BuildingConstruction.Clear();
             if (_buildingsRoot == null) return;
             for (int i = _buildingsRoot.childCount - 1; i >= 0; i--)
             {

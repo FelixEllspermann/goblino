@@ -15,3 +15,4 @@ MonoBehaviour:
   DisplayName: Houses_0
   Sprite: {fileID: 3222940646981861373, guid: 889ffa500464fd24a9219c8fc08c0b40, type: 3}
   Footprint: {x: 1, y: 1}
+  WoodCost: 40

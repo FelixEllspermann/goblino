@@ -11,6 +11,7 @@ namespace RTSCL.World.Unity
         [SerializeField] private Camera _camera;
         [SerializeField] private BuildingPlacer _buildingPlacer;
         [SerializeField] private Tilemap _decorationMap;
+        [SerializeField] private Tilemap _terrainMap;
         [SerializeField] private float _clickPickRadius = 0.6f;       // world units
         [SerializeField] private float _dragThresholdPx = 6f;
         [SerializeField] private float _formationSpacing = 1.0f;
@@ -67,12 +68,28 @@ namespace RTSCL.World.Unity
                     ClickFeedback.Spawn(treeCenter, new Color(0.4f, 1f, 0.4f, 0.85f));  // green = harvest
                     CommandHarvest(treeCell);
                 }
+                else if (TryGetConstructionAt(worldTarget, out var buildOrigin))
+                {
+                    Vector3 c = new(buildOrigin.x + 0.5f, buildOrigin.y + 0.5f, 0f);
+                    ClickFeedback.Spawn(c, new Color(1f, 0.7f, 0.2f, 0.9f));  // orange = build
+                    foreach (var g in _selected) g.SetBuildCommand(buildOrigin);
+                }
                 else
                 {
                     ClickFeedback.Spawn(worldTarget, new Color(1f, 1f, 1f, 0.85f));    // white = move
                     CommandFormation(worldTarget);
                 }
             }
+        }
+
+        private bool TryGetConstructionAt(Vector3 worldPos, out Vector2Int origin)
+        {
+            origin = default;
+            if (_terrainMap == null || _buildingPlacer == null) return false;
+            var cell = _terrainMap.WorldToCell(worldPos);
+            var cell2 = new Vector2Int(cell.x, cell.y);
+            if (!_buildingPlacer.TryGetBuildingOrigin(cell2, out origin)) return false;
+            return BuildingConstruction.IsUnderConstruction(origin);
         }
 
         private bool TryGetTreeAt(Vector3 world, out Vector3Int cell)

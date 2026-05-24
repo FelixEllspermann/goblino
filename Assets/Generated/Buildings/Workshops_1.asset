@@ -15,3 +15,4 @@ MonoBehaviour:
   DisplayName: Workshops_1
   Sprite: {fileID: -302379234, guid: fbd645f06f5a96a48a800491ea7d267a, type: 3}
   Footprint: {x: 1, y: 1}
+  WoodCost: 60
