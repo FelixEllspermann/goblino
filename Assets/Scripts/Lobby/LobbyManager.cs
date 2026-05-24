@@ -31,6 +31,7 @@ namespace RTSCL.Lobby
 
         private Callback<LobbyCreated_t> _cbLobbyCreated;
         private Callback<LobbyEnter_t> _cbLobbyEntered;
+        private Callback<LobbyChatUpdate_t> _cbLobbyChat;
         private CallResult<LobbyMatchList_t> _crLobbyList;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
@@ -47,6 +48,7 @@ namespace RTSCL.Lobby
             _cbLobbyCreated = Callback<LobbyCreated_t>.Create(OnSteamLobbyCreated);
             _cbLobbyEntered = Callback<LobbyEnter_t>.Create(OnSteamLobbyEntered);
             _crLobbyList = CallResult<LobbyMatchList_t>.Create(OnSteamLobbyMatchList);
+            _cbLobbyChat = Callback<LobbyChatUpdate_t>.Create(OnSteamLobbyChat);
         }
 
         // Public API — all methods no-op if Steam isn't initialized.
@@ -73,7 +75,29 @@ namespace RTSCL.Lobby
             SteamMatchmaking.JoinLobby(id);
             // LobbyEnter_t fires asynchronously
         }
-        public static void LeaveLobby()      { /* Task 5 */ }
+        public static void LeaveLobby()
+        {
+            if (_instance == null) return;
+            if (_instance._currentLobby == CSteamID.Nil) return;
+            SteamMatchmaking.LeaveLobby(_instance._currentLobby);
+            _instance._currentLobby = CSteamID.Nil;
+            RaiseLobbyLeft();
+        }
+
+        public static List<(CSteamID id, string name, bool isHost)> GetCurrentMembers()
+        {
+            var list = new List<(CSteamID, string, bool)>();
+            if (_instance == null || _instance._currentLobby == CSteamID.Nil) return list;
+            var lobby = _instance._currentLobby;
+            var owner = SteamMatchmaking.GetLobbyOwner(lobby);
+            int count = SteamMatchmaking.GetNumLobbyMembers(lobby);
+            for (int i = 0; i < count; i++)
+            {
+                var id = SteamMatchmaking.GetLobbyMemberByIndex(lobby, i);
+                list.Add((id, SteamFriends.GetFriendPersonaName(id), id == owner));
+            }
+            return list;
+        }
 
         private void OnSteamLobbyCreated(LobbyCreated_t e)
         {
@@ -120,6 +144,31 @@ namespace RTSCL.Lobby
             }
             _currentLobby = new CSteamID(e.m_ulSteamIDLobby);
             RaiseLobbyEntered(_currentLobby);
+        }
+
+        private void OnSteamLobbyChat(LobbyChatUpdate_t e)
+        {
+            if ((CSteamID)e.m_ulSteamIDLobby != _currentLobby) return;
+            var change = (EChatMemberStateChange)e.m_rgfChatMemberStateChange;
+            var changedUser = new CSteamID(e.m_ulSteamIDUserChanged);
+
+            bool ownerLeft = false;
+            if ((change & (EChatMemberStateChange.k_EChatMemberStateChangeLeft
+                         | EChatMemberStateChange.k_EChatMemberStateChangeDisconnected
+                         | EChatMemberStateChange.k_EChatMemberStateChangeKicked
+                         | EChatMemberStateChange.k_EChatMemberStateChangeBanned)) != 0)
+            {
+                var owner = SteamMatchmaking.GetLobbyOwner(_currentLobby);
+                if (changedUser == owner || owner == CSteamID.Nil) ownerLeft = true;
+            }
+
+            if (ownerLeft)
+            {
+                RaiseError("Host left the lobby");
+                LeaveLobby();
+                return;
+            }
+            RaiseLobbyMembersChanged();
         }
 
         // Internal event raisers (used by Steam callback handlers in later tasks)
