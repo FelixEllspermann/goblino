@@ -305,8 +305,9 @@ namespace RTSCL.World.Unity
                     transform.position += _dieVelocity * Time.deltaTime;
                     if (transform.position.y <= _dieStartPos.y && _dieVelocity.y <= 0f)
                     {
-                        // Snap to ground, destroy. Burst comes in Task 9.
+                        // Snap to ground, spawn burst, destroy.
                         transform.position = _dieStartPos;
+                        DeathBurst.Spawn(transform.position);
                         Destroy(gameObject);
                     }
                     break;
