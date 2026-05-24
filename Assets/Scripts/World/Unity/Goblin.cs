@@ -65,9 +65,41 @@ namespace RTSCL.World.Unity
         {
             ResetHitAnim();
             _treeCell = treeCell;
-            _moveTarget = CellCenter(treeCell);
+            _moveTarget = FindAdjacentStandingSpot(treeCell);
             _state = State.MovingToTree;
             _harvestTimer = 0f;
+        }
+
+        // Returns the world position of the passable cell adjacent to the tree closest to the goblin.
+        // Falls back to the tree cell center if no adjacent cell is passable.
+        private Vector3 FindAdjacentStandingSpot(Vector3Int treeCell)
+        {
+            Vector3 goblinPos = transform.position;
+            Vector3Int[] offsets = {
+                new( 1, 0, 0), new(-1, 0, 0), new( 0, 1, 0), new( 0,-1, 0),
+                new( 1, 1, 0), new( 1,-1, 0), new(-1, 1, 0), new(-1,-1, 0),
+            };
+            Vector3 best = CellCenter(treeCell);
+            float bestDist = float.MaxValue;
+            bool found = false;
+            foreach (var off in offsets)
+            {
+                var nc = treeCell + off;
+                if (!IsTerrainPassable(nc)) continue;
+                Vector3 p = CellCenter(nc);
+                float d = (p - goblinPos).sqrMagnitude;
+                if (d < bestDist) { bestDist = d; best = p; found = true; }
+            }
+            return found ? best : CellCenter(treeCell);
+        }
+
+        private bool IsTerrainPassable(Vector3Int cell)
+        {
+            if (_terrainMap == null) return true;
+            var t = _terrainMap.GetTile(cell);
+            if (t == null) return false;
+            var n = t.name;
+            return n != "DeepWater" && n != "Cliff";
         }
 
         public void SetSelected(bool sel)

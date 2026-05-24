@@ -62,9 +62,16 @@ namespace RTSCL.World.Unity
                     new Vector3(mp.x, mp.y, -_camera.transform.position.z));
 
                 if (TryGetTreeAt(worldTarget, out var treeCell))
+                {
+                    Vector3 treeCenter = _decorationMap.CellToWorld(treeCell) + new Vector3(0.5f, 0.5f, 0f);
+                    ClickFeedback.Spawn(treeCenter, new Color(0.4f, 1f, 0.4f, 0.85f));  // green = harvest
                     CommandHarvest(treeCell);
+                }
                 else
+                {
+                    ClickFeedback.Spawn(worldTarget, new Color(1f, 1f, 1f, 0.85f));    // white = move
                     CommandFormation(worldTarget);
+                }
             }
         }
 
