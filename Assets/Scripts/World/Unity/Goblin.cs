@@ -11,6 +11,13 @@ namespace RTSCL.World.Unity
         public string Kind { get; private set; } = "Goblin";
         public bool IsSelected { get; private set; }
 
+        public ulong Owner { get; private set; }
+        public void SetOwner(ulong ownerSteamId)
+        {
+            Owner = ownerSteamId;
+            ApplyOwnerVisuals();
+        }
+
         public int  CurrentHp { get; private set; }
         public int  MaxHp { get; private set; } = 20;
         public int  PopulationCost { get; private set; } = 1;
@@ -72,6 +79,7 @@ namespace RTSCL.World.Unity
             _decorationMap = decorationMap;
             _renderer = GetComponent<SpriteRenderer>();
             _renderer.sprite = walkFrames[0];
+            ApplyOwnerVisuals();
             _moveTarget = transform.position;
 
             if (def != null)
@@ -371,6 +379,13 @@ namespace RTSCL.World.Unity
                 transform.rotation = Quaternion.identity;
             }
             _hitAnimT = -1f;
+        }
+
+        private void ApplyOwnerVisuals()
+        {
+            if (_renderer == null) return;
+            bool isLocal = Owner == WorldStartContext.LocalPlayer || Owner == 0UL;
+            _renderer.color = isLocal ? Color.white : WorldStartContext.GetPlayerColor(Owner);
         }
 
         private void EnterDying()
