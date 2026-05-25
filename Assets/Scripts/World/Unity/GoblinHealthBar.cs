@@ -2,14 +2,17 @@ using UnityEngine;
 
 namespace RTSCL.World.Unity
 {
-    /// <summary>Floating HP bar above a Goblin. Hidden when HP is full and not selected.</summary>
+    /// <summary>Floating HP bar above a Goblin. Hidden when HP is full and not selected.
+    /// Adds a thin faction-colored border behind the bar.</summary>
     public sealed class GoblinHealthBar : MonoBehaviour
     {
         private const float BarWidth = 0.75f;
         private const float BarHeight = 0.10f;
+        private const float BorderPad = 0.04f;
         private const float YOffset = 0.85f;
 
         private Goblin _goblin;
+        private SpriteRenderer _border;
         private SpriteRenderer _bg;
         private SpriteRenderer _fill;
         private Transform _fillT;
@@ -29,6 +32,15 @@ namespace RTSCL.World.Unity
         {
             if (s_sprite == null) s_sprite = BuildSquareSprite();
 
+            // Owner-colored border (behind bg)
+            var borderGo = new GameObject("Border");
+            borderGo.transform.SetParent(transform, false);
+            _border = borderGo.AddComponent<SpriteRenderer>();
+            _border.sprite = s_sprite;
+            _border.sortingOrder = 27;
+            borderGo.transform.localScale = new Vector3(BarWidth + BorderPad, BarHeight + BorderPad, 1f);
+
+            // Dark background
             var bgGo = new GameObject("Bg");
             bgGo.transform.SetParent(transform, false);
             _bg = bgGo.AddComponent<SpriteRenderer>();
@@ -37,6 +49,7 @@ namespace RTSCL.World.Unity
             _bg.sortingOrder = 28;
             bgGo.transform.localScale = new Vector3(BarWidth, BarHeight, 1f);
 
+            // HP fill
             var fillGo = new GameObject("Fill");
             fillGo.transform.SetParent(transform, false);
             _fill = fillGo.AddComponent<SpriteRenderer>();
@@ -47,20 +60,30 @@ namespace RTSCL.World.Unity
             _fillT.localPosition = new Vector3(-BarWidth * 0.5f, 0f, 0f);
         }
 
+        private void Start()
+        {
+            // Owner color cached at start — owner doesn't change mid-game.
+            if (_goblin != null && _border != null)
+            {
+                bool isLocal = _goblin.Owner == WorldStartContext.LocalPlayer || _goblin.Owner == 0UL;
+                Color faction = isLocal ? Color.white : WorldStartContext.GetPlayerColor(_goblin.Owner);
+                _border.color = faction;
+            }
+        }
+
         private void LateUpdate()
         {
             if (_goblin == null) { Destroy(gameObject); return; }
             float frac = _goblin.MaxHp > 0 ? (float)_goblin.CurrentHp / _goblin.MaxHp : 0f;
             bool show = frac < 1f || _goblin.IsSelected;
+            _border.enabled = show;
             _bg.enabled = show;
             _fill.enabled = show;
             if (!show) return;
 
-            // Scale fill width and shift so it stays left-anchored
             _fillT.localScale = new Vector3(BarWidth * frac, BarHeight, 1f);
             _fillT.localPosition = new Vector3(-BarWidth * 0.5f + (BarWidth * frac) * 0.5f, 0f, 0f);
 
-            // Green at full, yellow at half, red at low
             Color c = frac > 0.5f
                 ? Color.Lerp(new Color(0.9f, 0.85f, 0.2f), new Color(0.3f, 0.85f, 0.3f), (frac - 0.5f) * 2f)
                 : Color.Lerp(new Color(0.85f, 0.2f, 0.2f), new Color(0.9f, 0.85f, 0.2f), frac * 2f);
