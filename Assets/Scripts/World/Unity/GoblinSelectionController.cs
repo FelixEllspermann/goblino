@@ -26,6 +26,9 @@ namespace RTSCL.World.Unity
         private bool _mouseDown;
         private bool _isDragBox;
 
+        private static bool IsLocalOwner(Goblin g) =>
+            g != null && (g.Owner == WorldStartContext.LocalPlayer || g.Owner == 0UL);
+
         private void Update()
         {
             if (_camera == null || Mouse.current == null) return;
@@ -158,6 +161,7 @@ namespace RTSCL.World.Unity
             foreach (var g in Goblin.All)
             {
                 if (g == null) continue;
+                if (!IsLocalOwner(g)) continue;
                 float d = Vector2.Distance(g.transform.position, world);
                 if (d < bestDist) { bestDist = d; best = g; }
             }
@@ -172,6 +176,7 @@ namespace RTSCL.World.Unity
             foreach (var g in Goblin.All)
             {
                 if (g == null) continue;
+                if (!IsLocalOwner(g)) continue;
                 Vector3 sp = _camera.WorldToScreenPoint(g.transform.position);
                 if (sp.x >= minX && sp.x <= maxX && sp.y >= minY && sp.y <= maxY)
                     hit.Add(g);
