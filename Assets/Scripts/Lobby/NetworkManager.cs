@@ -47,6 +47,11 @@ namespace RTSCL.Lobby
             LobbyManager.OnLobbyLeft    -= HandleLobbyLeft;
         }
 
+        private void OnDestroy()
+        {
+            Disconnect();
+        }
+
         private void HandleLobbyEntered(CSteamID lobby)
         {
             if (!SteamManager.Initialized) { OnError?.Invoke("Steam not running"); return; }
@@ -219,7 +224,7 @@ namespace RTSCL.Lobby
                 SteamNetworkingSockets.CloseConnection(_serverConnection, 0, "disconnect", false);
                 _serverConnection = HSteamNetConnection.Invalid;
             }
-            foreach (var conn in _connections.Keys)
+            foreach (var conn in new System.Collections.Generic.List<HSteamNetConnection>(_connections.Keys))
                 SteamNetworkingSockets.CloseConnection(conn, 0, "disconnect", false);
             _connections.Clear();
             if (_listenSocket != HSteamListenSocket.Invalid)
