@@ -63,7 +63,8 @@ namespace RTSCL.World.Unity
             if (slots == null || slots.Length == 0)
             {
                 // Solo: keep at spawn[0], owner=0
-                SpawnTeamAt(def, world.Spawns[0], 0UL, addPopulation: true);
+                var s0 = world.Spawns[0];
+                SpawnTeamAt(def, new Vector2Int(s0.x, s0.y), 0UL, addPopulation: true);
                 return;
             }
 
@@ -78,7 +79,8 @@ namespace RTSCL.World.Unity
                     continue;
                 }
                 bool isLocal = slots[i].steamId == local;
-                SpawnTeamAt(def, world.Spawns[idx], slots[i].steamId, addPopulation: isLocal);
+                var s = world.Spawns[idx];
+                SpawnTeamAt(def, new Vector2Int(s.x, s.y), slots[i].steamId, addPopulation: isLocal);
             }
         }
 
