@@ -79,8 +79,9 @@ namespace RTSCL.World.Unity
                 {
                     Vector3 c = new(buildOrigin.x + 0.5f, buildOrigin.y + 0.5f, 0f);
                     ClickFeedback.Spawn(c, new Color(1f, 0.7f, 0.2f, 0.9f));  // orange = build
-                    foreach (var g in _selected)
-                        if (IsWorker(g)) g.SetBuildCommand(buildOrigin);
+                    var workers = new List<Goblin>();
+                    foreach (var g in _selected) if (IsWorker(g)) workers.Add(g);
+                    if (workers.Count > 0) NetCommandIssuer.IssueBuildAssist(workers, buildOrigin);
                 }
                 else if (TryGetGoblinAt(worldTarget, out var enemy))
                 {
@@ -124,11 +125,17 @@ namespace RTSCL.World.Unity
             // Find up to N nearest trees around the click (one per worker)
             var trees = FindNearbyTrees(clickedTree, workers.Count, _harvestSpreadRadius);
             if (trees.Count == 0) return;
+            // Group workers by their assigned tree, then issue one network command per tree.
+            var byTree = new Dictionary<Vector3Int, List<Goblin>>();
             for (int i = 0; i < workers.Count; i++)
             {
                 var assigned = trees[i % trees.Count];
-                workers[i].SetHarvestCommand(assigned);
+                if (!byTree.TryGetValue(assigned, out var list))
+                { list = new List<Goblin>(); byTree[assigned] = list; }
+                list.Add(workers[i]);
             }
+            foreach (var kvp in byTree)
+                NetCommandIssuer.IssueHarvest(kvp.Value, kvp.Key);
         }
 
         private static bool IsWorker(Goblin g) =>
@@ -198,18 +205,7 @@ namespace RTSCL.World.Unity
 
         private void CommandFormation(Vector3 worldCenter)
         {
-            int n = _selected.Count;
-            int cols = Mathf.CeilToInt(Mathf.Sqrt(n));
-            int rows = Mathf.CeilToInt((float)n / cols);
-            for (int i = 0; i < n; i++)
-            {
-                int col = i % cols;
-                int row = i / cols;
-                Vector3 offset = new(
-                    (col - (cols - 1) * 0.5f) * _formationSpacing,
-                    (row - (rows - 1) * 0.5f) * _formationSpacing, 0);
-                _selected[i].SetMoveCommand(worldCenter + offset);
-            }
+            NetCommandIssuer.IssueMove(_selected, worldCenter);
         }
 
         private bool TryGetGoblinAt(Vector3 worldPos, out Goblin target)
