@@ -83,6 +83,34 @@ namespace RTSCL.World.Unity
             GoblinProduction.TryStart(buildingOrigin, def, reservedLocalIndex);
         }
 
+        public static void ApplyAttack(GoblinNetId attackerId, GoblinNetId targetId, ulong sender)
+        {
+            if (!GoblinNetRegistry.TryGet(attackerId, out var attacker) || attacker == null)
+            {
+                Debug.LogWarning($"[Net] ApplyAttack dropped: attacker {attackerId} not found");
+                return;
+            }
+            if (sender != 0UL && attacker.NetId.Owner != sender)
+            {
+                Debug.LogWarning($"[Net] ApplyAttack dropped: sender {sender} != attacker.Owner {attacker.NetId.Owner}");
+                return;
+            }
+            if (!GoblinNetRegistry.TryGet(targetId, out var target) || target == null) return;
+            attacker.SetAttackCommand(target);
+        }
+
+        public static void ApplyDamage(GoblinNetId targetId, int damage, GoblinNetId attackerId, ulong sender)
+        {
+            if (sender != 0UL && attackerId.Owner != sender)
+            {
+                Debug.LogWarning($"[Net] ApplyDamage dropped: sender {sender} != attacker.Owner {attackerId.Owner}");
+                return;
+            }
+            if (!GoblinNetRegistry.TryGet(targetId, out var target) || target == null) return;
+            GoblinNetRegistry.TryGet(attackerId, out var attacker);
+            target.TakeDamage(damage, attacker);
+        }
+
         // ------------- Top-level dispatcher -------------
 
         public static void Apply(byte[] payload, ulong sender)
@@ -137,6 +165,27 @@ namespace RTSCL.World.Unity
                         ushort tri = tr.ReadUInt16();
                         if (town != sender) { Debug.LogWarning($"[Net] CmdTrainUnit dropped: owner {town} != sender {sender}"); break; }
                         ApplyTrainUnit(new Vector2Int(tox, toy), NetworkCatalog.GetUnit(tui), town, tri);
+                    }
+                    break;
+                case NetWireFormat.CmdAttack:
+                    if (payload.Length >= 21)
+                    {
+                        using var ams = new System.IO.MemoryStream(payload, 1, payload.Length - 1);
+                        using var ar = new System.IO.BinaryReader(ams);
+                        ulong aOwn = ar.ReadUInt64(); ushort aIdx = ar.ReadUInt16();
+                        ulong tOwn = ar.ReadUInt64(); ushort tIdx = ar.ReadUInt16();
+                        ApplyAttack(new GoblinNetId(aOwn, aIdx), new GoblinNetId(tOwn, tIdx), sender);
+                    }
+                    break;
+                case NetWireFormat.EvDamage:
+                    if (payload.Length >= 25)
+                    {
+                        using var dms = new System.IO.MemoryStream(payload, 1, payload.Length - 1);
+                        using var dr = new System.IO.BinaryReader(dms);
+                        ulong tOwn = dr.ReadUInt64(); ushort tIdx = dr.ReadUInt16();
+                        int dmg = dr.ReadInt32();
+                        ulong aOwn = dr.ReadUInt64(); ushort aIdx = dr.ReadUInt16();
+                        ApplyDamage(new GoblinNetId(tOwn, tIdx), dmg, new GoblinNetId(aOwn, aIdx), sender);
                     }
                     break;
             }
