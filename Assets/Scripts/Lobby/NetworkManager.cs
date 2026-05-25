@@ -275,6 +275,17 @@ namespace RTSCL.Lobby
 
         private void Disconnect()
         {
+            // If Steamworks already shut down (e.g. on editor Stop / app quit), skip the
+            // native cleanup — those handles are gone with Steamworks itself.
+            if (!SteamManager.Initialized)
+            {
+                _serverConnection = HSteamNetConnection.Invalid;
+                _connections.Clear();
+                _listenSocket = HSteamListenSocket.Invalid;
+                _pollGroup = HSteamNetPollGroup.Invalid;
+                return;
+            }
+
             if (_serverConnection != HSteamNetConnection.Invalid)
             {
                 SteamNetworkingSockets.CloseConnection(_serverConnection, 0, "disconnect", false);
