@@ -159,6 +159,35 @@ namespace RTSCL.Lobby
             }
         }
 
+        /// <summary>Host-only: broadcast payload to all connected clients EXCEPT the given one.
+        /// Used to echo a command back out after the host receives it from a client.</summary>
+        public static void SendToOthers(byte[] payload, HSteamNetConnection except)
+        {
+            if (_instance == null || payload == null || payload.Length == 0) return;
+            _instance.SendToOthersImpl(payload, except);
+        }
+
+        private void SendToOthersImpl(byte[] payload, HSteamNetConnection except)
+        {
+            if (!NetworkSession.IsHost) return;
+            int flags = Constants.k_nSteamNetworkingSend_Reliable;
+            var handle = System.Runtime.InteropServices.GCHandle.Alloc(
+                payload, System.Runtime.InteropServices.GCHandleType.Pinned);
+            try
+            {
+                var ptr = handle.AddrOfPinnedObject();
+                foreach (var conn in _connections.Keys)
+                {
+                    if (conn.Equals(except)) continue;
+                    var res = SteamNetworkingSockets.SendMessageToConnection(
+                        conn, ptr, (uint)payload.Length, flags, out _);
+                    if (res != EResult.k_EResultOK)
+                        Debug.LogWarning($"[Net] SendToOthers failed: {res}");
+                }
+            }
+            finally { handle.Free(); }
+        }
+
         private void Update()
         {
             if (!SteamManager.Initialized) return;
@@ -182,11 +211,12 @@ namespace RTSCL.Lobby
             var data = new byte[msg.m_cbSize];
             System.Runtime.InteropServices.Marshal.Copy(msg.m_pData, data, 0, msg.m_cbSize);
             var sender = msg.m_identityPeer.GetSteamID();
-            RouteMessage(sender, data);
+            var senderConn = msg.m_conn;
+            RouteMessage(sender, data, senderConn);
             SteamNetworkingMessage_t.Release(ptr);
         }
 
-        private void RouteMessage(CSteamID sender, byte[] payload)
+        private void RouteMessage(CSteamID sender, byte[] payload, HSteamNetConnection senderConn)
         {
             if (payload == null || payload.Length == 0) return;
             switch ((NetMessageType)payload[0])
@@ -203,6 +233,17 @@ namespace RTSCL.Lobby
                         NetworkSession.PlayerSlots = slots;
                         NetworkSession.RaiseGameStartReceived();
                     }
+                    break;
+                case NetMessageType.CmdMove:
+                case NetMessageType.CmdHarvest:
+                case NetMessageType.CmdBuildAssist:
+                case NetMessageType.CmdPlaceBuilding:
+                case NetMessageType.CmdTrainUnit:
+                    // Apply on this client.
+                    RTSCL.World.Unity.NetCommandApplier.Apply(payload, sender.m_SteamID);
+                    // Host: echo to all OTHER connected clients (so the rest of the lobby sees it).
+                    if (NetworkSession.IsHost)
+                        SendToOthers(payload, senderConn);
                     break;
                 default:
                     Debug.LogWarning($"[Net] Unknown message type: {payload[0]}");
