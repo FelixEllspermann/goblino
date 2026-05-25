@@ -46,7 +46,7 @@ namespace RTSCL.World.Unity
         }
 
         /// <summary>Spawn N goblins distributed evenly in rings around a building footprint (skipping the footprint cells). If kindName is set, all spawned goblins are of that kind; otherwise a random kind per goblin.</summary>
-        public void SpawnAroundFootprint(Vector2Int origin, Vector2Int footprint, int count, string kindName = null)
+        public void SpawnAroundFootprint(Vector2Int origin, Vector2Int footprint, int count, string kindName = null, ulong owner = 0UL)
         {
             if (_terrainMap == null || count <= 0) return;
             var forcedKind = string.IsNullOrEmpty(kindName) ? null : FindKind(kindName);
@@ -74,7 +74,7 @@ namespace RTSCL.World.Unity
                 {
                     foreach (var c in available)
                     {
-                        SpawnAt(new Vector3(c.x + 0.5f, c.y + 0.5f, 0f), forcedKind);
+                        SpawnAt(new Vector3(c.x + 0.5f, c.y + 0.5f, 0f), forcedKind, owner);
                         spawned++;
                         if (spawned >= count) break;
                     }
@@ -86,7 +86,7 @@ namespace RTSCL.World.Unity
                     {
                         int idx = (i * available.Count) / remaining;
                         var c = available[idx];
-                        SpawnAt(new Vector3(c.x + 0.5f, c.y + 0.5f, 0f), forcedKind);
+                        SpawnAt(new Vector3(c.x + 0.5f, c.y + 0.5f, 0f), forcedKind, owner);
                         spawned++;
                     }
                 }
@@ -94,7 +94,7 @@ namespace RTSCL.World.Unity
         }
 
         /// <summary>Spawn one goblin of the given kind on the first free cell ringing the footprint.</summary>
-        public Goblin SpawnByKindAroundFootprint(string kindName, Vector2Int origin, Vector2Int footprint)
+        public Goblin SpawnByKindAroundFootprint(string kindName, Vector2Int origin, Vector2Int footprint, ulong owner = 0UL)
         {
             if (_terrainMap == null) return null;
             var kind = FindKind(kindName);
@@ -116,7 +116,7 @@ namespace RTSCL.World.Unity
                 {
                     if (occupied.Contains(c)) continue;
                     if (!IsPassable(new Vector3Int(c.x, c.y, 0))) continue;
-                    return SpawnAt(new Vector3(c.x + 0.5f, c.y + 0.5f, 0f), kind);
+                    return SpawnAt(new Vector3(c.x + 0.5f, c.y + 0.5f, 0f), kind, owner);
                 }
             }
             return null;
@@ -161,7 +161,7 @@ namespace RTSCL.World.Unity
                 if (g != null) DestroyImmediate(g.gameObject);
         }
 
-        public Goblin SpawnAt(Vector3 worldPos, GoblinKind kind = null)
+        public Goblin SpawnAt(Vector3 worldPos, GoblinKind kind = null, ulong owner = 0UL)
         {
             if (_kinds.Count == 0) { Debug.LogWarning("No goblin kinds configured"); return null; }
             kind ??= _kinds[Random.Range(0, _kinds.Count)];
@@ -177,6 +177,7 @@ namespace RTSCL.World.Unity
 
             var goblin = go.AddComponent<Goblin>();
             goblin.Init(kind.Name, kind.WalkFrames, _terrainMap, _decorationMap, kind.Definition);
+            goblin.SetOwner(owner);
             return goblin;
         }
 
