@@ -144,6 +144,9 @@ namespace RTSCL.World.Unity
             _state = State.MovingToAttack;
         }
 
+        private bool IsLocalOwner =>
+            Owner == WorldStartContext.LocalPlayer || Owner == 0UL;
+
         private static int ChebyshevDistance(Vector3 a, Vector3 b)
         {
             int dx = Mathf.Abs(Mathf.FloorToInt(a.x) - Mathf.FloorToInt(b.x));
@@ -313,10 +316,13 @@ namespace RTSCL.World.Unity
                     if (_attackTimer >= AttackInterval)
                     {
                         _attackTimer = 0f;
-                        _attackTarget.TakeDamage(AttackDamage, this);
+                        // Hit animation runs on every client (deterministic). Damage only fires
+                        // on the attacker's owner client, which broadcasts EvDamage to remotes.
                         StartHitAnim(new Vector3Int(
                             Mathf.FloorToInt(_attackTarget.transform.position.x),
                             Mathf.FloorToInt(_attackTarget.transform.position.y), 0));
+                        if (IsLocalOwner)
+                            NetCommandIssuer.IssueDamage(_attackTarget, AttackDamage, this);
                     }
                     break;
                 }
