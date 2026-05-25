@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Tilemaps;
+using RTSCL.World;
 
 namespace RTSCL.World.Unity
 {
@@ -10,6 +11,8 @@ namespace RTSCL.World.Unity
 
         public string Kind { get; private set; } = "Goblin";
         public bool IsSelected { get; private set; }
+
+        public GoblinNetId NetId { get; private set; }
 
         public ulong Owner { get; private set; }
         public void SetOwner(ulong ownerSteamId)
@@ -71,9 +74,12 @@ namespace RTSCL.World.Unity
         private const float HitLungeAmount = 0.30f;    // world units lurch forward
         private const float HitTiltDegrees = 18f;
 
-        public void Init(string kind, Sprite[] walkFrames, Tilemap terrainMap, Tilemap decorationMap,
+        public void Init(GoblinNetId netId, string kind, Sprite[] walkFrames, Tilemap terrainMap, Tilemap decorationMap,
                          GoblinUnitDefinition def = null)
         {
+            NetId = netId;
+            GoblinNetRegistry.Register(netId, this);
+
             Kind = kind;
             _frames = walkFrames;
             _terrainMap = terrainMap;
@@ -195,7 +201,11 @@ namespace RTSCL.World.Unity
         }
 
         private void OnEnable()  => All.Add(this);
-        private void OnDisable() => All.Remove(this);
+        private void OnDisable()
+        {
+            All.Remove(this);
+            GoblinNetRegistry.Unregister(NetId);
+        }
 
         private void Update()
         {
