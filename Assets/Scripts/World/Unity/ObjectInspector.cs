@@ -397,7 +397,8 @@ namespace RTSCL.World.Unity
             if (ResourceBank.Wood < unit.WoodCost) return;
             if (!PopulationManager.CanAfford(unit.PopulationCost)) return;
             ResourceBank.AddWood(-unit.WoodCost);
-            GoblinProduction.TryStart(_selOrigin, unit);
+            ulong owner = WorldStartContext.LocalPlayer;
+            NetCommandIssuer.IssueTrainUnit(_selOrigin, unit, owner);
             Refresh();
         }
 
