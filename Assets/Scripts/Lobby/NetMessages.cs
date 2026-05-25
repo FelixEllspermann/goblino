@@ -12,6 +12,8 @@ namespace RTSCL.Lobby
         CmdBuildAssist = 4,
         CmdPlaceBuilding = 5,
         CmdTrainUnit = 6,
+        CmdAttack = 7,
+        EvDamage = 8,
     }
 
     public sealed class PlayerSlot
