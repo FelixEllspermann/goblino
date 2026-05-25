@@ -7,6 +7,11 @@ namespace RTSCL.Lobby
     public enum NetMessageType : byte
     {
         GameStart = 1,
+        CmdMove = 2,
+        CmdHarvest = 3,
+        CmdBuildAssist = 4,
+        CmdPlaceBuilding = 5,
+        CmdTrainUnit = 6,
     }
 
     public sealed class PlayerSlot
