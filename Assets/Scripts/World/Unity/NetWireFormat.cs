@@ -13,6 +13,8 @@ namespace RTSCL.World.Unity
         public const byte CmdBuildAssist = 4;
         public const byte CmdPlaceBuilding = 5;
         public const byte CmdTrainUnit = 6;
+        public const byte CmdAttack = 7;
+        public const byte EvDamage = 8;
 
         public readonly struct WireNetIdLocal
         {
@@ -43,6 +45,27 @@ namespace RTSCL.World.Unity
             using var ms = new MemoryStream();
             using var w = new BinaryWriter(ms);
             w.Write(CmdTrainUnit); w.Write(ox); w.Write(oy); w.Write(unitDefIndex); w.Write(owner); w.Write(reservedIndex);
+            return ms.ToArray();
+        }
+
+        public static byte[] PackCmdAttack(WireNetIdLocal attacker, WireNetIdLocal target)
+        {
+            using var ms = new MemoryStream();
+            using var w = new BinaryWriter(ms);
+            w.Write(CmdAttack);
+            w.Write(attacker.Owner); w.Write(attacker.LocalIndex);
+            w.Write(target.Owner);   w.Write(target.LocalIndex);
+            return ms.ToArray();
+        }
+
+        public static byte[] PackEvDamage(WireNetIdLocal target, int damage, WireNetIdLocal attacker)
+        {
+            using var ms = new MemoryStream();
+            using var w = new BinaryWriter(ms);
+            w.Write(EvDamage);
+            w.Write(target.Owner);   w.Write(target.LocalIndex);
+            w.Write(damage);
+            w.Write(attacker.Owner); w.Write(attacker.LocalIndex);
             return ms.ToArray();
         }
 
