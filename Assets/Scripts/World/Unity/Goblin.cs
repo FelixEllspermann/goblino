@@ -47,8 +47,8 @@ namespace RTSCL.World.Unity
         // Death hop-arc state
         private Vector3 _dieStartPos;
         private Vector3 _dieVelocity;
-        private const float DeathGravity = -10f;
-        private const float DeathHopVelocity = 3f;
+        private const float DeathGravity = -20f;
+        private const float DeathHopVelocity = 10f;
 
         private float _moveSpeed = 2.0f;
         private float _frameTimer;
@@ -232,7 +232,6 @@ namespace RTSCL.World.Unity
                         _harvestTimer = 0f;
                         HitTree(_treeCell);
                     }
-                    UpdateHitAnim();
                     break;
                 }
 
@@ -267,7 +266,6 @@ namespace RTSCL.World.Unity
                         BuildingConstruction.AddProgress(_buildOrigin, BuildProgressPerTick, out _);
                         StartHitAnim(new Vector3Int(_buildOrigin.x, _buildOrigin.y, 0));
                     }
-                    UpdateHitAnim();
                     break;
                 }
 
@@ -301,7 +299,6 @@ namespace RTSCL.World.Unity
                             Mathf.FloorToInt(_attackTarget.transform.position.x),
                             Mathf.FloorToInt(_attackTarget.transform.position.y), 0));
                     }
-                    UpdateHitAnim();
                     break;
                 }
 
@@ -317,6 +314,11 @@ namespace RTSCL.World.Unity
                     }
                     break;
             }
+
+            // Hit animations (chop / build / attack) keep playing across state transitions
+            // so the killing blow's lunge finishes after the target dies. Dying state owns
+            // the transform itself, so we skip there.
+            if (_state != State.Dying) UpdateHitAnim();
         }
 
         private void HitTree(Vector3Int cell)
@@ -378,6 +380,8 @@ namespace RTSCL.World.Unity
             PopulationManager.RemoveUsed(PopulationCost);
             Goblin.All.Remove(this);
             SetSelected(false);
+            // Clear any in-flight lunge so it doesn't fight the hop-arc transform writes.
+            ResetHitAnim();
 
             _dieStartPos = transform.position;
             _dieVelocity = new Vector3(0f, DeathHopVelocity, 0f);
