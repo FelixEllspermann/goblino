@@ -228,7 +228,7 @@ namespace RTSCL.World.Unity
         {
             foreach (var g in _selected)
                 if (g != null && g.AttackDamage > 0)
-                    g.SetAttackCommand(target);
+                    NetCommandIssuer.IssueAttack(g, target);
         }
 
         private static bool IsOverUI()
