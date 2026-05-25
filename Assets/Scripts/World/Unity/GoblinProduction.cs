@@ -11,6 +11,7 @@ namespace RTSCL.World.Unity
         {
             public GoblinUnitDefinition Def;
             public float Elapsed;
+            public ushort ReservedIndex;
             public float Progress => Def == null || Def.SpawnDuration <= 0
                 ? 1f
                 : Mathf.Clamp01(Elapsed / Def.SpawnDuration);
@@ -25,34 +26,34 @@ namespace RTSCL.World.Unity
         public static Slot Get(Vector2Int origin) =>
             _slots.TryGetValue(origin, out var s) ? s : null;
 
-        public static bool TryStart(Vector2Int origin, GoblinUnitDefinition def)
+        public static bool TryStart(Vector2Int origin, GoblinUnitDefinition def, ushort reservedIndex = 0)
         {
             if (def == null) return false;
             if (_slots.ContainsKey(origin)) return false;
             if (!PopulationManager.CanAfford(def.PopulationCost)) return false;
             // Reserve population now so the cap accounting is honest while producing.
             PopulationManager.AddUsed(def.PopulationCost);
-            _slots[origin] = new Slot { Def = def, Elapsed = 0f };
+            _slots[origin] = new Slot { Def = def, Elapsed = 0f, ReservedIndex = reservedIndex };
             OnChanged?.Invoke();
             return true;
         }
 
         /// <summary>Advance all production timers. Returns finished slots (origin + unit).</summary>
-        public static List<(Vector2Int origin, GoblinUnitDefinition def)> Tick(float dt)
+        public static List<(Vector2Int origin, GoblinUnitDefinition def, ushort reservedIndex)> Tick(float dt)
         {
-            List<(Vector2Int, GoblinUnitDefinition)> done = null;
+            List<(Vector2Int, GoblinUnitDefinition, ushort)> done = null;
             foreach (var kvp in _slots)
             {
                 kvp.Value.Elapsed += dt;
                 if (kvp.Value.Elapsed >= kvp.Value.Def.SpawnDuration)
                 {
-                    done ??= new List<(Vector2Int, GoblinUnitDefinition)>();
-                    done.Add((kvp.Key, kvp.Value.Def));
+                    done ??= new List<(Vector2Int, GoblinUnitDefinition, ushort)>();
+                    done.Add((kvp.Key, kvp.Value.Def, kvp.Value.ReservedIndex));
                 }
             }
             if (done != null)
             {
-                foreach (var (origin, _) in done) _slots.Remove(origin);
+                foreach (var (origin, _, _) in done) _slots.Remove(origin);
                 OnChanged?.Invoke();
                 return done;
             }

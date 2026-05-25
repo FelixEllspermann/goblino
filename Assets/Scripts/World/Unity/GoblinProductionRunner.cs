@@ -14,11 +14,12 @@ namespace RTSCL.World.Unity
             if (done == null) return;
             if (_placer == null || _spawner == null) return;
 
-            foreach (var (origin, def) in done)
+            foreach (var (origin, def, reservedIndex) in done)
             {
                 if (!_placer.TryGetBuildingAt(origin, out var building) || building == null) continue;
+                ulong owner = _placer.TryGetBuildingOwner(origin, out ulong o) ? o : 0UL;
                 // Spawn one unit on the closest passable cell around the keep footprint
-                _spawner.SpawnByKindAroundFootprint(def.SpawnerKindName, origin, building.Footprint);
+                _spawner.SpawnByKindAroundFootprint(def.SpawnerKindName, origin, building.Footprint, owner, reservedIndex);
             }
         }
     }
