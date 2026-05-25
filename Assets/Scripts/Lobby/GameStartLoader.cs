@@ -24,10 +24,33 @@ namespace RTSCL.Lobby
 
         private void LoadGameScene()
         {
-            // Push the seed into the world generator before scene load. WorldGeneratorBootstrap
-            // lives in RTSCL.World.Unity asmdef and must not reference Lobby — this is the
-            // bridge between the two.
+            // Push session data into the world-side bridge BEFORE the scene loads.
+            RTSCL.World.Unity.WorldStartContext.LocalPlayer = NetworkSession.LocalPlayer.m_SteamID;
+            RTSCL.World.Unity.WorldStartContext.GetPlayerColor = sid =>
+                PlayerRegistry.GetColorForPlayer(new Steamworks.CSteamID(sid));
+
+            // Translate PlayerSlots (List<PlayerSlot> with Steamworks types) into the
+            // type-light ValueTuple array the world layer sees.
+            var src = NetworkSession.PlayerSlots;
+            if (src != null && src.Count > 0)
+            {
+                var arr = new (ulong steamId, int spawnIndex)[src.Count];
+                for (int i = 0; i < src.Count; i++)
+                {
+                    arr[i] = (src[i].SteamId.m_SteamID, src[i].SpawnIndex);
+                    // Mirror into PlayerRegistry so GetPlayerColor works after this point.
+                    PlayerRegistry.Register(src[i].SteamId, src[i].SpawnIndex);
+                }
+                RTSCL.World.Unity.WorldStartContext.PendingSlots = arr;
+            }
+            else
+            {
+                RTSCL.World.Unity.WorldStartContext.PendingSlots = null;
+            }
+
+            // Push the seed (existing flow).
             RTSCL.World.Unity.WorldGeneratorBootstrap.PendingSeed = NetworkSession.GameSeed;
+
             SceneManager.LoadScene("SampleScene");
         }
     }
