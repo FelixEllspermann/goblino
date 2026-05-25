@@ -51,6 +51,9 @@ namespace RTSCL.Lobby
             // Push the seed (existing flow).
             RTSCL.World.Unity.WorldGeneratorBootstrap.PendingSeed = NetworkSession.GameSeed;
 
+            // Wire the command-bridge so world-side code can send packed payloads.
+            RTSCL.World.Unity.NetCommandBridge.OutgoingSender = NetworkManager.SendToAll;
+
             SceneManager.LoadScene("SampleScene");
         }
     }

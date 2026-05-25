@@ -43,6 +43,12 @@ namespace RTSCL.World.Unity
             GoblinProduction.Clear();
             PopulationManager.Reset();
 
+            // Net-state setup for this world.
+            GoblinNetRegistry.Reset();
+            NetworkCatalog.PopulateFromCatalog(_catalog);
+            NetCommandApplier.Placer = _buildingPlacer;
+            NetCommandApplier.Spawner = _goblinSpawner;
+
             if (world.Spawns == null || world.Spawns.Length == 0) return;
 
             var def = FindBuildingDefinition(_mainBuildingName);
