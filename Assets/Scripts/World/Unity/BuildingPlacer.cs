@@ -27,6 +27,7 @@ namespace RTSCL.World.Unity
         private SpriteRenderer _ghostRenderer;
         private readonly Dictionary<Vector2Int, BuildingDefinition> _cellOwners = new();
         private readonly Dictionary<Vector2Int, Vector2Int> _cellToOrigin = new();
+        private readonly Dictionary<Vector2Int, ulong> _cellToOwner = new();
 
         public BuildingDefinition Selected => _selected;
 
@@ -44,6 +45,9 @@ namespace RTSCL.World.Unity
 
         public bool TryGetBuildingOrigin(Vector2Int cell, out Vector2Int origin) =>
             _cellToOrigin.TryGetValue(cell, out origin);
+
+        public bool TryGetBuildingOwner(Vector2Int cell, out ulong owner) =>
+            _cellToOwner.TryGetValue(cell, out owner);
 
         public IEnumerable<KeyValuePair<Vector2Int, BuildingDefinition>> AllOccupied => _cellOwners;
 
@@ -139,7 +143,8 @@ namespace RTSCL.World.Unity
 
         /// <summary>Place a building. charge=true deducts WoodCost; requireConstruction=true makes it built-by-goblins.</summary>
         public void PlaceForce(BuildingDefinition def, Vector2Int origin,
-                               bool charge = true, bool requireConstruction = true)
+                               bool charge = true, bool requireConstruction = true,
+                               ulong owner = 0UL)
         {
             if (def == null || def.Sprite == null) return;
 
@@ -156,12 +161,16 @@ namespace RTSCL.World.Unity
             sr.sprite = def.Sprite;
             sr.sortingOrder = 15;
 
+            var ownerComp = go.AddComponent<BuildingOwner>();
+            ownerComp.Initialize(owner, def.Footprint);
+
             for (int dy = 0; dy < def.Footprint.y; dy++)
             for (int dx = 0; dx < def.Footprint.x; dx++)
             {
                 var c = new Vector2Int(origin.x + dx, origin.y + dy);
                 _cellOwners[c] = def;
                 _cellToOrigin[c] = origin;
+                _cellToOwner[c] = owner;
             }
 
             BuildingHP.Register(origin, BuildingHP.MaxHpFor(def));
@@ -173,6 +182,7 @@ namespace RTSCL.World.Unity
         {
             _cellOwners.Clear();
             _cellToOrigin.Clear();
+            _cellToOwner.Clear();
             BuildingHP.Clear();
             BuildingConstruction.Clear();
             if (_buildingsRoot == null) return;
