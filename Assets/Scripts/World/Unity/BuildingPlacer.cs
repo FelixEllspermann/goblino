@@ -138,8 +138,13 @@ namespace RTSCL.World.Unity
             return false;
         }
 
-        private void Place(Vector2Int origin) =>
-            PlaceForce(_selected, origin, charge: true, requireConstruction: true);
+        private void Place(Vector2Int origin)
+        {
+            if (_selected == null) return;
+            ulong owner = WorldStartContext.LocalPlayer;
+            NetCommandIssuer.IssuePlaceBuilding(_selected, origin, owner);
+            Cancel();
+        }
 
         /// <summary>Place a building. charge=true deducts WoodCost; requireConstruction=true makes it built-by-goblins.</summary>
         public void PlaceForce(BuildingDefinition def, Vector2Int origin,
