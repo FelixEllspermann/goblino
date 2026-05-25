@@ -42,6 +42,7 @@ namespace RTSCL.World.Unity
         private SelKind _selKind = SelKind.None;
         private Vector2Int _selOrigin;
         private BuildingDefinition _selDef;
+        private BuildingOwner _selBuildingOwner;
 
         private struct CardRefs
         {
@@ -135,6 +136,7 @@ namespace RTSCL.World.Unity
         {
             _selKind = SelKind.Goblins;
             _selDef = null;
+            if (_selBuildingOwner != null) { _selBuildingOwner.SetSelected(false); _selBuildingOwner = null; }
 
             bool hasFarmer = false;
             string firstKind = null;
@@ -167,12 +169,23 @@ namespace RTSCL.World.Unity
             _selKind = SelKind.Building;
             _selDef = def;
 
+            // Turn off previous building's ring, then turn on this one's.
+            if (_selBuildingOwner != null) _selBuildingOwner.SetSelected(false);
+            _selBuildingOwner = FindBuildingOwnerAt(origin);
+            if (_selBuildingOwner != null) _selBuildingOwner.SetSelected(true);
+
+            // Determine if this is a local (or solo) building.
+            bool isLocal = true;
+            if (_placer != null && _placer.TryGetBuildingOwner(origin, out ulong owner))
+                isLocal = (owner == WorldStartContext.LocalPlayer || owner == 0UL);
+
             string desc = DescribeBuilding(def);
             if (BuildingHP.TryGet(origin, out int cur, out int max))
                 desc += $"\nHP: {cur} / {max}";
             SetHeader(def.DisplayName, desc);
 
-            if (def.TrainsUnits != null && def.TrainsUnits.Length > 0)
+            // Only show production cards for local buildings.
+            if (isLocal && def.TrainsUnits != null && def.TrainsUnits.Length > 0)
                 BuildUnitCards(def.TrainsUnits);
             else
                 ClearCards();
@@ -183,10 +196,27 @@ namespace RTSCL.World.Unity
 
         private void ShowSimple(string title, string description)
         {
+            if (_selBuildingOwner != null) { _selBuildingOwner.SetSelected(false); _selBuildingOwner = null; }
             SetHeader(title, description);
             ClearCards();
             if (_progressRow != null) _progressRow.SetActive(false);
             _popupRoot?.SetActive(true);
+        }
+
+        private BuildingOwner FindBuildingOwnerAt(Vector2Int origin)
+        {
+            if (_terrainMap == null) return null;
+            Vector3 originWorld = _terrainMap.CellToWorld(new Vector3Int(origin.x, origin.y, 0));
+            var all = UnityEngine.Object.FindObjectsByType<BuildingOwner>(FindObjectsSortMode.None);
+            const float eps = 0.01f;
+            foreach (var bo in all)
+            {
+                if (bo == null) continue;
+                Vector3 p = bo.transform.position;
+                if (Mathf.Abs(p.x - originWorld.x) < eps && Mathf.Abs(p.y - originWorld.y) < eps)
+                    return bo;
+            }
+            return null;
         }
 
         private void SetHeader(string title, string description)
@@ -198,6 +228,8 @@ namespace RTSCL.World.Unity
         private void Hide()
         {
             if (_popupRoot != null) _popupRoot.SetActive(false);
+            if (_selBuildingOwner != null) _selBuildingOwner.SetSelected(false);
+            _selBuildingOwner = null;
             _selKind = SelKind.None;
             _selDef = null;
             ClearCards();
