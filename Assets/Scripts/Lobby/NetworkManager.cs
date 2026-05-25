@@ -128,22 +128,34 @@ namespace RTSCL.Lobby
         private void SendToAllImpl(byte[] payload)
         {
             int flags = Constants.k_nSteamNetworkingSend_Reliable;
-            if (NetworkSession.IsHost)
+            // Steamworks.NET's SendMessageToConnection takes IntPtr — pin the byte[] once,
+            // reuse for every send in this batch, then free.
+            var handle = System.Runtime.InteropServices.GCHandle.Alloc(
+                payload, System.Runtime.InteropServices.GCHandleType.Pinned);
+            try
             {
-                foreach (var conn in _connections.Keys)
+                var ptr = handle.AddrOfPinnedObject();
+                if (NetworkSession.IsHost)
+                {
+                    foreach (var conn in _connections.Keys)
+                    {
+                        var res = SteamNetworkingSockets.SendMessageToConnection(
+                            conn, ptr, (uint)payload.Length, flags, out _);
+                        if (res != EResult.k_EResultOK)
+                            Debug.LogWarning($"[Net] SendToConnection failed: {res}");
+                    }
+                }
+                else if (_serverConnection != HSteamNetConnection.Invalid)
                 {
                     var res = SteamNetworkingSockets.SendMessageToConnection(
-                        conn, payload, (uint)payload.Length, flags, out _);
+                        _serverConnection, ptr, (uint)payload.Length, flags, out _);
                     if (res != EResult.k_EResultOK)
-                        Debug.LogWarning($"[Net] SendToConnection failed: {res}");
+                        Debug.LogWarning($"[Net] SendToServer failed: {res}");
                 }
             }
-            else if (_serverConnection != HSteamNetConnection.Invalid)
+            finally
             {
-                var res = SteamNetworkingSockets.SendMessageToConnection(
-                    _serverConnection, payload, (uint)payload.Length, flags, out _);
-                if (res != EResult.k_EResultOK)
-                    Debug.LogWarning($"[Net] SendToServer failed: {res}");
+                handle.Free();
             }
         }
 
