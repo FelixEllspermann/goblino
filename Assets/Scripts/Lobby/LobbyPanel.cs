@@ -38,10 +38,24 @@ namespace RTSCL.Lobby
         private void OnStart()
         {
             if (!NetworkSession.IsHost) return;
+
+            // Build slot list: host first (SpawnIndex 0), then others sorted ascending by SteamID.
+            var members = LobbyManager.GetCurrentMembers();
+            var ordered = new System.Collections.Generic.List<(Steamworks.CSteamID id, string name, bool isHost)>(members);
+            ordered.Sort((a, b) =>
+            {
+                if (a.isHost != b.isHost) return a.isHost ? -1 : 1;
+                return a.id.m_SteamID.CompareTo(b.id.m_SteamID);
+            });
+            var slots = new System.Collections.Generic.List<PlayerSlot>(ordered.Count);
+            for (byte i = 0; i < ordered.Count; i++)
+                slots.Add(new PlayerSlot { SteamId = ordered[i].id, SpawnIndex = i });
+
             var seed = Random.Range(1, int.MaxValue);
             NetworkSession.GameSeed = seed;
-            NetworkManager.SendToAll(NetMessages.PackGameStart(seed));
-            SteamMatchmaking.SetLobbyJoinable(LobbyManager.CurrentLobby, false);
+            NetworkSession.PlayerSlots = slots;
+            NetworkManager.SendToAll(NetMessages.PackGameStart(seed, slots));
+            Steamworks.SteamMatchmaking.SetLobbyJoinable(LobbyManager.CurrentLobby, false);
             NetworkSession.RaiseGameStartReceived();
         }
 

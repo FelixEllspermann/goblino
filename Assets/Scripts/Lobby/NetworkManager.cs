@@ -197,9 +197,10 @@ namespace RTSCL.Lobby
                         Debug.LogWarning("[Net] Duplicate GameStart ignored");
                         return;
                     }
-                    if (NetMessages.TryUnpackGameStart(payload, out int seed))
+                    if (NetMessages.TryUnpackGameStart(payload, out int seed, out var slots))
                     {
                         NetworkSession.GameSeed = seed;
+                        NetworkSession.PlayerSlots = slots;
                         NetworkSession.RaiseGameStartReceived();
                     }
                     break;

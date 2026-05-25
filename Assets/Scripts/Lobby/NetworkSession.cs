@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Steamworks;
 
 namespace RTSCL.Lobby
@@ -10,6 +11,7 @@ namespace RTSCL.Lobby
         public static CSteamID LocalPlayer { get; internal set; }
         public static CSteamID HostPlayer { get; internal set; }
         public static int GameSeed { get; internal set; }
+        public static List<PlayerSlot> PlayerSlots { get; internal set; }
 
         public static event Action OnGameStartReceived;
 
@@ -19,6 +21,7 @@ namespace RTSCL.Lobby
             LocalPlayer = CSteamID.Nil;
             HostPlayer = CSteamID.Nil;
             GameSeed = 0;
+            PlayerSlots = null;
         }
 
         internal static void RaiseGameStartReceived() => OnGameStartReceived?.Invoke();
