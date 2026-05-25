@@ -91,5 +91,30 @@ namespace RTSCL.World.Unity
             GoblinProduction.TryStart(buildingOrigin, def, reserved);
             NetCommandBridge.Send(NetWireFormat.PackCmdTrainUnit(buildingOrigin.x, buildingOrigin.y, idx, owner, reserved));
         }
+
+        public static void IssueAttack(Goblin attacker, Goblin target)
+        {
+            if (attacker == null || target == null || attacker == target) return;
+            if (attacker.AttackDamage <= 0) return;
+            if (target.CurrentHp <= 0) return;
+
+            attacker.SetAttackCommand(target);
+
+            var wAtk = new NetWireFormat.WireNetIdLocal(attacker.NetId.Owner, attacker.NetId.LocalIndex);
+            var wTgt = new NetWireFormat.WireNetIdLocal(target.NetId.Owner, target.NetId.LocalIndex);
+            NetCommandBridge.Send(NetWireFormat.PackCmdAttack(wAtk, wTgt));
+        }
+
+        public static void IssueDamage(Goblin target, int damage, Goblin attacker)
+        {
+            if (target == null || attacker == null) return;
+            if (damage <= 0) return;
+
+            target.TakeDamage(damage, attacker);
+
+            var wTgt = new NetWireFormat.WireNetIdLocal(target.NetId.Owner, target.NetId.LocalIndex);
+            var wAtk = new NetWireFormat.WireNetIdLocal(attacker.NetId.Owner, attacker.NetId.LocalIndex);
+            NetCommandBridge.Send(NetWireFormat.PackEvDamage(wTgt, damage, wAtk));
+        }
     }
 }
