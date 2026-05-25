@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Tilemaps;
+using RTSCL.World;
 using Random = UnityEngine.Random;
 
 namespace RTSCL.World.Unity
@@ -94,7 +95,7 @@ namespace RTSCL.World.Unity
         }
 
         /// <summary>Spawn one goblin of the given kind on the first free cell ringing the footprint.</summary>
-        public Goblin SpawnByKindAroundFootprint(string kindName, Vector2Int origin, Vector2Int footprint, ulong owner = 0UL)
+        public Goblin SpawnByKindAroundFootprint(string kindName, Vector2Int origin, Vector2Int footprint, ulong owner = 0UL, ushort? reservedIndex = null)
         {
             if (_terrainMap == null) return null;
             var kind = FindKind(kindName);
@@ -116,7 +117,7 @@ namespace RTSCL.World.Unity
                 {
                     if (occupied.Contains(c)) continue;
                     if (!IsPassable(new Vector3Int(c.x, c.y, 0))) continue;
-                    return SpawnAt(new Vector3(c.x + 0.5f, c.y + 0.5f, 0f), kind, owner);
+                    return SpawnAt(new Vector3(c.x + 0.5f, c.y + 0.5f, 0f), kind, owner, reservedIndex);
                 }
             }
             return null;
@@ -161,7 +162,7 @@ namespace RTSCL.World.Unity
                 if (g != null) DestroyImmediate(g.gameObject);
         }
 
-        public Goblin SpawnAt(Vector3 worldPos, GoblinKind kind = null, ulong owner = 0UL)
+        public Goblin SpawnAt(Vector3 worldPos, GoblinKind kind = null, ulong owner = 0UL, ushort? reservedIndex = null)
         {
             if (_kinds.Count == 0) { Debug.LogWarning("No goblin kinds configured"); return null; }
             kind ??= _kinds[Random.Range(0, _kinds.Count)];
@@ -175,8 +176,11 @@ namespace RTSCL.World.Unity
             var sr = go.AddComponent<SpriteRenderer>();
             sr.sortingOrder = 25;  // above buildings
 
+            ushort idx = reservedIndex ?? GoblinNetRegistry.NextLocalIndex(owner);
+            var netId = new GoblinNetId(owner, idx);
+
             var goblin = go.AddComponent<Goblin>();
-            goblin.Init(kind.Name, kind.WalkFrames, _terrainMap, _decorationMap, kind.Definition);
+            goblin.Init(netId, kind.Name, kind.WalkFrames, _terrainMap, _decorationMap, kind.Definition);
             goblin.SetOwner(owner);
             return goblin;
         }
