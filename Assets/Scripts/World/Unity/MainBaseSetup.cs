@@ -45,46 +45,73 @@ namespace RTSCL.World.Unity
 
             if (world.Spawns == null || world.Spawns.Length == 0) return;
 
-            // 2. Place the main building at spawn[0]
-            var mainCell = world.Spawns[0];
             var def = FindBuildingDefinition(_mainBuildingName);
-            if (def != null && _buildingPlacer != null)
-            {
-                // Offset so the keep is centered on the spawn cell
-                var keepOrigin = new Vector2Int(
-                    mainCell.x - def.Footprint.x / 2,
-                    mainCell.y - def.Footprint.y / 2);
-                _buildingPlacer.PlaceForce(def, keepOrigin, charge: false, requireConstruction: false);
-
-                // 3. Spawn N starting Farmer Goblins evenly distributed around the keep
-                if (_goblinSpawner != null)
-                {
-                    _goblinSpawner.SpawnAroundFootprint(keepOrigin, def.Footprint, _startingGoblins, "FarmerGoblin");
-                    int popPerUnit = _startingUnitDef != null ? _startingUnitDef.PopulationCost : 1;
-                    PopulationManager.AddUsed(_startingGoblins * popPerUnit);
-
-                    // 4. Test-spawn N Club Goblins one ring further out so you can test combat
-                    //    immediately. Uses a padded virtual-footprint trick: treat keep+farmer-ring
-                    //    as one big footprint, then Clubs spawn at ring 1 of that — i.e., 2 cells
-                    //    out from the real keep, past the Farmers at 1 cell out.
-                    if (_testStartingClubs > 0)
-                    {
-                        var paddedOrigin = new Vector2Int(keepOrigin.x - 1, keepOrigin.y - 1);
-                        var paddedFootprint = new Vector2Int(def.Footprint.x + 2, def.Footprint.y + 2);
-                        _goblinSpawner.SpawnAroundFootprint(paddedOrigin, paddedFootprint, _testStartingClubs, "ClubGoblin");
-                        PopulationManager.AddUsed(_testStartingClubs * _testClubPopCost);
-                    }
-                }
-            }
-            else
+            if (def == null || _buildingPlacer == null)
             {
                 Debug.LogWarning($"[MainBaseSetup] Building '{_mainBuildingName}' not in catalog.");
-                // Fallback: no keep, spawn around mainCell
+                // Fallback: no keep, spawn farmers around spawn[0]
                 if (_goblinSpawner != null)
                 {
+                    var mainCell = world.Spawns[0];
                     var c = new Vector3(mainCell.x + 0.5f, mainCell.y + 0.5f, 0f);
                     _goblinSpawner.SpawnGroupAt(c, _startingGoblins);
                 }
+                return;
+            }
+
+            var slots = WorldStartContext.PendingSlots;
+            if (slots == null || slots.Length == 0)
+            {
+                // Solo: keep at spawn[0], owner=0
+                SpawnTeamAt(def, world.Spawns[0], 0UL, addPopulation: true);
+                return;
+            }
+
+            // MP: place one team per slot
+            ulong local = WorldStartContext.LocalPlayer;
+            for (int i = 0; i < slots.Length; i++)
+            {
+                int idx = slots[i].spawnIndex;
+                if (idx < 0 || idx >= world.Spawns.Length)
+                {
+                    Debug.LogWarning($"[MainBaseSetup] Slot {i} spawnIndex={idx} out of range (Spawns.Length={world.Spawns.Length}); skipping");
+                    continue;
+                }
+                bool isLocal = slots[i].steamId == local;
+                SpawnTeamAt(def, world.Spawns[idx], slots[i].steamId, addPopulation: isLocal);
+            }
+        }
+
+        private void SpawnTeamAt(BuildingDefinition def, Vector2Int spawnCell, ulong owner, bool addPopulation)
+        {
+            // Offset so the keep is centered on the spawn cell
+            var keepOrigin = new Vector2Int(
+                spawnCell.x - def.Footprint.x / 2,
+                spawnCell.y - def.Footprint.y / 2);
+            _buildingPlacer.PlaceForce(def, keepOrigin, charge: false, requireConstruction: false, owner: owner);
+
+            if (_goblinSpawner == null) return;
+
+            // Spawn N starting Farmer Goblins evenly distributed around the keep
+            _goblinSpawner.SpawnAroundFootprint(keepOrigin, def.Footprint, _startingGoblins, "FarmerGoblin", owner);
+
+            // Test-spawn N Club Goblins one ring further out so you can test combat
+            // immediately. Uses a padded virtual-footprint trick: treat keep+farmer-ring
+            // as one big footprint, then Clubs spawn at ring 1 of that — i.e., 2 cells
+            // out from the real keep, past the Farmers at 1 cell out.
+            if (_testStartingClubs > 0)
+            {
+                var paddedOrigin = new Vector2Int(keepOrigin.x - 1, keepOrigin.y - 1);
+                var paddedFootprint = new Vector2Int(def.Footprint.x + 2, def.Footprint.y + 2);
+                _goblinSpawner.SpawnAroundFootprint(paddedOrigin, paddedFootprint, _testStartingClubs, "ClubGoblin", owner);
+            }
+
+            if (addPopulation)
+            {
+                int popPerUnit = _startingUnitDef != null ? _startingUnitDef.PopulationCost : 1;
+                PopulationManager.AddUsed(_startingGoblins * popPerUnit);
+                if (_testStartingClubs > 0)
+                    PopulationManager.AddUsed(_testStartingClubs * _testClubPopCost);
             }
         }
 
