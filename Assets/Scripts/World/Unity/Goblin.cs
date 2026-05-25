@@ -16,6 +16,7 @@ namespace RTSCL.World.Unity
         {
             Owner = ownerSteamId;
             ApplyOwnerVisuals();
+            RefreshSelectionRingColor();
         }
 
         public int  CurrentHp { get; private set; }
@@ -482,10 +483,24 @@ namespace RTSCL.World.Unity
             _selectionRing.transform.localPosition = new Vector3(0, 0.05f, 0);
             var sr = _selectionRing.AddComponent<SpriteRenderer>();
             sr.sprite = SelectionRingSprite();
-            sr.color = new Color(0.4f, 1f, 0.4f, 0.9f);
             sr.sortingOrder = (_renderer != null ? _renderer.sortingOrder : 25) - 1;
             _selectionRing.transform.localScale = new Vector3(1.1f, 0.5f, 1f);
+            bool isLocal = Owner == WorldStartContext.LocalPlayer || Owner == 0UL;
+            sr.color = isLocal
+                ? new Color(0.95f, 0.95f, 0.95f, 1f)
+                : WorldStartContext.GetPlayerColor(Owner);
             _selectionRing.SetActive(false);
+        }
+
+        private void RefreshSelectionRingColor()
+        {
+            if (_selectionRing == null) return;
+            var sr = _selectionRing.GetComponent<SpriteRenderer>();
+            if (sr == null) return;
+            bool isLocal = Owner == WorldStartContext.LocalPlayer || Owner == 0UL;
+            sr.color = isLocal
+                ? new Color(0.95f, 0.95f, 0.95f, 1f)
+                : WorldStartContext.GetPlayerColor(Owner);
         }
 
         private static Sprite s_ring;
