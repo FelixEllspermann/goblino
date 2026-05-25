@@ -8,7 +8,7 @@ namespace RTSCL.World
         // Map dimensions
         public int Width = 128;
         public int Height = 128;
-        public int PlayerCount = 2;
+        public int PlayerCount = 4;
 
         // Noise scales (larger = smoother / more zoomed-in features)
         public float ElevationScale = 40f;

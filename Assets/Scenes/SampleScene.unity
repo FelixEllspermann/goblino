@@ -172226,7 +172226,7 @@ MonoBehaviour:
   _config:
     Width: 256
     Height: 256
-    PlayerCount: 2
+    PlayerCount: 4
     ElevationScale: 40
     MoistureScale: 30
     TemperatureScale: 60
