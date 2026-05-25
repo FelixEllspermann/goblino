@@ -17,8 +17,9 @@ Current playable loop (single-player):
 
 Multiplayer state:
 - Main menu offers `Multiplayer` → public-lobby browser via Steam matchmaking
-- Lobby up to 4 players. Host clicks Start → world seed broadcast over Steam P2P → all clients load SampleScene with identical map.
-- Game-state sync (units, commands, combat) is **not yet** networked — that's the next sub-project.
+- Lobby up to 4 players. Host clicks Start → world seed + per-player slot assignment broadcast over Steam P2P → all clients load SampleScene with identical map.
+- Each player gets a keep + starting team at their assigned spawn (P0 Blue / P1 Red / P2 Yellow / P3 Green). Enemy units are colour-tinted; own units stay original sprite. Enemy buildings show name + HP but no production cards.
+- Commands (Move / Harvest / Build-Assist / Place Building / Train Unit / Attack) sync via local-immediate + host-echo. Per-hit damage syncs via `EvDamage`. HP bars stay in lockstep across clients (~50-150ms Steam relay latency).
 
 ## Engine & rendering
 
@@ -89,6 +90,38 @@ The Unity MCP server (`mcp__unity-mcp__*` tools) is the preferred way to drive t
 1. ✅ Combat foundation (local, Club-vs-Club friendly fire, hop-arc death + particle burst)
 2. ✅ Main menu + Steam public-lobby browser
 3. ✅ Steam P2P transport + world-seed sync
-4. ☐ Player ownership (each unit knows its `OwnerSteamID`; only owner can command) + 2 spawn placements
-5. ☐ Command sync (selection / move / harvest / build over the network)
-6. ☐ Combat-over-network (uses ownership filter from #4)
+4. ✅ Player ownership (each unit knows its `Owner` ulong; only owner can command) + up to 4 spawn placements with faction tints
+5. ✅ Command sync (move / harvest / build-assist / place-building / train-unit over the network)
+6. ✅ Combat-over-network (per-hit `EvDamage` sync, attacker-owner authoritative)
+
+## Networking architecture
+
+- **Wire protocol:** `[byte messageType | payload]`. 8 message types: `GameStart=1`, `CmdMove=2`, `CmdHarvest=3`, `CmdBuildAssist=4`, `CmdPlaceBuilding=5`, `CmdTrainUnit=6`, `CmdAttack=7`, `EvDamage=8`. Pack/unpack lives in `NetWireFormat` (World.Unity asmdef — Lobby reads `byte[]` opaque).
+- **Authority:** Local-immediate + host-echo. Issuer applies locally + sends to host. Host receives, applies, then echoes to all OTHER clients via `SendToOthers(payload, exceptConn)`. No self-echo.
+- **Unit identity:** `GoblinNetId(ulong Owner, ushort LocalIndex)` (10 bytes wire). Starting units assigned in deterministic spawn order (matches across clients). Trained units pre-reserve their NetId via `GoblinNetRegistry.NextLocalIndex(owner)` at train time so all clients spawn with the same ID.
+- **Building identity:** Keyed by `(Vector2Int origin)` — no separate NetId.
+- **Asmdef bridge:** `RTSCL.World.Unity` can't reference Assembly-CSharp (where Steamworks lives). Two-way bridge: `NetCommandBridge.OutgoingSender` (`Action<byte[]>`) is set by `GameStartLoader` to `NetworkManager.SendToAll`. Wire-format pack/unpack lives entirely in `NetWireFormat` (World.Unity side). `NetworkCatalog` maps `defIndex ↔ BuildingDefinition` / `GoblinUnitDefinition` so wire messages stay byte-based.
+- **Solo path:** `OutgoingSender` is `null` when `LoadGameScene` isn't run (Play Solo bypasses it). All `NetCommandIssuer` calls apply locally + wire-send becomes no-op. Solo behavior is identical to single-player.
+- **Owner validation:** Receiver verifies `sender == attacker.NetId.Owner` (or `payload.owner == sender` for Place/Train). Mismatches drop + warn. Light anti-cheat MVP.
+- **Combat gating:** `Goblin.Update` runs on every client (movement + hit anim deterministic). But `IssueDamage` only fires when `IsLocalOwner` — only attacker-owner authoritates per-hit damage and broadcasts `EvDamage`. Remotes apply damage via `NetCommandApplier.ApplyDamage` → `target.TakeDamage`.
+
+## Key files (networking)
+
+| File | Asmdef | Purpose |
+|---|---|---|
+| `Assets/Scripts/Lobby/SteamManager.cs` | Assembly-CSharp | Steamworks init + frame-pump callback |
+| `Assets/Scripts/Lobby/LobbyManager.cs` | Assembly-CSharp | Steam matchmaking, public-lobby browser, join/create/leave |
+| `Assets/Scripts/Lobby/NetworkManager.cs` | Assembly-CSharp | P2P sockets, send/receive, host-echo dispatch via `RouteMessage` |
+| `Assets/Scripts/Lobby/NetworkSession.cs` | Assembly-CSharp | Cross-scene state (LocalPlayer, HostPlayer, GameSeed, PlayerSlots) |
+| `Assets/Scripts/Lobby/NetMessages.cs` | Assembly-CSharp | `NetMessageType` enum + `PlayerSlot` + `PackGameStart` / `TryUnpackGameStart` |
+| `Assets/Scripts/Lobby/GameStartLoader.cs` | Assembly-CSharp | Listens for `OnGameStartReceived`, pushes session into `WorldStartContext` + `NetCommandBridge.OutgoingSender`, loads SampleScene |
+| `Assets/Scripts/Lobby/PlayerRegistry.cs` | Assembly-CSharp | 4-color faction lookup (`GetColorForPlayer(CSteamID)`) |
+| `Assets/Scripts/World/Unity/WorldStartContext.cs` | RTSCL.World.Unity | Bridge: `LocalPlayer (ulong)`, `PendingSlots`, `GetPlayerColor` |
+| `Assets/Scripts/World/Unity/NetCommandBridge.cs` | RTSCL.World.Unity | Bridge: `Action<byte[]> OutgoingSender` |
+| `Assets/Scripts/World/Unity/NetWireFormat.cs` | RTSCL.World.Unity | Pack/unpack for 7 command/event types |
+| `Assets/Scripts/World/Unity/NetCommandIssuer.cs` | RTSCL.World.Unity | 7 IssueX helpers: local-apply + send |
+| `Assets/Scripts/World/Unity/NetCommandApplier.cs` | RTSCL.World.Unity | 7 ApplyX local mutations + top-level `Apply(byte[], ulong)` dispatcher |
+| `Assets/Scripts/World/Unity/NetworkCatalog.cs` | RTSCL.World.Unity | `defIndex ↔ BuildingDefinition` / `GoblinUnitDefinition` lookups, populated by `MainBaseSetup.OnNewWorld` |
+| `Assets/Scripts/World/Unity/GoblinNetId.cs` | RTSCL.World | `readonly struct GoblinNetId(ulong, ushort)` — unit-testable |
+| `Assets/Scripts/World/Unity/GoblinNetRegistry.cs` | RTSCL.World.Unity | `Dictionary<GoblinNetId, Goblin>` + per-owner counter |
+| `Assets/Scripts/World/Unity/BuildingOwner.cs` | RTSCL.World.Unity | MonoBehaviour: per-building owner + faction tint + selection ring |
