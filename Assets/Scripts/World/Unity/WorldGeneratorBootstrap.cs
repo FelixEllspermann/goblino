@@ -32,12 +32,23 @@ namespace RTSCL.World.Unity
 
         public WorldData CurrentWorld => _currentWorld;
 
+        /// <summary>External one-shot seed override. Set by the networking layer before
+        /// scene load to make all clients use the same map seed; consumed on first read so
+        /// a subsequent Solo restart picks a fresh random seed.</summary>
+        public static int? PendingSeed;
+
         private void Start()
         {
-            if (RTSCL.Lobby.NetworkSession.GameSeed != 0)
-                RegenerateWithSeed(RTSCL.Lobby.NetworkSession.GameSeed);
+            if (PendingSeed.HasValue)
+            {
+                var seed = PendingSeed.Value;
+                PendingSeed = null;
+                RegenerateWithSeed(seed);
+            }
             else
+            {
                 Regenerate();
+            }
         }
 
         [ContextMenu("Regenerate")]

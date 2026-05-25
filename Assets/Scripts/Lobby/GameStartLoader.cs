@@ -22,6 +22,13 @@ namespace RTSCL.Lobby
         private void OnEnable()  => NetworkSession.OnGameStartReceived += LoadGameScene;
         private void OnDisable() => NetworkSession.OnGameStartReceived -= LoadGameScene;
 
-        private void LoadGameScene() => SceneManager.LoadScene("SampleScene");
+        private void LoadGameScene()
+        {
+            // Push the seed into the world generator before scene load. WorldGeneratorBootstrap
+            // lives in RTSCL.World.Unity asmdef and must not reference Lobby — this is the
+            // bridge between the two.
+            RTSCL.World.Unity.WorldGeneratorBootstrap.PendingSeed = NetworkSession.GameSeed;
+            SceneManager.LoadScene("SampleScene");
+        }
     }
 }
