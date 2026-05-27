@@ -56,6 +56,8 @@ namespace RTSCL.World.Unity
             public GoblinUnitDefinition Unit;
             public BuildingDefinition Building;
             public int WoodCost;
+            public UpgradeDefinition Upgrade;
+            public UpgradeKind UpgradeKind;
         }
         private readonly List<CardRefs> _cards = new();
 
@@ -187,6 +189,8 @@ namespace RTSCL.World.Unity
             // Only show production cards for local buildings.
             if (isLocal && def.TrainsUnits != null && def.TrainsUnits.Length > 0)
                 BuildUnitCards(def.TrainsUnits);
+            else if (isLocal && def.ProvidesUpgrades != null && def.ProvidesUpgrades.Length > 0)
+                BuildUpgradeCards(def.ProvidesUpgrades);
             else
                 ClearCards();
 
@@ -270,6 +274,21 @@ namespace RTSCL.World.Unity
                 if (b == null) continue;
                 var c = CreateCard(b.DisplayName, b.Sprite, b.WoodCost, () => OnBuildingClicked(b));
                 c.Building = b;
+                _cards.Add(c);
+            }
+        }
+
+        private void BuildUpgradeCards(UpgradeDefinition[] upgrades)
+        {
+            ClearCards();
+            if (_unitCardsContainer == null) return;
+            _unitCardsContainer.gameObject.SetActive(true);
+            foreach (var u in upgrades)
+            {
+                if (u == null) continue;
+                var c = CreateCard(u.DisplayName, u.Icon, u.WoodCost, () => OnUpgradeClicked(u));
+                c.Upgrade = u;
+                c.UpgradeKind = u.Kind;
                 _cards.Add(c);
             }
         }
@@ -367,7 +386,9 @@ namespace RTSCL.World.Unity
             {
                 bool affordable = ResourceBank.Wood >= card.WoodCost;
                 bool popOk = card.Unit == null || PopulationManager.CanAfford(card.Unit.PopulationCost);
-                bool enabled = affordable && popOk && !busy;
+                bool alreadyOwned = card.Upgrade != null
+                    && PlayerUpgrades.IsPurchased(WorldStartContext.LocalPlayer, card.UpgradeKind);
+                bool enabled = affordable && popOk && !busy && !alreadyOwned;
                 card.Button.interactable = enabled;
                 if (card.Bg != null)   card.Bg.color = enabled ? _cardEnabledBg : _cardDisabledBg;
                 if (card.Name != null) card.Name.color = enabled ? _cardTextNormal : _cardTextDisabled;
@@ -407,6 +428,18 @@ namespace RTSCL.World.Unity
             if (_placer == null || def == null) return;
             if (ResourceBank.Wood < def.WoodCost) return;
             _placer.Select(def);
+        }
+
+        private void OnUpgradeClicked(UpgradeDefinition upgrade)
+        {
+            if (upgrade == null) return;
+            ulong owner = WorldStartContext.LocalPlayer;
+            if (PlayerUpgrades.IsPurchased(owner, upgrade.Kind)) return;
+            if (ResourceBank.Wood < upgrade.WoodCost) return;
+
+            ResourceBank.AddWood(-upgrade.WoodCost);
+            NetCommandIssuer.IssuePurchaseUpgrade(upgrade.Kind, owner);
+            Refresh();
         }
 
         // ---------- Helpers ----------
