@@ -49,6 +49,32 @@ namespace RTSCL.World.Unity
         public bool TryGetBuildingOwner(Vector2Int cell, out ulong owner) =>
             _cellToOwner.TryGetValue(cell, out owner);
 
+        /// <summary>Find the nearest building whose underlying BuildingDefinition asset is named `name`
+        /// AND that is owned by `owner`. Returns false if none exists.</summary>
+        public bool TryFindNearestBuildingByName(string name, ulong owner, Vector2Int from, out Vector2Int origin)
+        {
+            origin = default;
+            int bestDistSq = int.MaxValue;
+            bool found = false;
+            foreach (var kvp in _cellOwners)
+            {
+                var def = kvp.Value;
+                if (def == null || def.name != name) continue;
+                if (!_cellToOwner.TryGetValue(kvp.Key, out ulong cellOwner) || cellOwner != owner) continue;
+                if (!_cellToOrigin.TryGetValue(kvp.Key, out var thisOrigin)) continue;
+                int dx = thisOrigin.x - from.x;
+                int dy = thisOrigin.y - from.y;
+                int d = dx * dx + dy * dy;
+                if (d < bestDistSq)
+                {
+                    bestDistSq = d;
+                    origin = thisOrigin;
+                    found = true;
+                }
+            }
+            return found;
+        }
+
         public IEnumerable<KeyValuePair<Vector2Int, BuildingDefinition>> AllOccupied => _cellOwners;
 
         public void Select(BuildingDefinition def)
