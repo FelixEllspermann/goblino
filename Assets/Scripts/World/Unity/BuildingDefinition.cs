@@ -13,5 +13,7 @@ namespace RTSCL.World.Unity
         public int PopulationProvided = 0;
         [Tooltip("Units that this building can train (Keep→Farmer, Barracks→Club, etc.)")]
         public GoblinUnitDefinition[] TrainsUnits;
+        [Tooltip("Upgrades that this building can purchase (Workshop)")]
+        public UpgradeDefinition[] ProvidesUpgrades;
     }
 }
