@@ -15,6 +15,7 @@ namespace RTSCL.World.Unity
         public const byte CmdTrainUnit = 6;
         public const byte CmdAttack = 7;
         public const byte EvDamage = 8;
+        public const byte CmdPurchaseUpgrade = 9;
 
         public readonly struct WireNetIdLocal
         {
@@ -66,6 +67,16 @@ namespace RTSCL.World.Unity
             w.Write(target.Owner);   w.Write(target.LocalIndex);
             w.Write(damage);
             w.Write(attacker.Owner); w.Write(attacker.LocalIndex);
+            return ms.ToArray();
+        }
+
+        public static byte[] PackCmdPurchaseUpgrade(byte upgradeKind, ulong owner)
+        {
+            using var ms = new MemoryStream();
+            using var w = new BinaryWriter(ms);
+            w.Write(CmdPurchaseUpgrade);
+            w.Write(upgradeKind);
+            w.Write(owner);
             return ms.ToArray();
         }
 

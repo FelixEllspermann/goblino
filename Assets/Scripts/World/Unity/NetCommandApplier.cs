@@ -111,6 +111,18 @@ namespace RTSCL.World.Unity
             target.TakeDamage(damage, attacker);
         }
 
+        public static void ApplyPurchaseUpgrade(UpgradeKind kind, ulong owner, ulong sender)
+        {
+            if (sender != 0UL && owner != sender)
+            {
+                Debug.LogWarning($"[Net] ApplyPurchaseUpgrade dropped: owner {owner} != sender {sender}");
+                return;
+            }
+            if (PlayerUpgrades.IsPurchased(owner, kind)) return;
+            PlayerUpgrades.MarkPurchased(owner, kind);
+            UpgradeEffects.ApplyToOwnedUnits(owner, kind);
+        }
+
         // ------------- Top-level dispatcher -------------
 
         public static void Apply(byte[] payload, ulong sender)
@@ -186,6 +198,16 @@ namespace RTSCL.World.Unity
                         int dmg = dr.ReadInt32();
                         ulong aOwn = dr.ReadUInt64(); ushort aIdx = dr.ReadUInt16();
                         ApplyDamage(new GoblinNetId(tOwn, tIdx), dmg, new GoblinNetId(aOwn, aIdx), sender);
+                    }
+                    break;
+                case NetWireFormat.CmdPurchaseUpgrade:
+                    if (payload.Length >= 10)
+                    {
+                        using var ums = new System.IO.MemoryStream(payload, 1, payload.Length - 1);
+                        using var ur = new System.IO.BinaryReader(ums);
+                        byte ukind = ur.ReadByte();
+                        ulong uown = ur.ReadUInt64();
+                        ApplyPurchaseUpgrade((UpgradeKind)ukind, uown, sender);
                     }
                     break;
             }

@@ -116,5 +116,16 @@ namespace RTSCL.World.Unity
             var wAtk = new NetWireFormat.WireNetIdLocal(attacker.NetId.Owner, attacker.NetId.LocalIndex);
             NetCommandBridge.Send(NetWireFormat.PackEvDamage(wTgt, damage, wAtk));
         }
+
+        public static void IssuePurchaseUpgrade(UpgradeKind kind, ulong owner)
+        {
+            if (PlayerUpgrades.IsPurchased(owner, kind)) return;
+
+            // Local-immediate: mark + apply to all owned units.
+            PlayerUpgrades.MarkPurchased(owner, kind);
+            UpgradeEffects.ApplyToOwnedUnits(owner, kind);
+
+            NetCommandBridge.Send(NetWireFormat.PackCmdPurchaseUpgrade((byte)kind, owner));
+        }
     }
 }

@@ -241,6 +241,7 @@ namespace RTSCL.Lobby
                 case NetMessageType.CmdTrainUnit:
                 case NetMessageType.CmdAttack:
                 case NetMessageType.EvDamage:
+                case NetMessageType.CmdPurchaseUpgrade:
                     // Apply on this client.
                     RTSCL.World.Unity.NetCommandApplier.Apply(payload, sender.m_SteamID);
                     // Host: echo to all OTHER connected clients (so the rest of the lobby sees it).
