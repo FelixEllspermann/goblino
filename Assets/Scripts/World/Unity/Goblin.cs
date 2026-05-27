@@ -29,6 +29,14 @@ namespace RTSCL.World.Unity
         public float AttackInterval { get; private set; } = 1.5f;
         public int  AttackRange { get; private set; } = 1;
 
+        public void SetAttackDamage(int newDamage) => AttackDamage = Mathf.Max(0, newDamage);
+
+        public void SetMaxHp(int newMax, int newCurrent)
+        {
+            MaxHp = Mathf.Max(1, newMax);
+            CurrentHp = Mathf.Clamp(newCurrent, 0, MaxHp);
+        }
+
         public bool IsIdle => _state == State.Idle;
 
         private Sprite[] _frames;
