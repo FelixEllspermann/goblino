@@ -67,7 +67,13 @@ namespace RTSCL.World.Unity
 
         private const float FrameDuration = 0.18f;
         private const float TargetReachedEpsilon = 0.05f;
-        private const float ChopTickDuration = 2.0f;   // hit every 2s
+        private float _chopTickDuration = 2.0f;
+        public float HarvestSpeedMul { get; private set; } = 1f;
+        public void SetHarvestSpeedMul(float mul)
+        {
+            HarvestSpeedMul = Mathf.Max(0.01f, mul);
+            _chopTickDuration = 2.0f / HarvestSpeedMul;
+        }
         private const int WoodPerHit = 1;
         private const int AutoFindRadius = 12;
         private const float HitAnimDuration = 0.32f;
@@ -249,7 +255,7 @@ namespace RTSCL.World.Unity
                         break;
                     }
                     _harvestTimer += Time.deltaTime;
-                    if (_harvestTimer >= ChopTickDuration)
+                    if (_harvestTimer >= _chopTickDuration)
                     {
                         _harvestTimer = 0f;
                         HitTree(_treeCell);
