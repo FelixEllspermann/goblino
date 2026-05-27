@@ -17,7 +17,7 @@ namespace RTSCL.World.Unity
         [SerializeField] private int _startingGoblins = 5;
         [SerializeField] private GoblinUnitDefinition _startingUnitDef;
         [Tooltip("Test-only: spawn N Club Goblins farther out from the keep so you can test combat at game start. Set to 0 to disable.")]
-        [SerializeField] private int _testStartingClubs = 2;
+        [SerializeField] private int _testStartingClubs = 0;
         [Tooltip("Population cost charged per test Club (defaults to ClubGoblin's PopulationCost = 3)")]
         [SerializeField] private int _testClubPopCost = 3;
 
