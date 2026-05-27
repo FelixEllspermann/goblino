@@ -182,6 +182,7 @@ namespace RTSCL.World.Unity
             var goblin = go.AddComponent<Goblin>();
             goblin.Init(netId, kind.Name, kind.WalkFrames, _terrainMap, _decorationMap, kind.Definition);
             goblin.SetOwner(owner);
+            UpgradeEffects.ApplyExistingTo(goblin);
             return goblin;
         }
 
