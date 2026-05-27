@@ -45,7 +45,7 @@ namespace RTSCL.World.Unity
         private SpriteRenderer _renderer;
         private GameObject _selectionRing;
 
-        private enum State { Idle, MovingToPoint, MovingToTree, Harvesting, MovingToBuild, Building, MovingToAttack, Attacking, Dying }
+        private enum State { Idle, MovingToPoint, MovingToTree, Harvesting, WalkingToDeposit, MovingToBuild, Building, MovingToAttack, Attacking, Dying }
         private State _state = State.Idle;
 
         private Vector3 _moveTarget;
@@ -83,6 +83,8 @@ namespace RTSCL.World.Unity
             _chopTickDuration = 2.0f / HarvestSpeedMul;
         }
         private const int WoodPerHit = 1;
+        private const int MaxCarriedWood = 10;
+        public int CarriedWood { get; private set; }
         private const int AutoFindRadius = 12;
         private const float HitAnimDuration = 0.32f;
         private const float HitLungeAmount = 0.30f;    // world units lurch forward
@@ -115,6 +117,7 @@ namespace RTSCL.World.Unity
 
             BuildSelectionRing();
             GoblinHealthBar.AttachTo(this);
+            GoblinCarryText.AttachTo(this);
         }
 
         public void SetMoveCommand(Vector3 worldTarget)
@@ -256,17 +259,48 @@ namespace RTSCL.World.Unity
                 case State.Harvesting:
                 {
                     ShowIdleFrame();
+                    if (!IsLocalOwner) break;     // remote clients skip the chop tick — owner authorities harvest
+
                     if (!IsTreeStillThere(_treeCell))
                     {
                         ResetHitAnim();
-                        FindNextTreeOrIdle();
+                        if (CarriedWood > 0) TryStartDepositRun();
+                        else FindNextTreeOrIdle();
                         break;
                     }
                     _harvestTimer += Time.deltaTime;
                     if (_harvestTimer >= _chopTickDuration)
                     {
                         _harvestTimer = 0f;
-                        HitTree(_treeCell);
+                        bool destroyed = HitTree(_treeCell);
+                        if (CarriedWood >= MaxCarriedWood || destroyed)
+                            TryStartDepositRun();
+                    }
+                    break;
+                }
+
+                case State.WalkingToDeposit:
+                {
+                    if (!IsLocalOwner) break;     // remotes are in MovingToPoint via ApplyMove; their walk handles itself
+                    if (StepToward(_moveTarget))
+                    {
+                        // Arrived at keep — deposit.
+                        ResourceBank.AddWood(CarriedWood);
+                        CarriedWood = 0;
+
+                        // Resume: walk back to last tree if still alive, else find nearest, else idle.
+                        if (IsTreeStillThere(_treeCell))
+                        {
+                            _moveTarget = FindAdjacentStandingSpot(_treeCell);
+                            _state = State.MovingToTree;
+                            SendMoveWireOnly(_moveTarget);
+                        }
+                        else
+                        {
+                            FindNextTreeOrIdle();
+                            // If FindNextTreeOrIdle picked a tree (state changed to MovingToTree), mirror the move.
+                            if (_state == State.MovingToTree) SendMoveWireOnly(_moveTarget);
+                        }
                     }
                     break;
                 }
@@ -360,21 +394,60 @@ namespace RTSCL.World.Unity
             if (_state != State.Dying) UpdateHitAnim();
         }
 
-        private void HitTree(Vector3Int cell)
+        /// <summary>Apply one chop to the given tree cell. Returns true if the tree was destroyed by this hit.</summary>
+        private bool HitTree(Vector3Int cell)
         {
             var tile = _decorationMap.GetTile(cell) as UnityEngine.Tilemaps.Tile;
             var sprite = tile != null ? tile.sprite : null;
 
             int remaining = TreeHP.Hit(cell, 1);
-            ResourceBank.AddWood(WoodPerHit);
+            CarriedWood = Mathf.Min(MaxCarriedWood, CarriedWood + WoodPerHit);
             StartHitAnim(cell);
             TreeHitEffect.Spawn(_decorationMap, cell, sprite);
 
             if (remaining <= 0)
             {
                 _decorationMap.SetTile(cell, null);
-                // FindNext on next frame via the IsTreeStillThere check
+                return true;
             }
+            return false;
+        }
+
+        /// <summary>Find the owner's nearest Keep, set move target to its edge, transition to WalkingToDeposit,
+        /// and broadcast a CmdMove so remotes mirror the walk. Falls back to Idle (inventory preserved) if no
+        /// Keep exists.</summary>
+        private void TryStartDepositRun()
+        {
+            if (NetCommandApplier.Placer == null)
+            {
+                _state = State.Idle;
+                return;
+            }
+            var here = new Vector2Int(Mathf.FloorToInt(transform.position.x), Mathf.FloorToInt(transform.position.y));
+            if (!NetCommandApplier.Placer.TryFindNearestBuildingByName("Keep_0", Owner, here, out var keepOrigin))
+            {
+                _state = State.Idle;
+                return;
+            }
+
+            // Stand one cell to the SW of the keep origin (Keep is 2x2; origin is the SW corner).
+            Vector3 target = new Vector3(keepOrigin.x - 0.5f, keepOrigin.y + 0.5f, 0f);
+
+            ResetHitAnim();
+            _moveTarget = target;
+            _state = State.WalkingToDeposit;
+            SendMoveWireOnly(target);
+        }
+
+        /// <summary>Broadcast a single-unit CmdMove without touching local state (the owner's FSM state
+        /// is already set; remotes apply via the stock ApplyMove → SetMoveCommand path).</summary>
+        private void SendMoveWireOnly(Vector3 target)
+        {
+            var wire = new System.Collections.Generic.List<NetWireFormat.WireNetIdLocal>(1)
+            {
+                new NetWireFormat.WireNetIdLocal(NetId.Owner, NetId.LocalIndex)
+            };
+            NetCommandBridge.Send(NetWireFormat.PackCmdMove(wire, target.x, target.y));
         }
 
         private void StartHitAnim(Vector3Int cell)
