@@ -243,7 +243,7 @@ namespace RTSCL.World.Unity
 
                 case State.MovingToTree:
                 {
-                    if (!IsTreeStillThere(_treeCell))
+                    if (!IsHarvestableStillThere(_treeCell))
                     {
                         FindNextTreeOrIdle();
                         break;
@@ -261,7 +261,7 @@ namespace RTSCL.World.Unity
                     ShowIdleFrame();
                     if (!IsLocalOwner) break;     // remote clients skip the chop tick — owner authorities harvest
 
-                    if (!IsTreeStillThere(_treeCell))
+                    if (!IsHarvestableStillThere(_treeCell))
                     {
                         ResetHitAnim();
                         if (CarriedWood > 0) TryStartDepositRun();
@@ -289,7 +289,7 @@ namespace RTSCL.World.Unity
                         CarriedWood = 0;
 
                         // Resume: walk back to last tree if still alive, else find nearest, else idle.
-                        if (IsTreeStillThere(_treeCell))
+                        if (IsHarvestableStillThere(_treeCell))
                         {
                             _moveTarget = FindAdjacentStandingSpot(_treeCell);
                             _state = State.MovingToTree;
@@ -539,11 +539,11 @@ namespace RTSCL.World.Unity
             _frameTimer = 0f;
         }
 
-        private bool IsTreeStillThere(Vector3Int cell)
+        private bool IsHarvestableStillThere(Vector3Int cell)
         {
             if (_decorationMap == null) return false;
             var t = _decorationMap.GetTile(cell);
-            return t != null && IsTreeTile(t.name);
+            return t != null && IsHarvestable(t.name);
         }
 
         private void FindNextTreeOrIdle()
@@ -557,7 +557,7 @@ namespace RTSCL.World.Unity
             for (int dx = -AutoFindRadius; dx <= AutoFindRadius; dx++)
             {
                 var c = new Vector3Int(origin.x + dx, origin.y + dy, 0);
-                if (!IsTreeStillThere(c)) continue;
+                if (!IsHarvestableStillThere(c)) continue;
                 int sq = dx * dx + dy * dy;
                 if (sq < bestSq) { bestSq = sq; best = c; }
             }
@@ -575,6 +575,12 @@ namespace RTSCL.World.Unity
                 || tileName.StartsWith("DeadTrees_")
                 || tileName.StartsWith("CoconutTrees_");
         }
+
+        public static bool IsWheatfieldTile(string tileName) =>
+            tileName.StartsWith("Wheatfield_");
+
+        public static bool IsHarvestable(string tileName) =>
+            IsTreeTile(tileName) || IsWheatfieldTile(tileName);
 
         private static Vector3 CellCenter(Vector3Int cell) =>
             new(cell.x + 0.5f, cell.y + 0.5f, 0f);
