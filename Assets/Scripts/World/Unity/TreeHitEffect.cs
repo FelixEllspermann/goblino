@@ -22,6 +22,26 @@ namespace RTSCL.World.Unity
             fx._renderer.color = new Color(3f, 3f, 3f, 1f);  // HDR brighten — flash
         }
 
+        public static void SpawnBurst(Tilemap decorationMap, Vector3Int cell, Sprite sprite)
+        {
+            if (sprite == null) return;
+            var basePos = decorationMap.CellToWorld(cell) + new Vector3(0.5f, 0.5f, 0f);
+            const int Count = 5;
+            const float Radius = 0.35f;
+            for (int i = 0; i < Count; i++)
+            {
+                float angle = (i / (float)Count) * Mathf.PI * 2f;
+                Vector3 offset = new(Mathf.Cos(angle) * Radius, Mathf.Sin(angle) * Radius, 0f);
+                var go = new GameObject("TreeHitFx_Burst");
+                go.transform.position = basePos + offset;
+                var fx = go.AddComponent<TreeHitEffect>();
+                fx._renderer = go.AddComponent<SpriteRenderer>();
+                fx._renderer.sprite = sprite;
+                fx._renderer.sortingOrder = 40;
+                fx._renderer.color = new Color(3f, 3f, 3f, 1f);
+            }
+        }
+
         private void Update()
         {
             _t += Time.deltaTime;
