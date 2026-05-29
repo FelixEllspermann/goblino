@@ -702,7 +702,7 @@ namespace RTSCL.World.Unity
             return ResourceKind.Wood; // trees + default
         }
 
-        private static int MaxHpFor(string tileName)
+        public static int MaxHpFor(string tileName)
         {
             if (IsWheatfieldTile(tileName)) return 500;
             if (IsRockTile(tileName)) return 100;

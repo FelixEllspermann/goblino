@@ -45,6 +45,10 @@ namespace RTSCL.World.Unity
         private BuildingOwner _selBuildingOwner;
         private string _lastCarryLine = "";
         private string _lastGoblinDescBase = "";
+        private Vector3Int _selDecoCell;
+        private bool _selDecoHarvestable;
+        private string _selDecoBaseDesc = "";
+        private string _lastAmountLine = "";
 
         private struct CardRefs
         {
@@ -96,6 +100,7 @@ namespace RTSCL.World.Unity
             // Live progress bar while a production runs for the currently-shown keep/barracks
             if (_selKind == SelKind.Building) UpdateProgressUI();
             if (_selKind == SelKind.Goblins) UpdateCarryUI();
+            if (_selKind == SelKind.Decoration) UpdateResourceAmount();
 
             if (!Mouse.current.leftButton.wasPressedThisFrame) return;
             if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return;
@@ -119,7 +124,7 @@ namespace RTSCL.World.Unity
                 {
                     _selKind = SelKind.Decoration;
                     _selDef = null;
-                    ShowSimple(deco.name, DescribeDecoration(deco.name));
+                    ShowResourceNode(cell, deco.name);
                     return;
                 }
             }
@@ -450,6 +455,18 @@ namespace RTSCL.World.Unity
             if (_descriptionLabel != null) _descriptionLabel.text = full;
         }
 
+        private void UpdateResourceAmount()
+        {
+            if (!_selDecoHarvestable || _decorationMap == null) return;
+            var tile = _decorationMap.GetTile(_selDecoCell);
+            if (tile == null) { Hide(); return; } // node depleted/removed
+            string newAmount = AmountLine(_selDecoCell, tile.name);
+            if (newAmount == _lastAmountLine) return;
+            _lastAmountLine = newAmount;
+            if (_descriptionLabel != null)
+                _descriptionLabel.text = _selDecoBaseDesc + "\n" + newAmount;
+        }
+
         // ---------- Click handlers ----------
 
         private void OnUnitClicked(GoblinUnitDefinition unit)
@@ -534,24 +551,51 @@ namespace RTSCL.World.Unity
             return $"Wood / {sheet} • {def.Footprint.x}×{def.Footprint.y} cells";
         }
 
-        private static string DescribeDecoration(string tileName)
+        private void ShowResourceNode(Vector3Int cell, string tileName)
         {
+            _selDecoCell = cell;
+            _selDecoHarvestable = Goblin.IsHarvestable(tileName);
+            _selDecoBaseDesc = DecorationDesc(tileName);
+            _lastAmountLine = "";
+            string desc = _selDecoBaseDesc;
+            if (_selDecoHarvestable) desc += "\n" + AmountLine(cell, tileName);
+            ShowSimple(DecorationName(tileName), desc);
+        }
+
+        private string AmountLine(Vector3Int cell, string tileName)
+        {
+            int max = Goblin.MaxHpFor(tileName);
+            int cur = TreeHP.GetHP(cell, max);
+            var kind = Goblin.KindOf(tileName);
+            return $"{kind}: {cur} / {max}";
+        }
+
+        private static string DecorationName(string tileName)
+        {
+            if (tileName.StartsWith("Trees_")) return "Oak Tree";
+            if (tileName.StartsWith("PineTrees_") || tileName.StartsWith("WinterTrees_")) return "Pine Tree";
+            if (tileName.StartsWith("CoconutTrees_")) return "Palm Tree";
+            if (tileName.StartsWith("DeadTrees_") || tileName.StartsWith("WinterDeadTrees_")) return "Dead Tree";
+            if (tileName.StartsWith("Wheatfield_")) return "Wheat Field";
+            if (tileName.StartsWith("Rocks_")) return "Stone Deposit";
+            if (tileName.StartsWith("GoldOre_")) return "Gold Deposit";
+            if (tileName.StartsWith("IronOre_")) return "Iron Deposit";
+            if (tileName.StartsWith("CrystalOre_")) return "Crystal Deposit";
+            if (tileName.StartsWith("Cactus_")) return "Cactus";
+            if (tileName.StartsWith("Tumbleweed_")) return "Tumbleweed";
             int us = tileName.IndexOf('_');
-            string category = us > 0 ? tileName[..us] : tileName;
-            return category switch
-            {
-                "Trees"           => "Nature • Deciduous tree (Forest/Grassland)",
-                "PineTrees"       => "Nature • Pine tree (Snow)",
-                "WinterTrees"     => "Nature • Snow-covered tree",
-                "WinterDeadTrees" => "Nature • Bare winter tree",
-                "DeadTrees"       => "Nature • Dead tree (DryGrass)",
-                "CoconutTrees"    => "Nature • Coconut palm (Tropical)",
-                "Cactus"          => "Nature • Cactus (Desert)",
-                "Tumbleweed"      => "Nature • Tumbleweed (Desert/DryGrass)",
-                "Wheatfield"      => "Nature • Wheat field",
-                "Rocks"           => "Nature • Rock formation",
-                _                 => $"Decoration • {category}",
-            };
+            return us > 0 ? tileName[..us] : tileName;
+        }
+
+        private static string DecorationDesc(string tileName)
+        {
+            if (Goblin.IsTreeTile(tileName)) return "Chop for Wood";
+            if (tileName.StartsWith("Wheatfield_")) return "Harvest for Food";
+            if (tileName.StartsWith("Rocks_")) return "Mine for Stone";
+            if (tileName.StartsWith("GoldOre_")) return "Mine for Gold";
+            if (tileName.StartsWith("IronOre_")) return "Mine for Iron";
+            if (tileName.StartsWith("CrystalOre_")) return "Mine for Crystal";
+            return "Desert flora";
         }
     }
 }
