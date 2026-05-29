@@ -29,13 +29,18 @@ namespace RTSCL.World.Unity
                 if (!_placer.TryGetBuildingAt(origin, out var building) || building == null) continue;
                 // Fall back to 0 (local/solo player) if the building has no registered owner.
                 ulong owner = _placer.TryGetBuildingOwner(origin, out ulong o) ? o : 0UL;
-                // Spawn one unit on the closest passable cell around the keep footprint.
-                var unit = _spawner.SpawnByKindAroundFootprint(def.SpawnerKindName, origin, building.Footprint, owner, reservedIndex);
+                // Docks spawn boats on their water cell; everything else spawns around the footprint.
+                Goblin unit;
+                if (DockRegistry.TryGetWaterCell(origin, out var waterCell))
+                    unit = _spawner.SpawnKindAt(def.SpawnerKindName, new Vector3(waterCell.x + 0.5f, waterCell.y + 0.5f, 0f), owner);
+                else
+                    unit = _spawner.SpawnByKindAroundFootprint(def.SpawnerKindName, origin, building.Footprint, owner, reservedIndex);
 
                 // Send the new unit to the building's rally point. Only the owner issues the move
                 // (it broadcasts a normal CmdMove, so remotes mirror it). Spread so units don't stack.
+                // Boats (water units) stay at the dock's water cell — don't rally them onto land.
                 bool isLocal = owner == WorldStartContext.LocalPlayer || owner == 0UL;
-                if (unit != null && isLocal && RallyPoints.TryGet(origin, out var rally))
+                if (unit != null && isLocal && !def.WaterUnit && RallyPoints.TryGet(origin, out var rally))
                 {
                     Vector3 dest = NearestFreeCell(rally, unit);
                     NetCommandIssuer.IssueMove(new List<Goblin> { unit }, dest);

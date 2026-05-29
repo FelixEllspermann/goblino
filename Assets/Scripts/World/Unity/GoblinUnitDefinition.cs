@@ -51,6 +51,9 @@ namespace RTSCL.World.Unity
         [Tooltip("Visual size multiplier applied to the unit transform on spawn (monsters scale up).")]
         public float WorldScale = 1f;
 
+        [Tooltip("If true, this unit moves only on WATER (boats). Inverts passability: water ok, land blocked.")]
+        public bool WaterUnit;
+
         /// <summary>Seconds to produce one unit. Progress bar in BuildingPaletteUI uses this.</summary>
         [Tooltip("Seconds to produce one unit at a keep")]
         public float SpawnDuration = 3f;

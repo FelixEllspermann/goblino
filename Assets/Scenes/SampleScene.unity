@@ -323,6 +323,12 @@ MonoBehaviour:
     - {fileID: -1129637615917428308, guid: 3fe8a417f4c7ea04f948c28089371c40, type: 3}
     - {fileID: -2028041942904429195, guid: 3fe8a417f4c7ea04f948c28089371c40, type: 3}
     Definition: {fileID: 11400000, guid: 47dfcf8bf0b0189419fada3cd6ed9bc6, type: 2}
+  - Name: Boat
+    WalkFrames:
+    - {fileID: -3510124300914468012, guid: 1643cd0390ee9414fb27677111889f5a, type: 3}
+    - {fileID: -2369018739697091014, guid: 1643cd0390ee9414fb27677111889f5a, type: 3}
+    - {fileID: 8849086363888833396, guid: 1643cd0390ee9414fb27677111889f5a, type: 3}
+    Definition: {fileID: 0}
 --- !u!4 &164504309
 Transform:
   m_ObjectHideFlags: 0

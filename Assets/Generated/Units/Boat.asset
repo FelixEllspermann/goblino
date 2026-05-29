@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e5a02d3f8b674a2c91e8d7c4f3a1b2c9, type: 3}
+  m_Name: Boat
+  m_EditorClassIdentifier: RTSCL.World.Unity::RTSCL.World.Unity.GoblinUnitDefinition
+  DisplayName: Transport Boat
+  Icon: {fileID: -3510124300914468012, guid: 1643cd0390ee9414fb27677111889f5a, type: 3}
+  WoodCost: 60
+  FoodCost: 0
+  PopulationCost: 0
+  MaxHp: 80
+  AttackDamage: 0
+  AttackInterval: 1.5
+  AttackRange: 1
+  ProjectileSprite: {fileID: 0}
+  WorldScale: 1
+  WaterUnit: 1
+  SpawnDuration: 6
+  SpawnerKindName: Boat

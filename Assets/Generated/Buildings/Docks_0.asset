@@ -19,5 +19,6 @@ MonoBehaviour:
   WoodCost: 80
   StoneCost: 40
   PopulationProvided: 0
-  TrainsUnits: []
+  TrainsUnits:
+  - {fileID: 0}
   ProvidesUpgrades: []

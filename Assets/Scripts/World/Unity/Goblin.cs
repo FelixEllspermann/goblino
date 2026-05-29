@@ -136,6 +136,7 @@ namespace RTSCL.World.Unity
         private float _attackTimer;
         private Sprite _projectileSprite;   // non-null = ranged unit (shoots an Arrow instead of a melee lunge)
         private HitFeedback _hitFeedback;    // white flash + wobble + red spritz when hit
+        private bool _waterMode;             // true = boat: moves on water only (inverted passability)
         /// <summary>Seconds between build progress ticks. Reduce to make builders work faster.</summary>
         private const float BuildTickDuration = 1.0f;
         /// <summary>HP progress added to a building per build tick. Tune alongside BuildTickDuration.</summary>
@@ -213,6 +214,7 @@ namespace RTSCL.World.Unity
                 AttackInterval = def.AttackInterval;
                 AttackRange = def.AttackRange;
                 _projectileSprite = def.ProjectileSprite;
+                _waterMode = def.WaterUnit;
                 transform.localScale = Vector3.one * Mathf.Max(0.1f, def.WorldScale);
             }
             CurrentHp = MaxHp;
@@ -884,7 +886,11 @@ namespace RTSCL.World.Unity
             if (_terrainMap == null) return false;
             var t = _terrainMap.GetTile(new Vector3Int(x, y, 0));
             if (t == null) return false;
-            if (t.name == "DeepWater" || t.name == "Cliff" || t.name == "Shore") return false;
+            bool water = t.name == "DeepWater" || t.name == "Shore";
+            // Boats (water units) navigate ONLY water — land and cliffs block them, decorations don't matter.
+            if (_waterMode) return water;
+            // Land units: water, shore and cliffs block; harvestable decorations also block.
+            if (water || t.name == "Cliff") return false;
             if (_decorationMap != null)
             {
                 var d = _decorationMap.GetTile(new Vector3Int(x, y, 0));
