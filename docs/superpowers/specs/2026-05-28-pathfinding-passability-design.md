@@ -18,7 +18,7 @@ Goblins navigate around impassable terrain (deep water, cliffs) and harvestable 
 ## Passability
 
 A cell `(x,y)` is **passable** iff:
-1. Terrain tile is non-null AND its name is not `DeepWater` and not `Cliff`. (Shore = walkable beach.)
+1. Terrain tile is non-null AND its name is not `DeepWater`, not `Cliff`, and not `Shore`. (Water — including shallow shore — and cliffs block.)
 2. Decoration tile is null OR not harvestable (`!Goblin.IsHarvestable(name)`). Harvestable resources block; cosmetics (cactus, tumbleweed) do not.
 
 Buildings are NOT consulted → buildings never block. Goblins do not block each other.
@@ -151,7 +151,7 @@ No wire-protocol change. Commands still send target cells/points; each client co
 | Resource depletion mid-path leaves stale waypoints | Waypoints only get MORE passable as resources vanish; stale path still valid (never newly blocked, since buildings don't block + resources only disappear). |
 | Diagonal squeezing through water corner | Corner-cut rule requires both orthogonals passable. |
 | WorldGrid not set (e.g. menu scene) | Pathfinder treats out-of-range as impassable; if W/H are 0, FindPath returns null → straight-line fallback. Set in OnNewWorld before any unit moves. |
-| Shore classification | Shore treated as walkable (beach); only DeepWater + Cliff block. Flip easily if undesired. |
+| Shore classification | Shore is impassable (water). Resources/spawns already avoid shore (ResourcePlanner/SpawnPlanner exclude it), so this doesn't isolate anything reachable. |
 
 ## Out of Scope
 
