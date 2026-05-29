@@ -22,7 +22,7 @@ namespace RTSCL.World.Unity
         private const float WobbleSpeedDeg = 720f;    // phase speed of the left/right shake (deg/sec)
         private const float WobbleAmplitude = 20f;    // max tilt in degrees each way
         private const float FadeOutDuration = 0.3f;   // last N seconds fade alpha to 0
-        private const float HeightOffset = 0.7f;      // world units above the unit's origin
+        private const float HeightOffset = 1.0f;      // world units above the unit's origin
 
         private float _t;
         private SpriteRenderer _renderer;
