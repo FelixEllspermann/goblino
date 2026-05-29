@@ -7,19 +7,34 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **Goblino** — a Unity 6 / URP 2D top-down RTS with Steam multiplayer. Repo: `github.com/FelixEllspermann/goblino`. Direct-to-main workflow.
 
 Current playable loop (single-player):
-- Main menu → Play Solo → SampleScene with random world
-- Auto-generated map (biomes, trees, resources, 2 spawn points)
-- Keep at spawn[0] with 5 Farmer Goblins (+ 2 test Club Goblins for combat testing)
-- Build Hut (300 wood, +5 pop cap) or Barracks (500 wood) — Farmer selects, right-click building card, click to place, Farmer constructs it
-- Train Farmer at Keep or Club at Barracks (wood + pop cost, progress bar)
-- Farmers harvest trees + build; Clubs fight (auto-retaliate, hop-arc death + red particle burst, ~5.5× higher hop than original design after balancing)
-- Population cap = 20 + 5/Hut. Farmer=1 cost, Club=3.
+- Main menu → Play Solo → **Solo setup panel** (seed + bot count) → SampleScene with random world
+- Auto-generated map (biomes, trees, resources, up to 4 spawn points; tuned for more mainland, more stone, closer + reachable safe-spawn resources)
+- Keep at spawn[0] with starting Farmer Goblins (+ optional test Club Goblins)
+- Build Hut (+pop cap), Barracks (trains Club + Archer), or **Docks** (coastal, trains Boats) — Farmer selects, right-click building card, click to place, Farmer constructs it. Costs are asset-driven (`BuildingDefinition`).
+- Train Farmer at Keep, Club/Archer at Barracks, Boat at Docks (wood/food + pop cost, progress bar). Buildings have a **rally point** (GUI_33 flag + dashed line; right-click to set).
+- Farmers harvest (auto-find same resource kind nearby, fan out via global standing-cell reservations) + build; Clubs melee, **Archers** fire homing arrows; units **attack & destroy buildings** (melee lunge / ranged arrow + building hit FX).
+- **Neutral monsters** (Giant Crab / Mammoth / Slime / Slime Blue) spawn in biome zones, wander + aggro + leash; hidden under fog (also on minimap).
+- **On-hit feedback** on every unit (white flash + wobble + red spritz) and buildings (flash + spritz). **No friendly fire** (only cross-owner / neutral-vs-player are hostile).
+- **Bot opponents** (1–N, solo only): own non-cheating economy, must scout under its own fog, builds + expands, trains military, runs adaptive attack plans, defends its base, raids spotted monsters, and ferries across water by boat. See "Single-player AI" below.
+- **Win/lose:** a faction is eliminated when it owns 0 buildings; `MatchManager` pauses + shows a Victory/Defeat overlay with Back-to-Menu.
+- Click a unit (own or enemy/neutral) to inspect a **stat sheet** (HP / damage / attack speed / range, live-updating). Population cap + unit costs are asset-driven.
 
 Multiplayer state:
 - Main menu offers `Multiplayer` → public-lobby browser via Steam matchmaking
 - Lobby up to 4 players. Host clicks Start → world seed + per-player slot assignment broadcast over Steam P2P → all clients load SampleScene with identical map.
 - Each player gets a keep + starting team at their assigned spawn (P0 Blue / P1 Red / P2 Yellow / P3 Green). Enemy units are colour-tinted; own units stay original sprite. Enemy buildings show name + HP but no production cards.
 - Commands (Move / Harvest / Build-Assist / Place Building / Train Unit / Attack) sync via local-immediate + host-echo. Per-hit damage syncs via `EvDamage`. HP bars stay in lockstep across clients (~50-150ms Steam relay latency).
+
+## Single-player AI & content
+
+- **Solo is single-client authoritative.** `WorldStartContext.IsSolo` is true when `PendingSlots == null` (Play Solo path). `Goblin.IsOwnedLocally` is true for ALL units in solo, so the one client simulates player, bots, and monsters. `NetCommandBridge.OutgoingSender` is null → wire-sends are no-ops.
+- **Owner model:** player = owner 0; bots = owner 1..N; neutral monsters carry the host owner (0 in solo) but `IsNeutral`. Bot factions get colour tints (`MainBaseSetup.SoloBotColor`); the player's units stay untinted.
+- **Bot economy is real, not cheating** — `BotEconomy` holds a per-owner `int[6]` resource bank + pop, keyed by owner. Every bot action (train/build) is checked + deducted there. `BotController` drives each bot every tick: harvest round-robin, train farmers (target ~14), build huts early + barracks (then a 2nd), expand outward.
+- **Bot fog / scouting:** each bot has its OWN `Explored` map and only "knows" what it has seen. It runs a growing scout team (+1 scout every 3 min until an enemy is found, then released). Land **connected-components** tell it what's reachable on foot.
+- **Bot attack plans:** downtime (`_attackCooldown`) → roll small/medium/large via adaptive `PlanWeights` → train to size → march on a discovered enemy base → back to downtime. Defends when a hostile (monster OR enemy combatant) comes within `_defenseRadius` (30) of the keep, and raids neutral monsters it currently sees.
+- **Bot naval:** if an enemy base / unexplored land is on another landmass, the bot builds a Dock, trains a Boat, and ferries units across (board → sail → unload → attack). Same `RunNaval` path is used for naval scouting.
+- **Transport boats:** water-only movement (`Goblin._waterMode` inverts passability). Right-click own units onto a boat to board (cap 6); right-click the boat onto land to unload. Boat dies → passengers lost. `DockRegistry` maps a dock origin → its water cell (boat spawn point).
+- **Anti-stacking:** stationary units (idle / fighting / harvesting / building) gently separate so they never share a cell; moving units path freely (no separation, to avoid chokepoint deadlocks).
 
 ## Engine & rendering
 
@@ -45,8 +60,9 @@ Multiplayer state:
 
 - **Singleton managers** auto-bootstrap via `[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]` + `DontDestroyOnLoad`, idempotent `_instance != null` guard. See `SteamManager`, `LobbyManager`, `NetworkManager`, `GameStartLoader`.
 - **Static events** for cross-cutting state. `ResourceBank.OnWoodChanged`, `PopulationManager.OnChanged`, `BuildingConstruction.OnCompleted`, `GoblinProduction.OnChanged`, `LobbyManager.OnLobbyEntered/Left/...`, `NetworkManager.OnConnected/Disconnected/Error`, `NetworkSession.OnGameStartReceived`. UI subscribes; no service-locator lookups.
-- **Per-cell game state** lives in static classes keyed by `Vector2Int`: `TreeHP`, `BuildingHP`, `BuildingConstruction`, `BuildingPlacer._cellOwners`. World reset routes through `MainBaseSetup.OnNewWorld` which clears all of them.
-- **Asset-driven definitions**: `BuildingDefinition` (ScriptableObject) carries sprite/footprint/cost/trains-units/pop-provided. `GoblinUnitDefinition` carries icon/wood-cost/pop-cost/spawn-duration/HP/damage/attack-interval/range. `BuildingCatalog.asset` lists reachable buildings.
+- **Per-cell / per-owner game state** lives in static classes: `TreeHP`, `BuildingHP`, `BuildingConstruction`, `BuildingPlacer._cellOwners` (keyed by `Vector2Int`); `RallyPoints`, `DockRegistry`, `HarvestReservations` (a GLOBAL set of reserved standing cells so harvesters never share a cell, even across adjacent nodes); `BotEconomy` (keyed by owner `ulong`). World reset routes through `MainBaseSetup.OnNewWorld`, which clears all of them.
+- **Asset-driven definitions**: `BuildingDefinition` (ScriptableObject) carries sprite/footprint/cost/trains-units/pop-provided + `WaterSprite` (dock pier). `GoblinUnitDefinition` carries icon/wood-cost/food-cost/pop-cost/spawn-duration/HP/damage/attack-interval/range + `ProjectileSprite` (set → ranged, fires an `Arrow`), `WorldScale` (monsters scale up), `WaterUnit` (boat: water-only movement). `BuildingCatalog.asset` lists reachable buildings (incl. Docks); unit assets live under `Assets/Generated/Units/`.
+- **Click-selection** uses each unit's padded sprite **`SelectionBounds`** (not a fixed radius), so large/offset sprites (boats, monsters) are pickable across their hull. Enemy/neutral units are click-inspectable (read-only) but never enter the commandable selection.
 
 ## Steam integration
 
@@ -77,17 +93,19 @@ The Unity MCP server (`mcp__unity-mcp__*` tools) is the preferred way to drive t
 - Sandbox blocks `System.Reflection` and some namespace references. If `Image` collides with `Unity.AI.Image`, alias: `using UImage = UnityEngine.UI.Image;`.
 - `EditorBuildSettings.scenes` changes need an explicit `AssetDatabase.SaveAssets()` to flush to disk.
 - Play-mode probes via `EditorApplication.EnterPlaymode()` are async — re-run the command after a few seconds to read results. Same applies to async Steam callbacks (lobby create/list/join take ~1–3 s).
+- **Play-mode time nearly freezes when the editor window is unfocused** (`Time.deltaTime` ≈ 0). So time-based behaviour (bot AI ticks, movement over seconds, attack cooldowns) can't be observed headlessly — verify *deterministic* things via probes (spawns, ownership, reachability/components, asset wiring, registry state, win/lose) and ask for a focused playtest for the rest. Don't blanket-claim "can't test."
+- Reliable recompile of a filesystem edit: `AssetDatabase.ImportAsset(path, ForceUpdate | ForceSynchronousImport)` + `UnityEditor.Compilation.CompilationPipeline.RequestScriptCompilation()` + wait ~13 s, then read the console. A plain `AssetDatabase.Refresh()` does NOT reliably pick up external edits.
 - `EditorGUIUtility.Load("UI/Skin/UISprite.psd")` and `Resources.GetBuiltinResource<Sprite>("UI/Skin/UISprite.psd")` both return `null` in Unity 6 in this project setup. UI built at runtime currently uses `sprite = null` (flat colored rect). Future polish: import a sliced sprite asset for borders.
 
 ## Testing
 
-- Pure-logic tests under `Assets/Tests/Editor/` cover the world generator. 32 tests, all passing. Run via the Test Runner window or via Unity MCP's `TestRunnerApi`.
+- Pure-logic tests under `Assets/Tests/Editor/` cover the world generator (+ `GoblinNetId`). 42 tests, all passing. Run via the Test Runner window or via Unity MCP's `TestRunnerApi`.
 - Unity-bound code (`RTSCL.World.Unity` and `Assembly-CSharp`) is not automatically tested. Verification is per-task via MCP compile checks + manual play-mode validation (see `docs/superpowers/plans/`).
 - Multiplayer flows (lobby join, P2P, GameStart sync) need two real Steam clients to verify end-to-end. Host-alone smoke tests cover the single-client path.
 
 ## Multiplayer roadmap
 
-1. ✅ Combat foundation (local, Club-vs-Club friendly fire, hop-arc death + particle burst)
+1. ✅ Combat foundation (local Club-vs-Club; hop-arc death + particle burst). Friendly fire was later removed — only cross-owner / neutral-vs-player are hostile.
 2. ✅ Main menu + Steam public-lobby browser
 3. ✅ Steam P2P transport + world-seed sync
 4. ✅ Player ownership (each unit knows its `Owner` ulong; only owner can command) + up to 4 spawn placements with faction tints
@@ -125,3 +143,21 @@ The Unity MCP server (`mcp__unity-mcp__*` tools) is the preferred way to drive t
 | `Assets/Scripts/World/Unity/GoblinNetId.cs` | RTSCL.World | `readonly struct GoblinNetId(ulong, ushort)` — unit-testable |
 | `Assets/Scripts/World/Unity/GoblinNetRegistry.cs` | RTSCL.World.Unity | `Dictionary<GoblinNetId, Goblin>` + per-owner counter |
 | `Assets/Scripts/World/Unity/BuildingOwner.cs` | RTSCL.World.Unity | MonoBehaviour: per-building owner + faction tint + selection ring |
+
+## Key files (single-player gameplay & AI)
+
+| File | Asmdef | Purpose |
+|---|---|---|
+| `Assets/Scripts/World/Unity/Goblin.cs` | RTSCL.World.Unity | Unit FSM (move/harvest/build/attack-unit/attack-building/board/unload/die), A* pathing, hit anim, `_waterMode` boats, `SelectionBounds`, stationary separation |
+| `Assets/Scripts/World/Unity/BotController.cs` | RTSCL.World.Unity | Per-bot AI: economy, vision/scouting, components, attack plans, defense, monster raids, naval ferry |
+| `Assets/Scripts/World/Unity/BotEconomy.cs` | RTSCL.World.Unity | Per-owner resource bank + pop (so bots can't cheat) |
+| `Assets/Scripts/World/Unity/MonsterSpawner.cs` / `MonsterAI.cs` | RTSCL.World.Unity | Neutral monster placement (biome zones, coastal for crabs) + wander/aggro/leash |
+| `Assets/Scripts/World/Unity/FogOfWar.cs` | RTSCL.World.Unity | Per-cell visibility; reveals ONLY around the local player's units/buildings |
+| `Assets/Scripts/World/Unity/MatchManager.cs` | RTSCL.World.Unity | Win/lose by building ownership + Victory/Defeat overlay |
+| `Assets/Scripts/World/Unity/HarvestReservations.cs` | RTSCL.World.Unity | Global standing-cell reservation (no harvester overlap, even across nodes) |
+| `Assets/Scripts/World/Unity/RallyPoints.cs` | RTSCL.World.Unity | Per-building rally point + `RallyVisual` (flag + dashed line) |
+| `Assets/Scripts/World/Unity/DockRegistry.cs` | RTSCL.World.Unity | Dock origin → water cell (boat spawn) |
+| `Assets/Scripts/World/Unity/Arrow.cs` | RTSCL.World.Unity | Homing projectile (unit damage / visual-only building hit) |
+| `Assets/Scripts/World/Unity/HitFeedback.cs` / `BuildingHitFeedback.cs` | RTSCL.World.Unity | On-hit flash + wobble + red spritz (units / buildings) |
+| `Assets/Scripts/World/Unity/ObjectInspector.cs` | RTSCL.World.Unity | Bottom info panel: building / resource / unit stat sheet + action cards |
+| `Assets/Scripts/Lobby/SoloSetupPanel.cs` | Assembly-CSharp | Solo setup menu (seed + bot count) → `WorldStartContext.SoloBotCount` |
