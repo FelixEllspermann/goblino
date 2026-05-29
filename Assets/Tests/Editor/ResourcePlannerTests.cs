@@ -1,3 +1,6 @@
+// Tests for ResourcePlanner (RTSCL.World assembly).
+// Verifies that resource cluster placement honours the configured per-spawn and free-roam counts,
+// produces both Stone and Food types, and is fully deterministic given identical RNG seeds.
 using System.Collections.Generic;
 using NUnit.Framework;
 using RTSCL.World;
@@ -16,6 +19,8 @@ namespace RTSCL.World.Tests
             return b;
         }
 
+        // Total cluster count must equal (spawns × (stone + food) per spawn) + free-roam count.
+        // Config pins both per-spawn and free-roam values to fixed numbers for an exact assertion.
         [Test]
         public void PlaceClusters_ProducesPerSpawnAndFreeRoam()
         {
@@ -36,6 +41,7 @@ namespace RTSCL.World.Tests
             Assert.AreEqual(14, clusters.Count);
         }
 
+        // Both Stone and Food ResourceTypes must appear in the output so the economy has both axes.
         [Test]
         public void PlaceClusters_StoneAndFoodBothRepresented()
         {
@@ -54,6 +60,8 @@ namespace RTSCL.World.Tests
             Assert.IsTrue(hasFood);
         }
 
+        // Identical RNG seeds must produce clusters in the same order with identical types and centres —
+        // required for multiplayer map parity across all clients.
         [Test]
         public void PlaceClusters_Determinism()
         {

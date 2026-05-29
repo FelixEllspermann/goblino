@@ -1,7 +1,14 @@
+// NoiseField.cs — Thin wrapper around Unity.Mathematics.noise.snoise for seeded, scaled 2D noise.
+// Three independent NoiseField instances (elevation, moisture, temperature) drive world generation.
+// Each channel gets a different random offset derived from the same seed, ensuring they are
+// uncorrelated while staying deterministic. Adjust scale in WorldGenConfig (Elevation/Moisture/TemperatureScale).
+
 using Unity.Mathematics;
 
 namespace RTSCL.World
 {
+    /// <summary>Produces deterministic, normalised [0..1] 2D simplex noise for one generation channel.
+    /// Construct one instance per channel; the channel index advances the RNG so offsets differ.</summary>
     public sealed class NoiseField
     {
         private readonly float2 _offset;
@@ -18,6 +25,7 @@ namespace RTSCL.World
             _scale = scale <= 0f ? 1f : scale;
         }
 
+        /// <summary>Convenience overload accepting a signed seed (cast to uint).</summary>
         public NoiseField(int seed, int channel, float scale)
             : this(unchecked((uint)seed), channel, scale) { }
 

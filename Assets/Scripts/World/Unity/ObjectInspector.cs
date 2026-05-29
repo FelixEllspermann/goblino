@@ -1,3 +1,24 @@
+// =============================================================================
+// ObjectInspector.cs  —  RTSCL.World.Unity
+//
+// The bottom info/action panel. Three mutually exclusive display modes:
+//   Building   — selected by left-clicking a placed building. Shows HP, trains-
+//                unit cards (or upgrade cards) for local buildings.
+//   Goblins    — driven by GoblinSelectionController.OnSelectionChanged. Shows
+//                build-option cards for Farmer Goblins.
+//   Decoration — selected by left-clicking a resource tile (tree, ore, wheat).
+//                Shows remaining resource amount, live-updated each frame.
+//
+// Cards are rebuilt from scratch each time the display mode changes (ClearCards
+// then BuildXCards). Affordability / pop-cap state is refreshed by Refresh(),
+// which is triggered by ResourceBank.OnChanged, PopulationManager.OnChanged,
+// and GoblinProduction.OnChanged so the UI stays reactive without polling.
+//
+// To add a new card type: add a BuildXCards method and a CardRefs entry with
+// the relevant cost fields; extend Refresh() affordability logic.
+// To add a new resource kind cost: add a field to CardRefs and extend IsValid
+// and the affordability check in Refresh().
+// =============================================================================
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -38,18 +59,23 @@ namespace RTSCL.World.Unity
         [Tooltip("Buildings a Farmer Goblin can construct when selected")]
         [SerializeField] private List<BuildingDefinition> _farmerBuildables = new();
 
+        // Which type of object is currently being inspected.
         private enum SelKind { None, Building, Decoration, Goblins }
         private SelKind _selKind = SelKind.None;
-        private Vector2Int _selOrigin;
-        private BuildingDefinition _selDef;
-        private BuildingOwner _selBuildingOwner;
-        private string _lastCarryLine = "";
-        private string _lastGoblinDescBase = "";
-        private Vector3Int _selDecoCell;
-        private bool _selDecoHarvestable;
-        private string _selDecoBaseDesc = "";
-        private string _lastAmountLine = "";
+        // Cached state for the active display mode; updated each time Show*() is called.
+        private Vector2Int _selOrigin;            // SW-corner of selected building (Building mode)
+        private BuildingDefinition _selDef;       // definition of selected building
+        private BuildingOwner _selBuildingOwner;  // component used to toggle the building selection ring
+        private string _lastCarryLine = "";       // cached carry text to avoid redundant label updates
+        private string _lastGoblinDescBase = "";  // base description without carry suffix (Goblins mode)
+        private Vector3Int _selDecoCell;          // tile-space cell of selected decoration (Decoration mode)
+        private bool _selDecoHarvestable;         // whether the selected tile yields a resource
+        private string _selDecoBaseDesc = "";     // description without the live resource amount line
+        private string _lastAmountLine = "";      // cached amount text to avoid redundant label updates
 
+        /// <summary>Runtime card data: one entry per visible action card. Stores both the UI
+        /// component refs (for tinting/enabling) and the cost values (for Refresh() affordability
+        /// checks without re-querying the definition each frame).</summary>
         private struct CardRefs
         {
             public GameObject Root;
@@ -58,7 +84,7 @@ namespace RTSCL.World.Unity
             public Image Icon;
             public Text Name;
             public Text Cost;
-            // Either a unit production action or a building placement action.
+            // Exactly one of Unit / Building / Upgrade is non-null, identifying the card's action type.
             public GoblinUnitDefinition Unit;
             public BuildingDefinition Building;
             public int WoodCost;
@@ -76,6 +102,8 @@ namespace RTSCL.World.Unity
         {
             if (_popupRoot != null) _popupRoot.SetActive(false);
             if (_progressRow != null) _progressRow.SetActive(false);
+            // Subscribe to resource/population/production changes so cards refresh
+            // affordability without polling. Lambda wraps Refresh to match the delegate signature.
             ResourceBank.OnChanged += (_, __) => Refresh();
             PopulationManager.OnChanged += Refresh;
             GoblinProduction.OnChanged += Refresh;
@@ -85,6 +113,7 @@ namespace RTSCL.World.Unity
 
         private void OnDestroy()
         {
+            // Always unsubscribe static events to prevent lingering delegates after scene reload.
             PopulationManager.OnChanged -= Refresh;
             GoblinProduction.OnChanged -= Refresh;
             if (_selectionController != null)
@@ -191,7 +220,7 @@ namespace RTSCL.World.Unity
             _selBuildingOwner = FindBuildingOwnerAt(origin);
             if (_selBuildingOwner != null) _selBuildingOwner.SetSelected(true);
 
-            // Determine if this is a local (or solo) building.
+            // Determine if this is a local (or solo) building; only local buildings get action cards.
             bool isLocal = true;
             if (_placer != null && _placer.TryGetBuildingOwner(origin, out ulong owner))
                 isLocal = (owner == WorldStartContext.LocalPlayer || owner == 0UL);
@@ -201,7 +230,7 @@ namespace RTSCL.World.Unity
                 desc += $"\nHP: {cur} / {max}";
             SetHeader(def.DisplayName, desc);
 
-            // Only show production cards for local buildings.
+            // Priority: unit training > upgrades > no cards. Enemy buildings show no cards.
             if (isLocal && def.TrainsUnits != null && def.TrainsUnits.Length > 0)
                 BuildUnitCards(def.TrainsUnits);
             else if (isLocal && def.ProvidesUpgrades != null && def.ProvidesUpgrades.Length > 0)
@@ -222,6 +251,9 @@ namespace RTSCL.World.Unity
             _popupRoot?.SetActive(true);
         }
 
+        // Locate the BuildingOwner MonoBehaviour that sits at the world position corresponding
+        // to the given origin cell. FindObjectsByType is expensive; called only when the
+        // selection changes (not every frame), so the cost is acceptable.
         private BuildingOwner FindBuildingOwnerAt(Vector2Int origin)
         {
             if (_terrainMap == null) return null;
@@ -256,6 +288,8 @@ namespace RTSCL.World.Unity
 
         // ---------- Cards (built on demand for the current display) ----------
 
+        // Destroy all current card GameObjects and hide the container.
+        // Called before rebuilding a new set (mode change) or on Hide().
         private void ClearCards()
         {
             if (_unitCardsContainer == null) return;
@@ -265,6 +299,8 @@ namespace RTSCL.World.Unity
             _unitCardsContainer.gameObject.SetActive(false);
         }
 
+        // Build one card per unit definition in the building's TrainsUnits list.
+        // Each card stores WoodCost + FoodCost in CardRefs for Refresh() to check.
         private void BuildUnitCards(GoblinUnitDefinition[] units)
         {
             ClearCards();
@@ -281,6 +317,8 @@ namespace RTSCL.World.Unity
             }
         }
 
+        // Build one card per buildable in the Farmer Goblin's _farmerBuildables list.
+        // Clicking enters BuildingPlacer ghost-placement mode (does NOT place immediately).
         private void BuildBuildingCards(List<BuildingDefinition> defs)
         {
             ClearCards();
@@ -297,6 +335,8 @@ namespace RTSCL.World.Unity
             }
         }
 
+        // Build one card per upgrade in the building's ProvidesUpgrades list.
+        // Already-purchased upgrades are greyed out and non-interactable (checked in Refresh).
         private void BuildUpgradeCards(UpgradeDefinition[] upgrades)
         {
             ClearCards();
@@ -315,6 +355,9 @@ namespace RTSCL.World.Unity
             }
         }
 
+        // Construct a single action card at runtime using Unity UI components.
+        // Layout: HorizontalLayoutGroup (icon | VerticalLayoutGroup (name label / cost label)).
+        // Returns the CardRefs struct so callers can store cost data alongside the UI refs.
         private CardRefs CreateCard(string title, Sprite icon, string costText, Action onClick)
         {
             var card = new GameObject($"Card_{title}");
@@ -398,6 +441,9 @@ namespace RTSCL.World.Unity
 
         // ---------- Refresh enabled/affordable state ----------
 
+        // Re-evaluate enabled state for every visible card.
+        // Upgrade cards also check PlayerUpgrades.IsPurchased to grey out bought upgrades.
+        // A building that is busy producing blocks all unit cards (only one queue slot).
         private void Refresh()
         {
             if (_cards.Count == 0) return;
@@ -425,6 +471,9 @@ namespace RTSCL.World.Unity
             UpdateProgressUI();
         }
 
+        // Update the production progress bar for the currently-selected building.
+        // Bar is driven by scaling (pivot.x=0, scaleX = progress 0..1) rather than a
+        // filled sprite, so any sprite (or null) works without a special import setting.
         private void UpdateProgressUI()
         {
             if (_progressRow == null) return;
@@ -438,6 +487,8 @@ namespace RTSCL.World.Unity
             if (_progressLabel != null) _progressLabel.text = $"Producing {slot.Def.DisplayName}…";
         }
 
+        // Poll the selected farmer's carry slot each frame and append a carry line to the
+        // description label when non-zero. Uses string equality to avoid redundant label writes.
         private void UpdateCarryUI()
         {
             if (_selectionController == null) return;
@@ -455,6 +506,8 @@ namespace RTSCL.World.Unity
             if (_descriptionLabel != null) _descriptionLabel.text = full;
         }
 
+        // Poll the resource node's remaining HP each frame and append an amount line.
+        // Hides the popup if the tile has been removed since it was selected.
         private void UpdateResourceAmount()
         {
             if (!_selDecoHarvestable || _decorationMap == null) return;
@@ -469,6 +522,9 @@ namespace RTSCL.World.Unity
 
         // ---------- Click handlers ----------
 
+        // Train a unit: guard checks are duplicated here (button may be stale from a
+        // brief window between Refresh() calls) before deducting resources and issuing
+        // the net command. IssueTrainUnit handles actual spawning on all clients.
         private void OnUnitClicked(GoblinUnitDefinition unit)
         {
             if (_selKind != SelKind.Building || _selDef == null) return;
@@ -483,6 +539,9 @@ namespace RTSCL.World.Unity
             Refresh();
         }
 
+        // Enter ghost-placement mode for the selected building definition.
+        // The card affordability guard is a convenience check; IsValid inside BuildingPlacer
+        // is the authoritative gatekeeper at actual placement time.
         private void OnBuildingClicked(BuildingDefinition def)
         {
             if (_placer == null || def == null) return;
@@ -491,6 +550,8 @@ namespace RTSCL.World.Unity
             _placer.Select(def);
         }
 
+        // Purchase an upgrade: deduct resources locally then issue the net command so all
+        // clients call UpgradeEffects.ApplyExistingTo on their local goblins.
         private void OnUpgradeClicked(UpgradeDefinition upgrade)
         {
             if (upgrade == null) return;
@@ -509,6 +570,7 @@ namespace RTSCL.World.Unity
 
         // ---------- Helpers ----------
 
+        // Human-readable display name for goblin unit types. Extend when adding new kinds.
         private static string PrettyKindName(string kind) => kind switch
         {
             "FarmerGoblin" => "Farmer Goblin",
@@ -544,6 +606,8 @@ namespace RTSCL.World.Unity
             return parts.Count == 0 ? "Free" : string.Join(", ", parts);
         }
 
+        // Derive a brief material/size description from the asset name.
+        // Convention: "Keep_0" → sheet="Keep"; "Barracks_3" → sheet="Barracks".
         private static string DescribeBuilding(BuildingDefinition def)
         {
             int us = def.name.IndexOf('_');
@@ -551,6 +615,8 @@ namespace RTSCL.World.Unity
             return $"Wood / {sheet} • {def.Footprint.x}×{def.Footprint.y} cells";
         }
 
+        // Enter Decoration mode: cache the tile info and show the initial popup.
+        // After this, UpdateResourceAmount() keeps the remaining HP line current each frame.
         private void ShowResourceNode(Vector3Int cell, string tileName)
         {
             _selDecoCell = cell;
@@ -562,6 +628,8 @@ namespace RTSCL.World.Unity
             ShowSimple(DecorationName(tileName), desc);
         }
 
+        // Format the remaining resource HP as "Wood: 23 / 50". Uses TreeHP which tracks
+        // per-tile hit-point state (shared across all clients on the owner's authority).
         private string AmountLine(Vector3Int cell, string tileName)
         {
             int max = Goblin.MaxHpFor(tileName);
@@ -570,6 +638,7 @@ namespace RTSCL.World.Unity
             return $"{kind}: {cur} / {max}";
         }
 
+        // Map tile-name prefix → human-readable display name for the popup title.
         private static string DecorationName(string tileName)
         {
             if (tileName.StartsWith("Trees_")) return "Oak Tree";

@@ -1,3 +1,20 @@
+// =============================================================================
+// HarvestReservations.cs  —  RTSCL.World.Unity
+//
+// Owner-local registry that fans multiple harvesters out around a shared
+// resource node by assigning each a distinct adjacent standing cell.
+// This is a cosmetic/pathing aid only — resource accounting is always
+// authoritative on the owner client and never involves this registry.
+//
+// Ownership: runs on every client but only the local-owner client issues
+// harvest commands; remote goblins simply path to the same tile-cell they
+// received via CmdHarvest (they call Reserve too, but divergence is harmless
+// because it only affects where they stand, not how much they collect).
+//
+// Clear() must be called by MainBaseSetup.OnNewWorld to wipe stale entries
+// between games. Release() must be called whenever a goblin stops harvesting
+// (new command, node depleted, death) to free its cell for others.
+// =============================================================================
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -10,9 +27,12 @@ namespace RTSCL.World.Unity
     /// divergence is purely cosmetic.</summary>
     public static class HarvestReservations
     {
+        // Maps each goblin to the (node tile-cell, reserved standing cell) it currently holds.
         private static readonly Dictionary<Goblin, (Vector3Int node, Vector2Int cell)> _byGoblin = new();
+        // Maps each node tile-cell to the set of standing cells already reserved by other goblins.
         private static readonly Dictionary<Vector3Int, HashSet<Vector2Int>> _takenByNode = new();
 
+        // 8-directional adjacency, tried in this order during Reserve to pick the nearest free spot.
         private static readonly Vector3Int[] Offsets =
         {
             new( 1, 0, 0), new(-1, 0, 0), new( 0, 1, 0), new( 0,-1, 0),

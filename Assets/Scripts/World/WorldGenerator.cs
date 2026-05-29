@@ -1,3 +1,10 @@
+// WorldGenerator.cs — Orchestrates the full world-generation pipeline.
+// Pipeline order (see TryGenerate): noise sampling → falloff → two-pass biome classification
+// → island/lake cleanup → spawn placement → resource clusters → reachability gate.
+// If reachability fails or not enough spawns are found, the seed is incremented and the
+// whole pipeline retries (up to MaxRegenerationAttempts). The Unity layer calls Generate()
+// once on scene load and passes the result to MainBaseSetup via WorldStartContext.
+
 using System;
 using System.Collections.Generic;
 using Unity.Mathematics;
@@ -5,8 +12,13 @@ using Random = Unity.Mathematics.Random;
 
 namespace RTSCL.World
 {
+    /// <summary>Entry point for world generation. Call <see cref="Generate"/> with a seed
+    /// and config to receive a fully validated <see cref="WorldData"/> instance.</summary>
     public sealed class WorldGenerator
     {
+        /// <summary>Runs TryGenerate up to <see cref="WorldGenConfig.MaxRegenerationAttempts"/> times,
+        /// incrementing the seed each attempt to escape bad noise configurations.
+        /// Throws <see cref="InvalidOperationException"/> if all attempts fail — tune WorldGenConfig.</summary>
         public WorldData Generate(int seed, WorldGenConfig cfg)
         {
             uint baseSeed = unchecked((uint)seed);
@@ -23,11 +35,13 @@ namespace RTSCL.World
                 $"(base seed {baseSeed}). Tune WorldGenConfig.");
         }
 
+        /// <summary>One complete generation attempt for the given seed.
+        /// Returns null on failure (insufficient spawns or reachability check failed).</summary>
         private static WorldData TryGenerate(uint seed, WorldGenConfig cfg)
         {
             int w = cfg.Width, h = cfg.Height;
 
-            // 1. Noise channels
+            // 1. Noise channels — each on a different channel index so their offsets are uncorrelated
             var elevField   = new NoiseField(seed, channel: 0, cfg.ElevationScale);
             var moistField  = new NoiseField(seed, channel: 1, cfg.MoistureScale);
             var tempField   = new NoiseField(seed, channel: 2, cfg.TemperatureScale);
@@ -41,6 +55,8 @@ namespace RTSCL.World
             {
                 elevation[x, y]   = elevField.Sample(x, y);
                 moisture[x, y]    = moistField.Sample(x, y);
+                // Temperature blends noise with a latitude bias: rows near the top/bottom
+                // edges of the map (y≈0 or y≈h) get a +0.4 boost, simulating polar cold.
                 float t = tempField.Sample(x, y) * 0.6f;
                 float latBias = math.abs(((float)y / h) - 0.5f) * 2f * 0.4f;
                 temperature[x, y] = math.saturate(t + latBias);
@@ -80,7 +96,7 @@ namespace RTSCL.World
                                                     cfg.CandidatesPerSpawn, ref rng);
             if (spawns.Length < cfg.PlayerCount) return null;
 
-            // 7. Reserve spawn areas (set decoration-mask later in DecorationPlacer)
+            // 7. Reserve spawn areas — decoration masking is handled by DecorationPlacer (not yet implemented)
 
             // 8. Resource clusters
             var clusters = ResourcePlanner.PlaceClusters(biomes, w, h, spawns, cfg, ref rng);
@@ -92,6 +108,8 @@ namespace RTSCL.World
             return new WorldData(w, h, biomes, spawns, clusters, seed);
         }
 
+        /// <summary>Returns true if any tile within Manhattan distance <paramref name="radius"/>
+        /// of (cx, cy) is DeepWater or Shore. Used for the TropicalCoast second-pass upgrade.</summary>
         private static bool HasWaterWithinManhattan(Biome[,] biomes, int w, int h,
                                                      int cx, int cy, int radius)
         {

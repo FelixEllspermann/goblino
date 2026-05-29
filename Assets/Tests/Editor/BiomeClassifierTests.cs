@@ -1,3 +1,7 @@
+// Tests for BiomeClassifier (RTSCL.World assembly).
+// Each test exercises a single branch of the elevation/moisture/temperature decision tree,
+// confirming that the thresholds defined in WorldGenConfig map to the expected Biome enum value.
+// All tests use the default WorldGenConfig to reflect production thresholds.
 using NUnit.Framework;
 using RTSCL.World;
 
@@ -7,6 +11,7 @@ namespace RTSCL.World.Tests
     {
         private static WorldGenConfig DefaultConfig() => new WorldGenConfig();
 
+        // Very low elevation (0.10) must always produce DeepWater regardless of moisture/temperature.
         [Test]
         public void LowElevation_ReturnsDeepWater()
         {
@@ -15,6 +20,7 @@ namespace RTSCL.World.Tests
             Assert.AreEqual(Biome.DeepWater, b);
         }
 
+        // Elevation in the transitional shore band must yield Shore (the coastal walkable strip).
         [Test]
         public void ShoreRange_ReturnsShore()
         {
@@ -23,6 +29,7 @@ namespace RTSCL.World.Tests
             Assert.AreEqual(Biome.Shore, b);
         }
 
+        // Very high elevation (0.90) must produce Cliff — an impassable terrain type.
         [Test]
         public void HighElevation_ReturnsCliff()
         {
@@ -31,6 +38,7 @@ namespace RTSCL.World.Tests
             Assert.AreEqual(Biome.Cliff, b);
         }
 
+        // Low temperature (0.10) at mid elevation overrides moisture and must produce Snow.
         [Test]
         public void LowTemperature_ReturnsSnow()
         {
@@ -39,6 +47,7 @@ namespace RTSCL.World.Tests
             Assert.AreEqual(Biome.Snow, b);
         }
 
+        // High temperature + low moisture at mid elevation must produce Desert.
         [Test]
         public void HotAndDry_ReturnsDesert()
         {
@@ -47,6 +56,7 @@ namespace RTSCL.World.Tests
             Assert.AreEqual(Biome.Desert, b);
         }
 
+        // TropicalCoast requires hot+moist conditions AND an adjacent water cell (hasNearbyWater=true).
         [Test]
         public void HotMoistNearWater_ReturnsTropicalCoast()
         {
@@ -55,6 +65,7 @@ namespace RTSCL.World.Tests
             Assert.AreEqual(Biome.TropicalCoast, b);
         }
 
+        // Without nearby water the TropicalCoast condition must not fire; cell falls back to a land biome.
         [Test]
         public void HotMoistFarFromWater_FallsBackToGrasslandOrForest()
         {
@@ -63,6 +74,7 @@ namespace RTSCL.World.Tests
             Assert.AreNotEqual(Biome.TropicalCoast, b);
         }
 
+        // High moisture at mid elevation/temperature must produce Forest.
         [Test]
         public void HighMoisture_ReturnsForest()
         {
@@ -71,6 +83,7 @@ namespace RTSCL.World.Tests
             Assert.AreEqual(Biome.Forest, b);
         }
 
+        // Mid moisture at mid elevation/temperature must produce the default Grassland biome.
         [Test]
         public void MidMoisture_ReturnsGrassland()
         {
@@ -79,6 +92,7 @@ namespace RTSCL.World.Tests
             Assert.AreEqual(Biome.Grassland, b);
         }
 
+        // Low moisture at mid elevation/temperature must produce DryGrass (sparse vegetation).
         [Test]
         public void LowMoisture_ReturnsDryGrass()
         {

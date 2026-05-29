@@ -1,3 +1,7 @@
+// Tests for SpawnPlanner (RTSCL.World assembly).
+// Verifies that player spawn points are: placed in the requested quantity, located only on eligible
+// land biomes (Grassland or Forest), reproducible from the same RNG seed, and separated from water
+// by the requested buffer distance.
 using NUnit.Framework;
 using RTSCL.World;
 using Unity.Mathematics;
@@ -15,6 +19,7 @@ namespace RTSCL.World.Tests
             return b;
         }
 
+        // PlaceSpawns must return exactly as many spawn points as there are players.
         [Test]
         public void PlaceSpawns_OnUniformGrass_ReturnsRequestedCount()
         {
@@ -25,6 +30,7 @@ namespace RTSCL.World.Tests
             Assert.AreEqual(4, spawns.Length);
         }
 
+        // Every returned spawn cell must fall on a passable land biome (Grassland or Forest).
         [Test]
         public void PlaceSpawns_AllSpawnsOnEligibleCells()
         {
@@ -39,6 +45,7 @@ namespace RTSCL.World.Tests
             }
         }
 
+        // Identical RNG seeds must produce identical spawn positions — required for multiplayer map parity.
         [Test]
         public void PlaceSpawns_Determinism()
         {
@@ -55,6 +62,8 @@ namespace RTSCL.World.Tests
             }
         }
 
+        // The buffer parameter must exclude any cell within 'buffer' cells of a water tile so that
+        // keeps cannot be placed right at the water's edge.
         [Test]
         public void PlaceSpawns_BufferKeepsAwayFromWater()
         {

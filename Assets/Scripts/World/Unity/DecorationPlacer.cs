@@ -1,3 +1,21 @@
+// DecorationPlacer.cs — Seed-deterministic placement of all map decorations onto the decoration Tilemap.
+// Called once per world generation by WorldGeneratorBootstrap.RegenerateWithSeed().
+// Because placement uses Unity.Mathematics.Random with a fixed seed, every client that runs the same seed
+// produces an IDENTICAL decoration layout — no per-decoration sync is needed over the network.
+//
+// Placement pass order (must stay fixed to remain deterministic with a given seed):
+//   1. Forests (biome-matched species clusters)
+//   2. Scattered individual trees
+//   3. Stone clusters
+//   4. Ore deposits (Gold → Iron → Crystal)
+//   5. Guaranteed-spawn resources (one forest, one stone, one of each ore, N wheat near each spawn)
+//   6. Cosmetic scatter (cactus, tumbleweed — non-harvestable, fills empty unreserved cells last)
+//
+// "Reserved" cells: the bool[,] mask prevents decorations from overlapping spawn keep footprints
+// and resource clusters already placed by the world generator (WorldData.Resources).
+//
+// To tune decoration density/counts: adjust DecorationConfig fields in the Inspector on WorldGeneratorBootstrap.
+// To add a new decoration type: add TileBase field(s) to DecorationConfig and a placement pass below.
 using System;
 using System.Collections.Generic;
 using RTSCL.World;
@@ -8,8 +26,12 @@ using Random = Unity.Mathematics.Random;
 
 namespace RTSCL.World.Unity
 {
+    /// <summary>Stateless helper that populates the decoration Tilemap from a WorldData + seed.
+    /// Construct it, call Place(), discard it — all state is local to the call.</summary>
     public sealed class DecorationPlacer
     {
+        /// <summary>Serializable config bag exposed on WorldGeneratorBootstrap in the Inspector.
+        /// All density/count/radius knobs live here — never hardcoded below.</summary>
         [Serializable]
         public sealed class DecorationConfig
         {
@@ -49,23 +71,34 @@ namespace RTSCL.World.Unity
             public int CrystalDeposits = 3;
 
             [Header("Spawn")]
+            /// <summary>Cells cleared around each spawn point so the keep can be placed without overlap.</summary>
             public int SpawnReservedRadius = 2;
+            /// <summary>Radius within which guaranteed-spawn resources are seeded near each spawn point.</summary>
             public int SafeSpawnRadius = 25;
+            /// <summary>Number of wheat tiles guaranteed near each spawn.</summary>
             public int SafeSpawnWheat = 5;
         }
 
         private readonly Tilemap _decorationMap;
         private readonly DecorationConfig _cfg;
 
+        /// <param name="decorationMap">The Tilemap to paint decorations onto (not the terrain map).</param>
+        /// <param name="cfg">Config bag from the Inspector on WorldGeneratorBootstrap.</param>
         public DecorationPlacer(Tilemap decorationMap, DecorationConfig cfg)
         {
             _decorationMap = decorationMap;
             _cfg = cfg;
         }
 
+        /// <summary>Main entry point. Clears the decoration Tilemap and re-paints all decoration passes
+        /// in a fixed deterministic order using the provided seed.</summary>
+        /// <param name="world">WorldData produced by WorldGenerator (provides biomes, size, spawns, resources).</param>
+        /// <param name="seed">Generation seed. Must match across all clients for identical layouts.
+        /// Seed 0 is remapped to 1 (Unity.Mathematics.Random rejects 0).</param>
         public void Place(WorldData world, uint seed)
         {
             _decorationMap.ClearAllTiles();
+            // Remap 0 → 1: Unity.Mathematics.Random requires a non-zero seed.
             var rng = new Random(seed == 0 ? 1u : seed);
             var reserved = BuildReservedMask(world);
 
@@ -92,9 +125,13 @@ namespace RTSCL.World.Unity
 
         // ---------- Biome helpers ----------
 
+        /// <summary>Returns true for biomes that can receive decorations (excludes water, cliffs, shore).</summary>
         private static bool IsPassableBiome(Biome b) =>
             b != Biome.DeepWater && b != Biome.Cliff && b != Biome.Shore;
 
+        /// <summary>Maps a biome to its appropriate tree tile array.
+        /// Returns null for biomes that don't support trees (Desert, DeepWater, etc.).
+        /// Forests are kept single-species by comparing the returned array reference in PlaceForests.</summary>
         private TileBase[] ForestTilesFor(Biome b) => b switch
         {
             Biome.Forest        => _cfg.DeciduousTreeTiles,
@@ -105,6 +142,7 @@ namespace RTSCL.World.Unity
             _                   => null,
         };
 
+        /// <summary>Returns true if ForestTilesFor() yields a non-empty array for this biome.</summary>
         private bool BiomeSupportsTrees(Biome b)
         {
             var t = ForestTilesFor(b);
@@ -113,6 +151,9 @@ namespace RTSCL.World.Unity
 
         // ---------- Forests ----------
 
+        /// <summary>Places up to ForestCount forest clusters, each grown via GrowCluster.
+        /// Each cluster picks a random start cell, determines species from that cell's biome,
+        /// then only grows into neighboring cells with the same species mapping (single-species forest).</summary>
         private void PlaceForests(WorldData world, bool[,] reserved, ref Random rng)
         {
             int placed = 0, attempts = 0, maxAttempts = Mathf.Max(1, _cfg.ForestCount) * 30;
@@ -133,6 +174,8 @@ namespace RTSCL.World.Unity
             }
         }
 
+        /// <summary>Fills remaining empty, unreserved, tree-supporting cells at ScatteredTreeDensity probability.
+        /// Runs after PlaceForests so it avoids re-filling cluster cells.</summary>
         private void ScatteredTrees(WorldData world, bool[,] reserved, ref Random rng)
         {
             for (int y = 0; y < world.Height; y++)
@@ -151,6 +194,8 @@ namespace RTSCL.World.Unity
 
         // ---------- Stone ----------
 
+        /// <summary>Attempts to place one stone cluster at a random passable, unreserved location.
+        /// Retries up to 30 times before giving up (avoids infinite loops on small/full maps).</summary>
         private void PlaceStoneCluster(WorldData world, bool[,] reserved, ref Random rng)
         {
             if (_cfg.RockTiles == null || _cfg.RockTiles.Length == 0) return;
@@ -168,6 +213,11 @@ namespace RTSCL.World.Unity
 
         // ---------- Generic cluster growth ----------
 
+        /// <summary>Grows a cluster of tiles around (cx, cy) up to a random size in [sizeMin, sizeMax].
+        /// Each candidate cell is chosen within ±radius of the center; only placed if unreserved,
+        /// empty, in bounds, and satisfying the cellOk predicate.
+        /// The same tile array is used for forests and stone clusters — species/type is determined by the caller.</summary>
+        /// <param name="cellOk">Predicate that returns true if a cell is eligible for this cluster type.</param>
         private void GrowCluster(WorldData world, int cx, int cy, TileBase[] tiles,
                                  int sizeMin, int sizeMax, int radius,
                                  bool[,] reserved, ref Random rng, Func<int, int, bool> cellOk)
@@ -192,6 +242,8 @@ namespace RTSCL.World.Unity
 
         // ---------- Ore (single deposits) ----------
 
+        /// <summary>Scatters 'count' single-cell ore deposits across the map at random passable, empty locations.
+        /// Each deposit is a single tile. To increase deposit size, add a GrowCluster call here instead.</summary>
         private void PlaceOre(WorldData world, TileBase tile, int count, bool[,] reserved, ref Random rng)
         {
             if (tile == null || count <= 0) return;
@@ -213,6 +265,10 @@ namespace RTSCL.World.Unity
 
         // ---------- Safe-spawn guarantee ----------
 
+        /// <summary>Ensures every spawn point has at least one forest, one stone cluster, one of each ore type,
+        /// and SafeSpawnWheat wheat tiles within SafeSpawnRadius. Called after global passes so guaranteed
+        /// resources always appear even on seed/map combinations where global scattering missed a spawn area.
+        /// Falls back to deciduous trees if the spawn biome doesn't support trees.</summary>
         private void GuaranteeSpawn(WorldData world, int2 spawn, bool[,] reserved, ref Random rng)
         {
             int r = _cfg.SafeSpawnRadius;
@@ -244,6 +300,8 @@ namespace RTSCL.World.Unity
                 PlaceSingleInRadius(world, spawn, r, _cfg.WheatTile, reserved, ref rng);
         }
 
+        /// <summary>Places a single tile within radius of center. Logs a warning if no empty cell is found
+        /// after 200 attempts (usually means the spawn area is very crowded).</summary>
         private void PlaceSingleInRadius(WorldData world, int2 center, int radius, TileBase tile,
                                          bool[,] reserved, ref Random rng)
         {
@@ -259,6 +317,8 @@ namespace RTSCL.World.Unity
             }
         }
 
+        /// <summary>Searches up to 200 times for an empty, passable, unreserved cell within radius of center.
+        /// Returns false if no suitable cell is found (caller should log and skip gracefully).</summary>
         private bool TryFindCellInRadius(WorldData world, int2 center, int radius, bool[,] reserved,
                                          ref Random rng, out int outX, out int outY)
         {
@@ -277,6 +337,8 @@ namespace RTSCL.World.Unity
 
         // ---------- Cosmetic scatter (non-harvestable) ----------
 
+        /// <summary>Fills empty, unreserved Desert and DryGrass cells with visual-only tiles (cactus, tumbleweed).
+        /// Runs last so it never overwrites harvestable resources. These tiles have no gameplay function.</summary>
         private void CosmeticScatter(WorldData world, bool[,] reserved, ref Random rng)
         {
             for (int y = 0; y < world.Height; y++)
@@ -297,10 +359,14 @@ namespace RTSCL.World.Unity
 
         // ---------- Reserved mask ----------
 
+        /// <summary>Builds the initial reserved cell mask before any decoration is placed.
+        /// Reserved = spawn keep footprints (±SpawnReservedRadius) + resource cluster cells from WorldData.Resources.
+        /// Decorations are never placed on reserved cells, preserving spawn safety and pre-planned resources.</summary>
         private bool[,] BuildReservedMask(WorldData world)
         {
             var mask = new bool[world.Width, world.Height];
             int r = _cfg.SpawnReservedRadius;
+            // Mark keep footprint areas around each spawn point.
             if (world.Spawns != null)
             foreach (var s in world.Spawns)
             {
@@ -312,6 +378,7 @@ namespace RTSCL.World.Unity
                         mask[nx, ny] = true;
                 }
             }
+            // Mark cells already occupied by world-generator resource clusters.
             if (world.Resources != null)
                 foreach (var cluster in world.Resources)
                     foreach (var cell in cluster.Cells)

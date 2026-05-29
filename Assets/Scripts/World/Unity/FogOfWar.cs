@@ -1,9 +1,30 @@
+// FogOfWar.cs  (MonoBehaviour — RTSCL.World.Unity)
+// Drives a dedicated "fog" Tilemap layer that overlays the terrain.
+// Mechanism: one black tile per cell, per-cell color overridden each frame via
+// Tilemap.SetColor (requires TileFlags.None on every cell — set in ResetForWorld).
+//
+// Visibility states:
+//   Hidden   — never seen, fully opaque black (_hiddenTint   alpha 1.0)
+//   Explored — seen at some point, semi-transparent (_exploredTint alpha 0.55)
+//   Visible  — currently in LOS of a friendly unit/building (transparent, _visibleTint alpha 0.0)
+//
+// Each frame: all Visible cells are demoted to Explored, then re-marked from
+// current unit/building positions. Only changed cells call SetColor.
+//
+// Where to adjust:
+//   - Vision radii: _goblinRadius / _keepRadius / _buildingRadius (Inspector).
+//   - Fog colours: _hiddenTint / _exploredTint / _visibleTint (Inspector).
+//   - Keep detection: checked by def.name.StartsWith("Keep") — rename if the asset changes.
+//   - Sorting: fog Tilemap's Order in Layer must sit above terrain but below units.
+
 using UnityEngine;
 using UnityEngine.Tilemaps;
 using RTSCL.World;
 
 namespace RTSCL.World.Unity
 {
+    /// <summary>Per-cell visibility fog driven by a Tilemap colour overlay.
+    /// Exposes GetVisibility() for the Minimap and other consumers.</summary>
     public sealed class FogOfWar : MonoBehaviour
     {
         [Header("References")]
@@ -21,8 +42,10 @@ namespace RTSCL.World.Unity
         [SerializeField] private Color _exploredTint = new(0f, 0f, 0f, 0.55f);
         [SerializeField] private Color _visibleTint  = new(0f, 0f, 0f, 0.00f);
 
+        /// <summary>Three-state visibility per map cell. Byte-sized for compact 2D array storage.</summary>
         public enum Visibility : byte { Hidden = 0, Explored = 1, Visible = 2 }
         private Visibility[,] _state;
+        // _prevState mirrors last-painted values; cells that haven't changed skip SetColor.
         private Visibility[,] _prevState;
         private TileBase _blackTile;
         private WorldData _knownWorld;
@@ -31,6 +54,7 @@ namespace RTSCL.World.Unity
         private void Update()
         {
             var world = _worldSource != null ? _worldSource.CurrentWorld : null;
+            // Reinitialise whenever a fresh world is generated.
             if (world != null && world != _knownWorld)
             {
                 _knownWorld = world;
@@ -42,6 +66,8 @@ namespace RTSCL.World.Unity
             ApplyChangedColors();
         }
 
+        /// <summary>Fills the fog tilemap with black tiles and clears all visibility state
+        /// for the new world dimensions. TileFlags.None is required before SetColor works.</summary>
         private void ResetForWorld(WorldData world)
         {
             _width = world.Width;
@@ -70,12 +96,15 @@ namespace RTSCL.World.Unity
             }
             _fogMap.SetTiles(positions, tiles);
 
-            // Allow per-cell color overrides
+            // Allow per-cell color overrides — Unity requires TileFlags.None for SetColor to work.
             for (int y = 0; y < _height; y++)
             for (int x = 0; x < _width; x++)
                 _fogMap.SetTileFlags(new Vector3Int(x, y, 0), TileFlags.None);
         }
 
+        /// <summary>Recomputes the Visible set each frame.
+        /// Strategy: demote all Visible→Explored, then re-mark circles around every
+        /// friendly unit and building. Hidden cells can only advance to Explored once seen.</summary>
         private void ComputeVisibility()
         {
             // Demote Visible → Explored before re-marking
@@ -83,7 +112,7 @@ namespace RTSCL.World.Unity
             for (int x = 0; x < _width; x++)
                 if (_state[x, y] == Visibility.Visible) _state[x, y] = Visibility.Explored;
 
-            // Goblins
+            // Goblins — all units in Goblin.All are assumed friendly (local ownership).
             foreach (var g in Goblin.All)
             {
                 if (g == null) continue;
@@ -97,12 +126,15 @@ namespace RTSCL.World.Unity
                 foreach (var kv in _buildingPlacer.AllOccupied)
                 {
                     var def = kv.Value;
+                    // Keep buildings have a larger radius; all others use _buildingRadius.
                     int r = (def != null && def.name.StartsWith("Keep")) ? _keepRadius : _buildingRadius;
                     MarkCircle(kv.Key.x, kv.Key.y, r);
                 }
             }
         }
 
+        /// <summary>Marks all cells within <paramref name="radius"/> of (cx, cy) as Visible.
+        /// Uses squared-distance check to avoid sqrt; clamps to map bounds for safety.</summary>
         private void MarkCircle(int cx, int cy, int radius)
         {
             int r2 = radius * radius;
@@ -119,6 +151,8 @@ namespace RTSCL.World.Unity
             }
         }
 
+        /// <summary>Calls Tilemap.SetColor only for cells whose visibility changed since last frame,
+        /// avoiding a full tilemap repaint each update.</summary>
         private void ApplyChangedColors()
         {
             for (int y = 0; y < _height; y++)
@@ -146,6 +180,8 @@ namespace RTSCL.World.Unity
             return _state[x, y];
         }
 
+        /// <summary>Lazily creates a 16×16 black tile at runtime (no asset dependency).
+        /// Shared across all fog cells to keep the tile atlas minimal.</summary>
         private void EnsureBlackTile()
         {
             if (_blackTile != null) return;

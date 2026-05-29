@@ -1,3 +1,21 @@
+// MultiplayerPanel.cs
+// Role: Lobby-browser UI. Shows a scrollable list of public lobbies (filtered by game version),
+//       lets the player create a new lobby or join an existing one.
+//
+// How it fits:
+//   OnEnable triggers a lobby-list refresh immediately so the panel is never stale.
+//   LobbyManager.OnLobbyListReceived → OnListReceived rebuilds the row list.
+//   LobbyManager.OnError → OnError surfaces matchmaking failures without crashing.
+//   Clicking "Join" in a row calls LobbyManager.JoinLobby — the LobbyEnter_t Steam
+//   callback eventually fires, which MenuRoot catches to navigate to LobbyPanel.
+//
+// Where to adjust:
+//   • Row height / colors: constants are inline in BuildRow (rle.preferredHeight = 48,
+//     bg.color, joinImg.color) — extract to SerializeField if designer tuning is needed.
+//   • Max-players filter: add SteamMatchmaking.AddRequestLobbyListFilterSlotsAvailable
+//     inside LobbyManager.RequestLobbyList (not here) before RequestLobbyList() is called.
+//   • Sort order: reorder `list` before the BuildRow loop in OnListReceived.
+
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -5,16 +23,20 @@ using Steamworks;
 
 namespace RTSCL.Lobby
 {
+    /// <summary>Panel that displays the public lobby browser and handles Create / Refresh / Join.</summary>
     public sealed class MultiplayerPanel : MonoBehaviour
     {
         [SerializeField] private MenuRoot _root;
         [SerializeField] private Button _backButton;
         [SerializeField] private Button _createButton;
         [SerializeField] private Button _refreshButton;
+        // ScrollRect's content RectTransform — rows are parented here.
         [SerializeField] private RectTransform _listContent;
         [SerializeField] private Text _emptyLabel;
         [SerializeField] private Text _errorLabel;
+        // Assigned in the Inspector; used by every dynamically-created Text child in BuildRow.
         [SerializeField] private Font _rowFont;
+        // Sliced sprite used for row backgrounds and the Join button background.
         [SerializeField] private Sprite _rowSprite;
 
         private void OnEnable()
@@ -25,6 +47,7 @@ namespace RTSCL.Lobby
             LobbyManager.OnLobbyListReceived += OnListReceived;
             LobbyManager.OnError += OnError;
             ClearError();
+            // Kick off a refresh immediately so the list is populated when the panel appears.
             OnRefresh();
         }
 
@@ -38,7 +61,9 @@ namespace RTSCL.Lobby
         }
 
         private void OnBack()    => _root?.ShowMain();
+        // CreateLobby is async — the result arrives via LobbyCreated_t then LobbyEnter_t.
         private void OnCreate()  { ClearError(); LobbyManager.CreateLobby(); }
+        // RequestLobbyList is async — result arrives via LobbyMatchList_t → OnLobbyListReceived.
         private void OnRefresh() { ClearError(); LobbyManager.RequestLobbyList(); }
 
         private void OnError(string msg)
@@ -55,9 +80,12 @@ namespace RTSCL.Lobby
             _errorLabel.gameObject.SetActive(false);
         }
 
+        /// <summary>Rebuilds the lobby row list. Called whenever LobbyManager receives a
+        /// fresh LobbyMatchList_t result from Steam.</summary>
         private void OnListReceived(List<LobbyInfo> list)
         {
             if (_listContent == null) return;
+            // Destroy existing rows before building new ones.
             for (int i = _listContent.childCount - 1; i >= 0; i--)
                 Destroy(_listContent.GetChild(i).gameObject);
 
@@ -66,6 +94,8 @@ namespace RTSCL.Lobby
             foreach (var info in list) BuildRow(info);
         }
 
+        /// <summary>Procedurally builds a UI row for one lobby entry.
+        /// Layout: [HorizontalLayoutGroup] → Name (flexible) + Join Button (fixed 96px wide).</summary>
         private void BuildRow(LobbyInfo info)
         {
             var row = new GameObject($"Lobby_{info.Id.m_SteamID}", typeof(RectTransform));
@@ -119,6 +149,8 @@ namespace RTSCL.Lobby
             lblTxt.color = Color.white;
             lblTxt.alignment = TextAnchor.MiddleCenter;
 
+            // Capture lobby ID in a local variable — the lambda must not close over `info`
+            // directly because `info` changes across loop iterations.
             var capturedId = info.Id;
             joinBtn.onClick.AddListener(() => LobbyManager.JoinLobby(capturedId));
         }

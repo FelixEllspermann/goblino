@@ -1,3 +1,22 @@
+// =============================================================================
+// MainBaseSetup.cs  —  RTSCL.World.Unity
+//
+// Reacts to the world generator producing a new WorldData and bootstraps the
+// per-player starting state: wipes previous-game statics, seeds resources,
+// places each player's Keep (charge=false, requireConstruction=false), and
+// spawns their starting Farmer Goblins around the keep's footprint.
+//
+// Detection pattern: polls WorldGeneratorBootstrap.CurrentWorld in Update and
+// fires OnNewWorld the first frame the reference changes — no event subscription
+// needed, and the dependency direction stays World → Unity (not the other way).
+//
+// Solo vs. Multiplayer: WorldStartContext.PendingSlots is null in solo mode.
+// When null, a single team is placed at spawn[0] with owner=0UL. When non-null
+// (MP path set by GameStartLoader), one team is placed per slot entry.
+//
+// To adjust starting resources: change the Add calls in OnNewWorld.
+// To add more unit types at start: call SpawnAroundFootprint again in SpawnTeamAt.
+// =============================================================================
 using UnityEngine;
 using UnityEngine.Tilemaps;
 using RTSCL.World;
@@ -21,18 +40,25 @@ namespace RTSCL.World.Unity
         [Tooltip("Population cost charged per test Club (defaults to ClubGoblin's PopulationCost = 3)")]
         [SerializeField] private int _testClubPopCost = 3;
 
-        // Subscribe to "world ready" by polling on Update — keeps things decoupled.
+        // Cache the last-seen world so Update can detect changes without an event subscription.
         private WorldData _knownWorld;
 
         private void Update()
         {
             if (_worldSource == null) return;
             var w = _worldSource.CurrentWorld;
+            // React on the first frame where CurrentWorld changes (new world generated or loaded).
             if (w == null || w == _knownWorld) return;
             _knownWorld = w;
             OnNewWorld(w);
         }
 
+        // Full world-reset + team-spawn sequence. Order matters:
+        //   1. Destroy all goblins/buildings from the previous game.
+        //   2. Reset all static game-state registries.
+        //   3. Wire NetCommandApplier bridge refs so net commands can mutate game state.
+        //   4. Seed starting resources.
+        //   5. Resolve spawn points and place each player's team.
         private void OnNewWorld(WorldData world)
         {
             // 1. Wipe state from previous game
@@ -48,6 +74,8 @@ namespace RTSCL.World.Unity
             PlayerUpgrades.Reset();
             HarvestReservations.Clear();
             NetworkCatalog.PopulateFromCatalog(_catalog);
+            // Wire refs so NetCommandApplier can call PlaceForce / SpawnByKindAroundFootprint
+            // without a direct reference to these MonoBehaviours (assembly-boundary constraint).
             NetCommandApplier.Placer = _buildingPlacer;
             NetCommandApplier.Spawner = _goblinSpawner;
             WorldGrid.Width = world.Width;
@@ -76,13 +104,14 @@ namespace RTSCL.World.Unity
             var slots = WorldStartContext.PendingSlots;
             if (slots == null || slots.Length == 0)
             {
-                // Solo: keep at spawn[0], owner=0
+                // Solo path: single team at spawn[0], owner=0UL (treated as local everywhere).
                 var s0 = world.Spawns[0];
                 SpawnTeamAt(def, new Vector2Int(s0.x, s0.y), 0UL, addPopulation: true);
                 return;
             }
 
-            // MP: place one team per slot
+            // MP path: one team per slot. addPopulation=true only for the local player so
+            // remote teams don't inflate the local pop-cap counter.
             ulong local = WorldStartContext.LocalPlayer;
             for (int i = 0; i < slots.Length; i++)
             {
@@ -98,12 +127,16 @@ namespace RTSCL.World.Unity
             }
         }
 
+        /// <summary>Place one player's Keep + starting units at spawnCell.
+        /// addPopulation should be true only for the local player so remote teams
+        /// don't count against the local pop-cap.</summary>
         private void SpawnTeamAt(BuildingDefinition def, Vector2Int spawnCell, ulong owner, bool addPopulation)
         {
             // Offset so the keep is centered on the spawn cell
             var keepOrigin = new Vector2Int(
                 spawnCell.x - def.Footprint.x / 2,
                 spawnCell.y - def.Footprint.y / 2);
+            // charge=false (free starting keep), requireConstruction=false (pre-built).
             _buildingPlacer.PlaceForce(def, keepOrigin, charge: false, requireConstruction: false, owner: owner);
 
             if (_goblinSpawner == null) return;
@@ -122,6 +155,7 @@ namespace RTSCL.World.Unity
                 _goblinSpawner.SpawnAroundFootprint(paddedOrigin, paddedFootprint, _testStartingClubs, "ClubGoblin", owner);
             }
 
+            // Charge population for the local player's starting units.
             if (addPopulation)
             {
                 int popPerUnit = _startingUnitDef != null ? _startingUnitDef.PopulationCost : 1;
@@ -131,6 +165,8 @@ namespace RTSCL.World.Unity
             }
         }
 
+        // Linear scan of BuildingCatalog.Buildings for a definition by asset name.
+        // Called once per world; performance is not a concern.
         private BuildingDefinition FindBuildingDefinition(string name)
         {
             if (_catalog == null) return null;

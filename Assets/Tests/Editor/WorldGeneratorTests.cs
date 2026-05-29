@@ -1,3 +1,7 @@
+// Tests for WorldGenerator (RTSCL.World assembly) — the top-level pipeline that combines
+// NoiseField, ContinentShaper, BiomeClassifier, SpawnPlanner, ResourcePlanner, and
+// ReachabilityChecker into a complete WorldData result.
+// Integration-level tests: assert properties of the full output rather than individual subsystems.
 using System.Collections.Generic;
 using NUnit.Framework;
 using RTSCL.World;
@@ -6,6 +10,8 @@ namespace RTSCL.World.Tests
 {
     public class WorldGeneratorTests
     {
+        // The entire pipeline must be deterministic: the same seed must produce a bit-identical biome grid.
+        // This is the core multiplayer invariant — all clients must converge on the same map.
         [Test]
         public void Generate_SameSeed_ProducesIdenticalBiomes()
         {
@@ -18,6 +24,8 @@ namespace RTSCL.World.Tests
                                 $"divergence at ({x},{y})");
         }
 
+        // Different seeds must produce meaningfully different worlds (not a constant map).
+        // Threshold of 100 diverging cells is conservative — real maps diverge in thousands.
         [Test]
         public void Generate_DifferentSeed_ProducesDifferentBiomes()
         {
@@ -32,6 +40,7 @@ namespace RTSCL.World.Tests
             Assert.Greater(differing, 100, "two different seeds should diverge meaningfully");
         }
 
+        // WorldData.Spawns must contain exactly as many entries as PlayerCount requests.
         [Test]
         public void Generate_ProducesRequestedSpawnCount()
         {
@@ -40,6 +49,8 @@ namespace RTSCL.World.Tests
             Assert.AreEqual(4, w.Spawns.Length);
         }
 
+        // The generator must reject maps where any spawn or resource is unreachable from the others;
+        // a valid generated world must pass the ReachabilityChecker's flood-fill.
         [Test]
         public void Generate_AllSpawnsReachableFromEachOther()
         {
@@ -49,6 +60,8 @@ namespace RTSCL.World.Tests
                                                             w.Spawns, w.Resources));
         }
 
+        // The continental falloff shaper must produce both a meaningful ocean and meaningful landmass,
+        // confirming that neither the entire map became water nor all-land.
         [Test]
         public void Generate_ProducesAtLeastSomeWaterAndSomeLand()
         {

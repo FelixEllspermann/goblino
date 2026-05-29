@@ -1,13 +1,25 @@
+// ResourcePlanner.cs — Places stone and food resource clusters on the biome grid.
+// Two rounds: (1) per-spawn clusters placed at a random radius around each spawn point
+// (guaranteeing nearby resources for every player); (2) free-roam clusters scattered randomly
+// across the map to add mid-game contest points.
+// Tune counts, radii, and cluster sizes in WorldGenConfig (StoneClusters*, FoodClusters*, ClusterRadius*, etc.).
+
 using System.Collections.Generic;
 using Unity.Mathematics;
 
 namespace RTSCL.World
 {
+    /// <summary>Places <see cref="ResourceCluster"/> instances on the biome grid, ensuring each
+    /// spawn gets nearby stone and food, plus additional roaming clusters across the map.</summary>
     public static class ResourcePlanner
     {
+        // Cliff and Shore excluded: clusters placed there would be unreachable or visually wrong.
         private static bool IsPassable(Biome b) =>
             b != Biome.DeepWater && b != Biome.Cliff && b != Biome.Shore;
 
+        /// <summary>Generates and returns all resource clusters for the map.
+        /// The <paramref name="occupied"/> grid prevents cluster overlap.
+        /// Returns an empty list if no passable land is found (shouldn't happen after reachability check).</summary>
         public static List<ResourceCluster> PlaceClusters(Biome[,] biomes, int w, int h,
                                                           int2[] spawns, WorldGenConfig cfg,
                                                           ref Random rng)
@@ -44,6 +56,9 @@ namespace RTSCL.World
             return result;
         }
 
+        /// <summary>Attempts up to 30 times to place a cluster at a random angle/radius around
+        /// <paramref name="spawn"/>. Food clusters additionally require a Grassland or Forest tile
+        /// at the chosen center. Silently gives up if no valid position is found.</summary>
         private static void TryPlaceClusterAround(Biome[,] biomes, int w, int h, int2 spawn,
                                                   ResourceType type, WorldGenConfig cfg,
                                                   bool[,] occupied, ref Random rng,
@@ -66,6 +81,9 @@ namespace RTSCL.World
             }
         }
 
+        /// <summary>Grows a cluster outward from <paramref name="center"/> using random jitter
+        /// within [-1,+1] in each axis, marking cells in <paramref name="occupied"/> as it goes.
+        /// The attempt cap (size * 8) prevents an infinite loop when surrounded by obstacles.</summary>
         private static void PlaceCluster(Biome[,] biomes, int w, int h, int2 center,
                                           ResourceType type, WorldGenConfig cfg,
                                           bool[,] occupied, ref Random rng,
@@ -80,6 +98,7 @@ namespace RTSCL.World
             while (placed < size && attempt < size * 8)
             {
                 attempt++;
+                // Random offset in [-1,+1]: NextInt upper bound is exclusive, so NextInt(-1,2) gives {-1,0,1}
                 int dx = rng.NextInt(-1, 2);
                 int dy = rng.NextInt(-1, 2);
                 int nx = center.x + dx;

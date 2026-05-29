@@ -1,3 +1,18 @@
+// =============================================================================
+// Goblin.cs  —  RTSCL.World.Unity
+//
+// The core unit MonoBehaviour. Owns a finite state machine with 10 states
+// (Idle → Move / Harvest / Build / Attack / Dying paths). Movement is A*
+// via Pathfinder.FindPath + a cell-by-cell path list. Harvest fans out via
+// HarvestReservations; damage authority lives on the attacker-owner client
+// and is broadcast as EvDamage via NetCommandIssuer.IssueDamage.
+//
+// To add a new command type: (1) add a value to CommandType + GoblinCommand,
+//   (2) add a SetXCommand entry point, (3) add the two State values for
+//   moving and executing, (4) handle them in Update's switch, (5) add a case
+//   to ActivateNextQueued. To tune movement/combat: see _moveSpeed,
+//   AttackInterval, _chopTickDuration, BuildTickDuration, and their defaults.
+// =============================================================================
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Tilemaps;
@@ -8,14 +23,21 @@ namespace RTSCL.World.Unity
 {
     public sealed class Goblin : MonoBehaviour
     {
+        /// <summary>Global list of every live Goblin in the scene, updated via OnEnable/OnDisable.</summary>
         public static readonly List<Goblin> All = new();
 
+        /// <summary>Asset name of this unit type (e.g. "FarmerGoblin", "ClubGoblin"). Set during Init.</summary>
         public string Kind { get; private set; } = "Goblin";
         public bool IsSelected { get; private set; }
 
+        /// <summary>Network identity: (OwnerSteamId, per-owner sequential index). Assigned at spawn and
+        /// registered in GoblinNetRegistry for cross-client lookup.</summary>
         public GoblinNetId NetId { get; private set; }
 
+        /// <summary>Steam ID of the player that owns this unit. 0UL in solo play.</summary>
         public ulong Owner { get; private set; }
+        /// <summary>Assign ownership after spawn (used by NetCommandApplier for remote units).
+        /// Triggers faction tint + selection ring colour update.</summary>
         public void SetOwner(ulong ownerSteamId)
         {
             Owner = ownerSteamId;
@@ -25,13 +47,18 @@ namespace RTSCL.World.Unity
 
         public int  CurrentHp { get; private set; }
         public int  MaxHp { get; private set; } = 20;
+        /// <summary>Population slots consumed when this unit is alive. Freed on death in EnterDying.</summary>
         public int  PopulationCost { get; private set; } = 1;
+        /// <summary>Damage dealt per attack swing. 0 = non-combatant (Farmers ignore attack commands).</summary>
         public int  AttackDamage { get; private set; }
+        /// <summary>Seconds between attack swings. Tune per-unit via GoblinUnitDefinition.</summary>
         public float AttackInterval { get; private set; } = 1.5f;
+        /// <summary>Chebyshev-distance threshold to trigger/maintain Attacking state.</summary>
         public int  AttackRange { get; private set; } = 1;
 
         public void SetAttackDamage(int newDamage) => AttackDamage = Mathf.Max(0, newDamage);
 
+        /// <summary>Override HP from network-received spawn data so all clients start in sync.</summary>
         public void SetMaxHp(int newMax, int newCurrent)
         {
             MaxHp = Mathf.Max(1, newMax);
@@ -40,8 +67,11 @@ namespace RTSCL.World.Unity
 
         public bool IsIdle => _state == State.Idle;
 
+        /// <summary>Discriminator for owner-local queued commands. Remotes never enqueue.</summary>
         public enum CommandType { Move, Harvest, BuildAssist, Attack }
 
+        /// <summary>A single queued command. Only the field matching the CommandType is meaningful;
+        /// others are default. Stored in _commandQueue and drained by ActivateNextQueued.</summary>
         public struct GoblinCommand
         {
             public CommandType Type;
@@ -51,6 +81,8 @@ namespace RTSCL.World.Unity
             public Goblin Target;       // Attack
         }
 
+        // Owner-local command queue. Populated by GoblinSelectionController (Shift+right-click).
+        // Remotes never touch this queue; they receive each step as a net command directly.
         private readonly List<GoblinCommand> _commandQueue = new();
 
         public void EnqueueCommand(GoblinCommand c) => _commandQueue.Add(c);
@@ -62,12 +94,16 @@ namespace RTSCL.World.Unity
         private SpriteRenderer _renderer;
         private GameObject _selectionRing;
 
+        // FSM state. Transitions are driven entirely inside Update; public Set*Command methods
+        // only set up the parameters then change state — they do not tick logic themselves.
         private enum State { Idle, MovingToPoint, MovingToTree, Harvesting, WalkingToDeposit, MovingToBuild, Building, MovingToAttack, Attacking, Dying }
         private State _state = State.Idle;
 
         private Vector3 _moveTarget;
-        private readonly List<Vector3> _path = new();
+        private readonly List<Vector3> _path = new();   // A* waypoints in world space
         private int _pathIndex;
+        // Cached cell of the attack target's position; used to detect when target has moved
+        // enough to warrant re-pathing (avoids per-frame RepathTo calls).
         private Vector2Int _lastAttackGoalCell = new Vector2Int(int.MinValue, int.MinValue);
         private Vector3Int _treeCell;
         private Vector2Int _buildOrigin;
@@ -75,41 +111,60 @@ namespace RTSCL.World.Unity
         private float _buildTimer;
         private Goblin _attackTarget;
         private float _attackTimer;
+        /// <summary>Seconds between build progress ticks. Reduce to make builders work faster.</summary>
         private const float BuildTickDuration = 1.0f;
+        /// <summary>HP progress added to a building per build tick. Tune alongside BuildTickDuration.</summary>
         private const int BuildProgressPerTick = 10;
 
-        // Headbutt anim state
-        private float _hitAnimT = -1f;       // -1 = not animating
-        private Vector3 _hitHomePos;
-        private Vector3 _hitDir;
+        // Headbutt anim state: a short lunge-and-tilt played for chop/build/attack.
+        private float _hitAnimT = -1f;       // -1 = not animating; 0–1 = progress through lunge
+        private Vector3 _hitHomePos;         // world position at lunge start; restored on reset
+        private Vector3 _hitDir;             // normalised direction toward target cell
 
-        // Death hop-arc state
+        // Death hop-arc state: parabolic trajectory played in the Dying state until landing.
         private Vector3 _dieStartPos;
         private Vector3 _dieVelocity;
+        /// <summary>Downward acceleration during the death hop-arc (world units/s²). More negative = faster fall.</summary>
         private const float DeathGravity = -20f;
+        /// <summary>Initial upward velocity of the death hop. Increase to make goblins arc higher on death.</summary>
         private const float DeathHopVelocity = 10f;
 
         private float _moveSpeed = 2.0f;
         private float _frameTimer;
         private int _frameIndex;
 
+        /// <summary>Seconds per walk animation frame. Lower = faster leg cycle.</summary>
         private const float FrameDuration = 0.18f;
+        /// <summary>Squared-distance threshold below which a waypoint is considered reached.</summary>
         private const float TargetReachedEpsilon = 0.05f;
+        // Base chop duration; overridden by HarvestSpeedMul (e.g. Farmer Upgrade).
         private float _chopTickDuration = 2.0f;
         public float HarvestSpeedMul { get; private set; } = 1f;
+        /// <summary>Scale the harvest tick rate. Kept in sync with _chopTickDuration = 2.0 / mul.</summary>
         public void SetHarvestSpeedMul(float mul)
         {
             HarvestSpeedMul = Mathf.Max(0.01f, mul);
             _chopTickDuration = 2.0f / HarvestSpeedMul;
         }
+        /// <summary>Maximum resource units a goblin can carry before returning to deposit.</summary>
         private const int MaxCarried = 10;
+        /// <summary>What resource kind is currently in the carry slot (Wood, Food, Stone, …).</summary>
         public ResourceKind CarriedKind { get; private set; }
+        /// <summary>Current amount carried. Deposited in full to ResourceBank on reaching the Keep.</summary>
         public int CarriedAmount { get; private set; }
+        /// <summary>Tile search radius used by FindNextTreeOrIdle when current node is depleted.</summary>
         private const int AutoFindRadius = 12;
         private const float HitAnimDuration = 0.32f;
         private const float HitLungeAmount = 0.30f;    // world units lurch forward
         private const float HitTiltDegrees = 18f;
 
+        /// <summary>One-shot initialiser called by GoblinSpawner.SpawnAt immediately after AddComponent.
+        /// Registers the unit with GoblinNetRegistry, wires references, and reads stats from the
+        /// GoblinUnitDefinition asset (if provided). Must be called before any state is accessed.</summary>
+        /// <param name="netId">Network identity; unique across all clients.</param>
+        /// <param name="kind">Asset name string identifying the unit type.</param>
+        /// <param name="walkFrames">Sprite sheet walk cycle frames.</param>
+        /// <param name="def">Optional SO with HP/damage/range/pop stats. Null → uses field defaults.</param>
         public void Init(GoblinNetId netId, string kind, Sprite[] walkFrames, Tilemap terrainMap, Tilemap decorationMap,
                          GoblinUnitDefinition def = null)
         {
@@ -139,6 +194,8 @@ namespace RTSCL.World.Unity
             GoblinHealthBar.AttachTo(this);
         }
 
+        /// <summary>Command this unit to walk to a world position. Cancels any harvest reservation.
+        /// Called by NetCommandApplier.ApplyMove on every client.</summary>
         public void SetMoveCommand(Vector3 worldTarget)
         {
             if (_state == State.Dying) return;
@@ -148,6 +205,9 @@ namespace RTSCL.World.Unity
             _state = State.MovingToPoint;
         }
 
+        /// <summary>Command this unit to harvest the decoration tile at treeCell.
+        /// If already carrying a different resource kind, deposits first then resumes.
+        /// Reserves a standing cell via HarvestReservations so multiple farmers fan out.</summary>
         public void SetHarvestCommand(Vector3Int treeCell)
         {
             if (_state == State.Dying) return;
@@ -169,6 +229,8 @@ namespace RTSCL.World.Unity
             _harvestTimer = 0f;
         }
 
+        /// <summary>Command this unit to walk to a building under construction and hammer on it.
+        /// Releases any harvest reservation. Called by NetCommandApplier.ApplyBuildAssist.</summary>
         public void SetBuildCommand(Vector2Int buildingOrigin)
         {
             if (_state == State.Dying) return;
@@ -181,6 +243,9 @@ namespace RTSCL.World.Unity
             _buildTimer = 0f;
         }
 
+        /// <summary>Command this unit to pursue and attack a target goblin.
+        /// Silently ignored if AttackDamage == 0 (non-combatants like Farmers) or target is already dead.
+        /// Called by NetCommandApplier.ApplyAttack on every client.</summary>
         public void SetAttackCommand(Goblin target)
         {
             if (_state == State.Dying) return;
@@ -196,9 +261,14 @@ namespace RTSCL.World.Unity
             RepathTo(target.transform.position);
         }
 
+        // True on the local client that owns this unit (or in solo play where Owner == 0).
+        // Gates harvest ticks, WalkingToDeposit processing, and damage issuance so only
+        // one client drives the authoritative side of each action.
         private bool IsLocalOwner =>
             Owner == WorldStartContext.LocalPlayer || Owner == 0UL;
 
+        // Chebyshev distance (8-directional grid distance) used for attack-range checks.
+        // Cheaper than Euclidean and matches a square grid's natural notion of adjacency.
         private static int ChebyshevDistance(Vector3 a, Vector3 b)
         {
             int dx = Mathf.Abs(Mathf.FloorToInt(a.x) - Mathf.FloorToInt(b.x));
@@ -206,6 +276,8 @@ namespace RTSCL.World.Unity
             return Mathf.Max(dx, dy);
         }
 
+        /// <summary>Apply incoming damage. Called locally by NetCommandApplier.ApplyDamage
+        /// (from EvDamage) on every client. Auto-retaliates if idle and capable.</summary>
         public void TakeDamage(int damage, Goblin attacker)
         {
             if (CurrentHp <= 0) return;
@@ -217,12 +289,15 @@ namespace RTSCL.World.Unity
                 SetAttackCommand(attacker);
         }
 
+        /// <summary>Toggle the selection ring and IsSelected flag. Called by GoblinSelectionController.</summary>
         public void SetSelected(bool sel)
         {
             IsSelected = sel;
             if (_selectionRing != null) _selectionRing.SetActive(sel);
         }
 
+        // OnEnable/OnDisable keep the global All list and GoblinNetRegistry consistent as
+        // goblins are created and destroyed (including DestroyImmediate during world reset).
         private void OnEnable()  => All.Add(this);
         private void OnDisable()
         {
@@ -246,6 +321,7 @@ namespace RTSCL.World.Unity
 
                 case State.MovingToTree:
                 {
+                    // If the node was felled by another goblin while we were walking, re-plan.
                     if (!IsHarvestableStillThere(_treeCell))
                     {
                         FindNextTreeOrIdle();
@@ -287,7 +363,7 @@ namespace RTSCL.World.Unity
                     if (!IsLocalOwner) break;     // remotes are in MovingToPoint via ApplyMove; their walk handles itself
                     if (MoveAlongPath())
                     {
-                        // Arrived at keep — deposit.
+                        // Arrived at keep — deposit the full carry slot at once.
                         if (CarriedAmount > 0) ResourceBank.Add(CarriedKind, CarriedAmount);
                         CarriedAmount = 0;
 
@@ -352,9 +428,10 @@ namespace RTSCL.World.Unity
                     if (ChebyshevDistance(transform.position, _attackTarget.transform.position) <= AttackRange)
                     {
                         _state = State.Attacking;
-                        _attackTimer = AttackInterval; // first hit immediately
+                        _attackTimer = AttackInterval; // pre-charge the timer so the first swing fires immediately
                         break;
                     }
+                    // Only re-path when the target has moved to a different cell, not every frame.
                     var goalCell = CellOfPos(_attackTarget.transform.position);
                     if (goalCell != _lastAttackGoalCell)
                     {
@@ -389,6 +466,8 @@ namespace RTSCL.World.Unity
                 }
 
                 case State.Dying:
+                    // Simple Euler integration for the hop arc. Gravity is applied until
+                    // the goblin returns to its starting Y, at which point it lands.
                     _dieVelocity.y += DeathGravity * Time.deltaTime;
                     transform.position += _dieVelocity * Time.deltaTime;
                     if (transform.position.y <= _dieStartPos.y && _dieVelocity.y <= 0f)
@@ -511,6 +590,8 @@ namespace RTSCL.World.Unity
             NetCommandBridge.Send(NetWireFormat.PackCmdMove(wire, target.x, target.y));
         }
 
+        // Begin a lunge-and-tilt animation toward the center of `cell`.
+        // Called for harvest chop, build tick, and attack swing.
         private void StartHitAnim(Vector3Int cell)
         {
             _hitAnimT = 0f;
@@ -521,6 +602,8 @@ namespace RTSCL.World.Unity
                 : Vector3.up;
         }
 
+        // Drive the lunge using a sin curve over [0,π] for smooth in-out motion.
+        // Rotation tilts the goblin toward the target and rights itself on the back half.
         private void UpdateHitAnim()
         {
             if (_hitAnimT < 0f) return;
@@ -536,6 +619,8 @@ namespace RTSCL.World.Unity
             transform.rotation = Quaternion.Euler(0f, 0f, tilt);
         }
 
+        // Snap position/rotation back to home before clearing the animation flag.
+        // Called whenever a new command interrupts a running lunge.
         private void ResetHitAnim()
         {
             if (_hitAnimT >= 0f)
@@ -546,6 +631,7 @@ namespace RTSCL.World.Unity
             _hitAnimT = -1f;
         }
 
+        // Tint enemy units with their faction colour; local/solo units stay white.
         private void ApplyOwnerVisuals()
         {
             if (_renderer == null) return;
@@ -553,6 +639,9 @@ namespace RTSCL.World.Unity
             _renderer.color = isLocal ? Color.white : WorldStartContext.GetPlayerColor(Owner);
         }
 
+        // Transition to Dying: release pop-cap slot, remove from global list and selection,
+        // clear the lunge anim, free any harvest reservation, then launch the hop arc.
+        // Idempotent guard prevents double-dying if TakeDamage is called twice in one frame.
         private void EnterDying()
         {
             if (_state == State.Dying) return;
@@ -571,6 +660,9 @@ namespace RTSCL.World.Unity
         private static Vector2Int CellOfPos(Vector3 p) =>
             new Vector2Int(Mathf.FloorToInt(p.x), Mathf.FloorToInt(p.y));
 
+        // Passability predicate passed to Pathfinder and HarvestReservations.
+        // Treats water/cliff/shore as walls and treats harvestable tiles as obstacles
+        // (so units path around trees rather than through them).
         private bool IsCellPassable(int x, int y)
         {
             if (_terrainMap == null) return false;
@@ -585,6 +677,10 @@ namespace RTSCL.World.Unity
             return true;
         }
 
+        // Compute an A* path to worldTarget and store it in _path.
+        // If the target cell is impassable (e.g. water), snaps to the nearest passable cell
+        // within an 8-cell search radius before running A*. No path found → _path stays
+        // empty so the unit stands still rather than beelining through obstacles.
         private void RepathTo(Vector3 worldTarget)
         {
             _path.Clear();
@@ -621,6 +717,7 @@ namespace RTSCL.World.Unity
             // straight through impassable terrain.
         }
 
+        // Expand outward in square rings until a passable cell is found (BFS-ring, max radius 8).
         private bool TryFindNearestPassable(Vector2Int c, out Vector2Int found)
         {
             for (int r = 0; r <= 8; r++)
@@ -635,6 +732,9 @@ namespace RTSCL.World.Unity
             return false;
         }
 
+        // Advance one step along the cached A* path. Returns true when the path is exhausted
+        // (unit has arrived at its destination). An empty path also returns true so state
+        // transitions fire immediately rather than hanging.
         private bool MoveAlongPath()
         {
             if (_path.Count == 0) return true; // no path → treat as arrived (no straight-line onto blocked terrain)
@@ -647,7 +747,9 @@ namespace RTSCL.World.Unity
             return false;
         }
 
-        /// <summary>Returns true when target is reached.</summary>
+        /// <summary>Move one frame's worth of distance toward target. Advances the walk
+        /// animation, flips the sprite horizontally to face the direction of travel.
+        /// Returns true when target is reached.</summary>
         private bool StepToward(Vector3 target)
         {
             var delta = target - transform.position;
@@ -680,6 +782,8 @@ namespace RTSCL.World.Unity
             _frameTimer = 0f;
         }
 
+        // Tile presence check used by both the FSM (detect depletion mid-harvest)
+        // and ActivateNextQueued (skip already-gone nodes from the command queue).
         private bool IsHarvestableStillThere(Vector3Int cell)
         {
             if (_decorationMap == null) return false;
@@ -687,6 +791,9 @@ namespace RTSCL.World.Unity
             return t != null && IsHarvestable(t.name);
         }
 
+        // Auto-find fallback: scan AutoFindRadius cells for the nearest harvestable tile.
+        // If the command queue has pending items, yields to it instead (Idle → queue drains).
+        // Called when the current node is depleted and no explicit command was queued.
         private void FindNextTreeOrIdle()
         {
             HarvestReservations.Release(this);
@@ -708,6 +815,10 @@ namespace RTSCL.World.Unity
             if (best.HasValue) SetHarvestCommand(best.Value);
             else _state = State.Idle;
         }
+
+        // ---------- Tile classification helpers ----------
+        // Used by IsCellPassable, ObjectInspector, GoblinSelectionController, and HarvestReservations
+        // to identify which decoration tiles are harvestable and what resource kind they yield.
 
         public static bool IsTreeTile(string tileName)
         {
@@ -752,6 +863,10 @@ namespace RTSCL.World.Unity
         private static Vector3 CellCenter(Vector3Int cell) =>
             new(cell.x + 0.5f, cell.y + 0.5f, 0f);
 
+        // ---------- Selection ring (procedural sprite) ----------
+
+        // Build a child GameObject with a SpriteRenderer displaying a thin circle.
+        // Sorted just below the unit sprite. Scale (1.1, 0.5, 1) gives an isometric-ish oval.
         private void BuildSelectionRing()
         {
             _selectionRing = new GameObject("SelectionRing");
@@ -768,6 +883,7 @@ namespace RTSCL.World.Unity
             _selectionRing.SetActive(false);
         }
 
+        // Update the ring tint after SetOwner is called (e.g. when owner data arrives over the network).
         private void RefreshSelectionRingColor()
         {
             if (_selectionRing == null) return;
@@ -779,6 +895,8 @@ namespace RTSCL.World.Unity
                 : WorldStartContext.GetPlayerColor(Owner);
         }
 
+        // Lazily generated 16×16 ring sprite shared across all goblin instances.
+        // Generated at runtime to avoid a sprite asset dependency.
         private static Sprite s_ring;
         private static Sprite SelectionRingSprite()
         {
@@ -789,7 +907,7 @@ namespace RTSCL.World.Unity
             var pixels = new Color32[size * size];
             Vector2 center = new(size / 2f - 0.5f, size / 2f - 0.5f);
             float outerR = size / 2f;
-            float innerR = outerR - 2f;
+            float innerR = outerR - 2f;     // 2-pixel ring band
             for (int y = 0; y < size; y++)
             for (int x = 0; x < size; x++)
             {

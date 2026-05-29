@@ -1,3 +1,20 @@
+// =============================================================================
+// GoblinSelectionController.cs  —  RTSCL.World.Unity
+//
+// Handles all mouse-driven unit selection (click + drag-box) and right-click
+// command dispatch for the local player's goblins. Only local-owner units can
+// be selected; enemy units are click-targeted for attack but not selected.
+//
+// Right-click priority order: harvestable tile → building under construction
+//   → enemy goblin → empty terrain (move formation).
+// Shift held → appends to each unit's owner-local command queue instead of
+// issuing immediately. Queue contents are invisible to remotes; each step is
+// sent as a normal net command when ActivateNextQueued fires it.
+//
+// To add a new command type: add a TryGetXAt check in Update's right-click
+// block, a CommandX method, and an EnqueueX method. Wire up the net command
+// in NetCommandIssuer and add a case to Goblin.ActivateNextQueued.
+// =============================================================================
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -9,16 +26,21 @@ namespace RTSCL.World.Unity
 {
     public sealed class GoblinSelectionController : MonoBehaviour
     {
+        /// <summary>Currently selected local goblins. Read-only outside this class.</summary>
         public IReadOnlyList<Goblin> Selection => _selected;
+        /// <summary>Fires whenever the selection list changes (units selected/deselected).</summary>
         public event Action OnSelectionChanged;
 
         [SerializeField] private Camera _camera;
         [SerializeField] private BuildingPlacer _buildingPlacer;
         [SerializeField] private Tilemap _decorationMap;
         [SerializeField] private Tilemap _terrainMap;
+        /// <summary>World-unit radius within which a single left-click picks the nearest goblin.</summary>
         [SerializeField] private float _clickPickRadius = 0.6f;       // world units
+        /// <summary>Pixel distance the mouse must drag before switching from click-select to box-select.</summary>
         [SerializeField] private float _dragThresholdPx = 6f;
         [SerializeField] private float _formationSpacing = 1.0f;
+        /// <summary>Unused field — harvest spread is handled entirely by HarvestReservations.</summary>
         [SerializeField] private int _harvestSpreadRadius = 6;
 
         private readonly List<Goblin> _selected = new();
@@ -26,6 +48,7 @@ namespace RTSCL.World.Unity
         private bool _mouseDown;
         private bool _isDragBox;
 
+        // Gate: only the local player's goblins can be selected or commanded.
         private static bool IsLocalOwner(Goblin g) =>
             g != null && (g.Owner == WorldStartContext.LocalPlayer || g.Owner == 0UL);
 
@@ -97,6 +120,8 @@ namespace RTSCL.World.Unity
             }
         }
 
+        // Returns true if worldPos overlaps a building cell that is still under construction.
+        // Used to distinguish "right-click on construction site" from a plain move command.
         private bool TryGetConstructionAt(Vector3 worldPos, out Vector2Int origin)
         {
             origin = default;
@@ -107,6 +132,7 @@ namespace RTSCL.World.Unity
             return BuildingConstruction.IsUnderConstruction(origin);
         }
 
+        // Returns true if the decoration tile at world falls under Goblin.IsHarvestable.
         private bool TryGetHarvestableAt(Vector3 world, out Vector3Int cell)
         {
             cell = default;
@@ -116,6 +142,9 @@ namespace RTSCL.World.Unity
             return t != null && Goblin.IsHarvestable(t.name);
         }
 
+        // Send all selected worker goblins to the single clicked node.
+        // HarvestReservations assigns each worker a unique adjacent standing cell,
+        // so multiple farmers naturally fan out around the same resource node.
         private void CommandHarvest(Vector3Int clickedNode)
         {
             // Only worker units (Farmer Goblins) can harvest. All selected workers go to the
@@ -126,9 +155,13 @@ namespace RTSCL.World.Unity
             NetCommandIssuer.IssueHarvest(workers, clickedNode);
         }
 
+        /// <summary>Returns true if g is a harvesting-capable Farmer Goblin.</summary>
         private static bool IsWorker(Goblin g) =>
             g != null && g.Kind == "FarmerGoblin";
 
+        // Gather up to maxCount harvestable tiles sorted by squared distance from origin.
+        // Currently unused in the main command path (all farmers go to the clicked node);
+        // kept for potential future "spread workers across nearby nodes" feature.
         private List<Vector3Int> FindNearbyHarvestables(Vector3Int origin, int maxCount, int radius)
         {
             var found = new List<(Vector3Int cell, int distSq)>();
@@ -147,6 +180,7 @@ namespace RTSCL.World.Unity
             return result;
         }
 
+        // Pick the closest local goblin within _clickPickRadius. If none, clears selection.
         private void SelectAtPoint(Vector2 screenPos)
         {
             Vector3 world = _camera.ScreenToWorldPoint(
@@ -163,6 +197,7 @@ namespace RTSCL.World.Unity
             SetSelection(best != null ? new List<Goblin> { best } : new List<Goblin>());
         }
 
+        // Select all local goblins whose screen position falls within the drag rectangle.
         private void SelectInBox(Vector2 a, Vector2 b)
         {
             float minX = Mathf.Min(a.x, b.x), maxX = Mathf.Max(a.x, b.x);
@@ -179,6 +214,8 @@ namespace RTSCL.World.Unity
             SetSelection(hit);
         }
 
+        // Update selection rings and fire OnSelectionChanged so ObjectInspector and other
+        // listeners can refresh their UI immediately.
         private void SetSelection(List<Goblin> newSel)
         {
             foreach (var g in _selected) if (g != null) g.SetSelected(false);
@@ -191,11 +228,14 @@ namespace RTSCL.World.Unity
             OnSelectionChanged?.Invoke();
         }
 
+        // Issue a move command; IssueMove computes the grid formation offsets internally.
         private void CommandFormation(Vector3 worldCenter)
         {
             NetCommandIssuer.IssueMove(_selected, worldCenter);
         }
 
+        // Find the nearest goblin not in _selected within the click radius.
+        // Excludes own selection so right-clicking on your own units doesn't friendly-fire.
         private bool TryGetGoblinAt(Vector3 worldPos, out Goblin target)
         {
             target = null;
@@ -212,6 +252,7 @@ namespace RTSCL.World.Unity
             return target != null;
         }
 
+        // Only goblins with AttackDamage > 0 (i.e. combat units) receive the attack command.
         private void CommandAttack(Goblin target)
         {
             foreach (var g in _selected)
@@ -219,11 +260,13 @@ namespace RTSCL.World.Unity
                     NetCommandIssuer.IssueAttack(g, target);
         }
 
+        // Clear every selected unit's owner-local queue before issuing a fresh immediate command.
         private void ClearQueues()
         {
             foreach (var g in _selected) if (g != null) g.ClearQueue();
         }
 
+        // Only Farmer Goblins send build-assist commands.
         private void CommandBuildAssist(Vector2Int buildOrigin)
         {
             var workers = new List<Goblin>();
@@ -231,6 +274,8 @@ namespace RTSCL.World.Unity
             if (workers.Count > 0) NetCommandIssuer.IssueBuildAssist(workers, buildOrigin);
         }
 
+        // EnqueueMove replicates the same square-formation offset that IssueMove would apply,
+        // so each unit's queued move target lands at its correct formation position.
         private void EnqueueMove(Vector3 worldCenter)
         {
             // Same square-formation offset IssueMove computes, so queued moves keep formation.
@@ -254,6 +299,7 @@ namespace RTSCL.World.Unity
             }
         }
 
+        // Enqueue a harvest command for all selected worker goblins (non-workers are skipped).
         private void EnqueueHarvest(Vector3Int cell)
         {
             foreach (var g in _selected)
@@ -263,6 +309,7 @@ namespace RTSCL.World.Unity
             }
         }
 
+        // Enqueue a build-assist command for all selected worker goblins.
         private void EnqueueBuildAssist(Vector2Int origin)
         {
             foreach (var g in _selected)
@@ -272,6 +319,7 @@ namespace RTSCL.World.Unity
             }
         }
 
+        // Enqueue an attack command for all selected combat goblins (non-combatants skipped).
         private void EnqueueAttack(Goblin target)
         {
             foreach (var g in _selected)
@@ -281,13 +329,16 @@ namespace RTSCL.World.Unity
             }
         }
 
+        // Blocks selection/command processing when the cursor is over a UI element.
         private static bool IsOverUI()
         {
             return EventSystem.current != null
                 && EventSystem.current.IsPointerOverGameObject();
         }
 
-        // Marquee box drawing
+        // ---------- Marquee drag-box rendering (immediate-mode GUI) ----------
+
+        // Semi-transparent 1×1 green texture stretched to fill the drag rectangle.
         private static Texture2D s_boxTex;
         private static Texture2D BoxTexture()
         {
@@ -304,7 +355,7 @@ namespace RTSCL.World.Unity
         {
             if (!_isDragBox) return;
             Vector2 cur = Mouse.current.position.ReadValue();
-            // OnGUI uses top-left origin; InputSystem mouse uses bottom-left
+            // OnGUI uses top-left origin; InputSystem mouse uses bottom-left — flip Y.
             float aX = _dragStartScreen.x, bX = cur.x;
             float aY = Screen.height - _dragStartScreen.y, bY = Screen.height - cur.y;
             Rect r = Rect.MinMaxRect(Mathf.Min(aX, bX), Mathf.Min(aY, bY),

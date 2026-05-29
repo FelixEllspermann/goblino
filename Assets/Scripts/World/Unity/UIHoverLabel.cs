@@ -1,3 +1,8 @@
+// UIHoverLabel.cs  (MonoBehaviour — RTSCL.World.Unity)
+// Thin tooltip trigger added to every resource/population cell by ResourceUI.BuildBar().
+// Delegates to ResourceUI.ShowTooltip / HideTooltip — no tooltip state of its own.
+// Requires an EventSystem in the scene with InputSystemUIInputModule (New Input System).
+
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -10,6 +15,7 @@ namespace RTSCL.World.Unity
         private ResourceUI _owner;
         private string _label;
 
+        /// <summary>Called by ResourceUI after attaching this component to a cell GameObject.</summary>
         public void Init(ResourceUI owner, string label)
         {
             _owner = owner;

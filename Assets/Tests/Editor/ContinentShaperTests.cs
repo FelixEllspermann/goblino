@@ -1,3 +1,7 @@
+// Tests for ContinentShaper (RTSCL.World assembly).
+// Covers the three post-processing passes: radial falloff (keeps map interior as land, forces
+// corners to water), mini-island removal (flood-fill below threshold → water), and
+// mini-lake filling (enclosed water regions below threshold → nearest land biome).
 using NUnit.Framework;
 using RTSCL.World;
 
@@ -5,6 +9,7 @@ namespace RTSCL.World.Tests
 {
     public class ContinentShaperTests
     {
+        // ApplyFalloff must preserve high elevation at the map center while crushing corners to near-zero.
         [Test]
         public void Falloff_CenterUnchanged_EdgesPushedToZero()
         {
@@ -23,6 +28,8 @@ namespace RTSCL.World.Tests
             Assert.Less(elevation[w - 1, h - 1], 0.1f);
         }
 
+        // A connected land region smaller than the threshold must be flood-filled back to DeepWater,
+        // preventing unplayable micro-islands in the ocean.
         [Test]
         public void RemoveMiniIslands_SmallIslandBecomesWater()
         {
@@ -44,6 +51,8 @@ namespace RTSCL.World.Tests
             Assert.AreEqual(Biome.DeepWater, biomes[6, 5]);
         }
 
+        // A small enclosed water pocket that does not touch the map edge must be filled to land,
+        // eliminating landlocked puddles that would block unit movement.
         [Test]
         public void FillMiniLakes_SmallEnclosedWaterBecomesGrassland()
         {
@@ -63,6 +72,8 @@ namespace RTSCL.World.Tests
             Assert.AreEqual(Biome.Grassland, biomes[8, 9]);
         }
 
+        // Water connected to the map border is the open ocean and must never be filled,
+        // even with an arbitrarily large threshold.
         [Test]
         public void FillMiniLakes_OceanNotFilled()
         {

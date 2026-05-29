@@ -1,3 +1,7 @@
+// Tests for Pathfinder (RTSCL.World assembly).
+// Pathfinder implements A* with 8-directional (octile) movement, an injected passability predicate,
+// and a no-corner-cut rule. Tests cover: straight movement step count, diagonal optimisation,
+// zero-length paths, obstacle avoidance, hard impassability, and the corner-cut prohibition.
 using NUnit.Framework;
 using Unity.Mathematics;
 using RTSCL.World;
@@ -6,8 +10,10 @@ namespace RTSCL.World.Tests
 {
     public class PathfinderTests
     {
+        // Helper: passability predicate that treats every cell as open (no obstacles).
         private static System.Func<int, int, bool> Open() => (x, y) => true;
 
+        // A straight 4-step horizontal walk must produce exactly 4 path nodes ending at the goal.
         [Test]
         public void StraightHorizontal()
         {
@@ -17,6 +23,8 @@ namespace RTSCL.World.Tests
             Assert.AreEqual(new int2(4, 0), path[path.Count - 1]);
         }
 
+        // A 2-step diagonal move (0,0)→(2,2) must be taken as two diagonal steps, not four cardinal —
+        // confirms octile heuristic enables diagonal shortcuts on open terrain.
         [Test]
         public void DiagonalShortcut()
         {
@@ -26,6 +34,7 @@ namespace RTSCL.World.Tests
             Assert.AreEqual(new int2(2, 2), path[1]);
         }
 
+        // When start equals goal the returned path must be non-null and empty (zero steps).
         [Test]
         public void GoalEqualsStart()
         {
@@ -34,6 +43,8 @@ namespace RTSCL.World.Tests
             Assert.AreEqual(0, path.Count);
         }
 
+        // A partial wall with a single-cell gap must be routed around; no node in the path may
+        // intersect the blocked cells.
         [Test]
         public void RoutesAroundWall()
         {
@@ -45,6 +56,7 @@ namespace RTSCL.World.Tests
             foreach (var c in path) Assert.IsFalse(c.x == 2 && c.y <= 3, "path crossed the wall");
         }
 
+        // A full-column wall with no gap must cause FindPath to return null (no route exists).
         [Test]
         public void UnreachableReturnsNull()
         {
@@ -54,6 +66,8 @@ namespace RTSCL.World.Tests
             Assert.IsNull(path);
         }
 
+        // When both orthogonal neighbours adjacent to a diagonal step are blocked, the diagonal must
+        // not be taken (corner-cut prohibition). With no orthogonal route available, result is null.
         [Test]
         public void NoDiagonalCornerCut()
         {

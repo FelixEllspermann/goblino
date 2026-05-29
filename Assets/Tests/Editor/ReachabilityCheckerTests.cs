@@ -1,3 +1,6 @@
+// Tests for ReachabilityChecker (RTSCL.World assembly).
+// Verifies the flood-fill connectivity guard that WorldGenerator uses to reject maps where spawns
+// or resource clusters are unreachable from each other (impassable biomes: DeepWater, Cliff).
 using System.Collections.Generic;
 using NUnit.Framework;
 using RTSCL.World;
@@ -7,6 +10,7 @@ namespace RTSCL.World.Tests
 {
     public class ReachabilityCheckerTests
     {
+        // On a fully open Grassland map every spawn and resource cluster must be mutually reachable.
         [Test]
         public void AllReachable_OnOpenMap_ReturnsTrue()
         {
@@ -24,6 +28,8 @@ namespace RTSCL.World.Tests
             Assert.IsTrue(ReachabilityChecker.AllReachable(biomes, w, h, spawns, clusters));
         }
 
+        // A full-height water column splitting the map into two halves must cause AllReachable to return
+        // false — the two spawns cannot reach each other.
         [Test]
         public void SplitByWaterWall_ReturnsFalse()
         {
@@ -39,6 +45,8 @@ namespace RTSCL.World.Tests
                                                             new List<ResourceCluster>()));
         }
 
+        // A resource cluster whose centre sits on an impassable Cliff cell cannot be harvested,
+        // so AllReachable must return false and trigger a map re-roll.
         [Test]
         public void ResourceOnCliff_ReturnsFalse()
         {
