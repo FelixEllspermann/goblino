@@ -172536,6 +172536,7 @@ MonoBehaviour:
   _terrainMap: {fileID: 1282190478}
   _camera: {fileID: 519420031}
   _worldSource: {fileID: 2113366327}
+  _selectionController: {fileID: 445876833}
   _validTint: {r: 0.5, g: 1, b: 0.5, a: 0.6}
   _invalidTint: {r: 1, g: 0.4, b: 0.4, a: 0.6}
   _buildingsRoot: {fileID: 1108280578}

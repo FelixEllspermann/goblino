@@ -13,6 +13,7 @@ namespace RTSCL.World.Unity
         [SerializeField] private Tilemap _terrainMap;
         [SerializeField] private Camera _camera;
         [SerializeField] private WorldGeneratorBootstrap _worldSource;
+        [SerializeField] private GoblinSelectionController _selectionController;
 
         [Header("Visuals")]
         [SerializeField] private Color _validTint   = new Color(0.5f, 1f, 0.5f, 0.6f);
@@ -170,6 +171,16 @@ namespace RTSCL.World.Unity
             if (_selected == null) return;
             ulong owner = WorldStartContext.LocalPlayer;
             NetCommandIssuer.IssuePlaceBuilding(_selected, origin, owner);
+
+            // Auto-build: send the currently-selected worker goblins to construct it.
+            if (_selectionController != null)
+            {
+                var workers = new System.Collections.Generic.List<Goblin>();
+                foreach (var g in _selectionController.Selection)
+                    if (g != null && g.Kind == "FarmerGoblin") workers.Add(g);
+                if (workers.Count > 0) NetCommandIssuer.IssueBuildAssist(workers, origin);
+            }
+
             Cancel();
         }
 
