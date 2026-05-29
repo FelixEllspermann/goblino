@@ -33,10 +33,10 @@ namespace RTSCL.World.Unity
         [SerializeField] private int _visionRadius = 6;
         [SerializeField] private int _keepVisionRadius = 10;
 
-        [Header("Military")]
-        [SerializeField] private int _armyTarget = 6;       // train up to this many military units
-        [SerializeField] private int _attackThreshold = 5;  // start attacking once the army reaches this
-        [SerializeField] private float _engageRadius = 8f;  // a military unit attacks hostiles within this
+        [Header("Military / Attack plans")]
+        [SerializeField] private float _engageRadius = 8f;     // a military unit attacks hostiles within this
+        [SerializeField] private float _attackCooldown = 300f; // seconds of downtime before rolling the next plan
+                                                               // (and before the very first plan after game start)
 
         private sealed class BotState
         {
@@ -53,11 +53,14 @@ namespace RTSCL.World.Unity
             public bool EnemyFound;
             public readonly HashSet<Vector2Int> DiscoveredEnemyBases = new();
 
-            // Phase 4: military.
+            // Phase 4: military + attack plans.
             public float MilTrainTimer = -1f;
-            public bool MilNextArcher;   // alternate club/archer
+            public bool MilNextArcher;          // alternate club/archer
             public GoblinUnitDefinition PendingMil;
-            public bool Attacking;
+            public bool PlanAttacking;          // currently executing the attack
+            public int PlanTargetSize;          // planned army size; 0 = no plan (downtime)
+            public float PlanTimer;             // counts up during downtime; a plan rolls at _attackCooldown
+            public readonly float[] PlanWeights = { 80f, 15f, 5f };  // small / medium / large roll weights
         }
 
         private readonly Dictionary<ulong, BotState> _states = new();
@@ -186,12 +189,16 @@ namespace RTSCL.World.Unity
             RunMilitary(owner, st, dt);
         }
 
+        // Attack-plan state machine:
+        //   Downtime (PlanTargetSize==0): build infrastructure + scout. After _attackCooldown AND once an
+        //     enemy has been scouted, roll a plan (small/medium/large) → that becomes the target army size.
+        //   Building: train military up to the planned size; when reached + enemy known → launch.
+        //   Attacking: send the army at the nearest known enemy until every unit is dead → back to downtime.
         private void RunMilitary(ulong owner, BotState st, float dt)
         {
             bool hasBarracks = _placer.TryFindNearestBuildingByName(_barracksName, owner, st.Keep, out var barracks)
                                && !BuildingConstruction.IsUnderConstruction(barracks);
 
-            // Census current military (non-farmer combatants).
             int military = 0;
             var army = new List<Goblin>();
             foreach (var g in Goblin.All)
@@ -200,8 +207,47 @@ namespace RTSCL.World.Unity
                 if (g.Kind != "FarmerGoblin") { military++; army.Add(g); }
             }
 
-            // Train the army (one at a time, alternating Club/Archer), paid from BotEconomy.
-            if (hasBarracks && st.MilTrainTimer < 0f && military < _armyTarget)
+            // ── Downtime: just grow + scout; only roll a plan once the enemy has been found. ──
+            if (st.PlanTargetSize == 0)
+            {
+                st.PlanTimer += dt;
+                if (st.PlanTimer >= _attackCooldown && st.EnemyFound && st.DiscoveredEnemyBases.Count > 0)
+                    RollPlan(owner, st);
+                return;
+            }
+
+            // ── Building toward the planned army size. ──
+            if (!st.PlanAttacking)
+            {
+                TrainMilitary(owner, st, dt, hasBarracks, barracks, military);
+                if (military >= st.PlanTargetSize && st.EnemyFound && st.DiscoveredEnemyBases.Count > 0)
+                {
+                    st.PlanAttacking = true;
+                    Debug.Log($"[Bot {owner}] ATTACK LAUNCHED with {military} units (target {st.PlanTargetSize}).");
+                }
+                if (!st.PlanAttacking) return;
+            }
+
+            // ── Attacking until wiped out. ──
+            if (military == 0)
+            {
+                Debug.Log($"[Bot {owner}] attack force destroyed — entering {_attackCooldown:0}s downtime.");
+                st.PlanTargetSize = 0; st.PlanAttacking = false; st.PlanTimer = 0f;
+                return;
+            }
+            foreach (var g in army)
+            {
+                var tgt = NearestHostile(g, _engageRadius);
+                if (tgt != null) g.SetAttackCommand(tgt);                 // engage anything hostile in range
+                else if (g.IsIdle && NearestBase(st, g.transform.position, out var basePos))
+                    g.SetMoveCommand(basePos);                            // else march to the known enemy base
+            }
+        }
+
+        // Train military one at a time (alternating Club/Archer) up to the planned size, paid from BotEconomy.
+        private void TrainMilitary(ulong owner, BotState st, float dt, bool hasBarracks, Vector2Int barracks, int military)
+        {
+            if (hasBarracks && st.MilTrainTimer < 0f && military < st.PlanTargetSize)
             {
                 var def = (st.MilNextArcher && _archerDef != null) ? _archerDef : _clubDef;
                 if (def == null) def = _clubDef ?? _archerDef;
@@ -229,20 +275,26 @@ namespace RTSCL.World.Unity
                     if (st.PendingMil != null) _spawner.SpawnKindAt(st.PendingMil.SpawnerKindName, at, owner);
                 }
             }
+        }
 
-            // Attack decision: commit once the army is big enough and an enemy base is known.
-            if (!st.Attacking && military >= _attackThreshold && st.EnemyFound && st.DiscoveredEnemyBases.Count > 0)
-                st.Attacking = true;
-            if (st.Attacking && military == 0) st.Attacking = false;   // wiped out → regroup
+        // Roll an attack size via the adaptive weights (small 1-3 / medium 5-8 / large 15-25), then decay
+        // the rolled size's weight and boost the others (recently-rolled sizes become less likely).
+        private void RollPlan(ulong owner, BotState st)
+        {
+            var w = st.PlanWeights;
+            float total = w[0] + w[1] + w[2];
+            float r = Random.value * total;
+            int i = r < w[0] ? 0 : (r < w[0] + w[1] ? 1 : 2);
+            st.PlanTargetSize = i == 0 ? Random.Range(1, 4) : i == 1 ? Random.Range(5, 9) : Random.Range(15, 26);
+            st.PlanAttacking = false;
 
-            if (!st.Attacking) return;
-            foreach (var g in army)
-            {
-                var tgt = NearestHostile(g, _engageRadius);
-                if (tgt != null) g.SetAttackCommand(tgt);                 // engage anything hostile in range
-                else if (g.IsIdle && NearestBase(st, g.transform.position, out var basePos))
-                    g.SetMoveCommand(basePos);                            // else march to the known enemy base
-            }
+            float removed = w[i] * 0.6f;
+            w[i] = Mathf.Max(2f, w[i] - removed);
+            for (int j = 0; j < 3; j++) if (j != i) w[j] += removed * 0.5f;
+
+            string size = i == 0 ? "SMALL" : i == 1 ? "MEDIUM" : "LARGE";
+            Debug.Log($"[Bot {owner}] rolled {size} attack plan → target {st.PlanTargetSize} units. " +
+                      $"weights now S:{w[0]:0} M:{w[1]:0} L:{w[2]:0}");
         }
 
         // Nearest hostile, living goblin within radius of g (players, monsters, other bots).
