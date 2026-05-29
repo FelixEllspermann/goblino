@@ -172917,6 +172917,12 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 3f8f86c9278f5b14c97734cd6779f57a, type: 2}
     - {fileID: 11400000, guid: 7abb2433894fd13498ae2617e737462c, type: 2}
     SpawnReservedRadius: 2
+    GoldOreTile: {fileID: 11400000, guid: f58b5e40cd744ba40b3bbe3dcd1c4257, type: 2}
+    GoldDeposits: 6
+    IronOreTile: {fileID: 11400000, guid: dce791772b3158f4fa7ab307bf84035c, type: 2}
+    IronDeposits: 6
+    CrystalOreTile: {fileID: 11400000, guid: 0528d4ba334e58848a11bf07c50ae419, type: 2}
+    CrystalDeposits: 3
   _seed: -1
   _config:
     Width: 256
@@ -172988,6 +172994,12 @@ MonoBehaviour:
     Icon: {fileID: -9158380238242527104, guid: 115e00acaffee7d4cb0f11d35340aa41, type: 3}
   - Kind: 2
     Icon: {fileID: 1887494081247492234, guid: 269e7f27a92d2e54c844b48ddc51cd37, type: 3}
+  - Kind: 3
+    Icon: {fileID: -6400913422314380486, guid: 684b114cbb93cab4a9c846580e6081a4, type: 3}
+  - Kind: 4
+    Icon: {fileID: 429713409, guid: 684b114cbb93cab4a9c846580e6081a4, type: 3}
+  - Kind: 5
+    Icon: {fileID: 2110156539, guid: 684b114cbb93cab4a9c846580e6081a4, type: 3}
   _rowHeight: 28
   _iconSize: 20
   _fontSize: 20
