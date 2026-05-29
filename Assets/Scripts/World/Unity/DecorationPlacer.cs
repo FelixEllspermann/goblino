@@ -60,7 +60,11 @@ namespace RTSCL.World.Unity
             public int StoneRadius = 3;
 
             [Header("Wheat")]
-            public TileBase WheatTile;            // Wheatfield_0
+            public TileBase WheatTile;            // Wheatfield_0 (now built by players, not spawned)
+
+            [Header("Berries (wild food)")]
+            public TileBase BerryTile;            // BerryBush_0 — harvestable for 100 food each
+            public int BerryScatterCount = 60;    // random berry bushes scattered across the whole map
 
             [Header("Ore Deposits")]
             public TileBase GoldOreTile;
@@ -114,6 +118,9 @@ namespace RTSCL.World.Unity
             PlaceOre(world, _cfg.GoldOreTile, _cfg.GoldDeposits, reserved, ref rng);
             PlaceOre(world, _cfg.IronOreTile, _cfg.IronDeposits, reserved, ref rng);
             PlaceOre(world, _cfg.CrystalOreTile, _cfg.CrystalDeposits, reserved, ref rng);
+
+            // Wild berry bushes scattered randomly across the map (single-tile food nodes).
+            PlaceOre(world, _cfg.BerryTile, _cfg.BerryScatterCount, reserved, ref rng);
 
             if (world.Spawns != null)
                 foreach (var s in world.Spawns)
@@ -297,9 +304,9 @@ namespace RTSCL.World.Unity
             PlaceSingleInRadius(world, spawn, r, _cfg.IronOreTile, reserved, ref rng);
             PlaceSingleInRadius(world, spawn, r, _cfg.CrystalOreTile, reserved, ref rng);
 
-            // 5 wheat.
+            // Guaranteed starting food: berry bushes near each spawn (wheat is now player-built).
             for (int i = 0; i < _cfg.SafeSpawnWheat; i++)
-                PlaceSingleInRadius(world, spawn, r, _cfg.WheatTile, reserved, ref rng);
+                PlaceSingleInRadius(world, spawn, r, _cfg.BerryTile, reserved, ref rng);
         }
 
         /// <summary>Places a single tile within radius of center. Logs a warning if no empty cell is found

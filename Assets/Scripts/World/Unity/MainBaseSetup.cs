@@ -30,6 +30,12 @@ namespace RTSCL.World.Unity
         [SerializeField] private BuildingCatalog _catalog;
         [SerializeField] private GoblinSpawner _goblinSpawner;
         [SerializeField] private Tilemap _terrainMap;
+        [Tooltip("Decoration tilemap — a completed Wheatfield building is converted to a harvestable field tile here.")]
+        [SerializeField] private Tilemap _decorationMap;
+        [Tooltip("Harvestable wheat-field decoration tile painted where a Wheatfield building finishes (e.g. Wheatfield_0).")]
+        [SerializeField] private UnityEngine.Tilemaps.TileBase _wheatTile;
+        [Tooltip("Building asset name that becomes a harvestable field when built.")]
+        [SerializeField] private string _wheatBuildingName = "Wheatfield";
         [Tooltip("Optional: spawns neutral monsters after the player teams.")]
         [SerializeField] private MonsterSpawner _monsterSpawner;
         [Tooltip("Optional: tracks win/lose by building ownership.")]
@@ -46,6 +52,21 @@ namespace RTSCL.World.Unity
 
         // Cache the last-seen world so Update can detect changes without an event subscription.
         private WorldData _knownWorld;
+
+        // Convert a finished Wheatfield building into a harvestable field tile (build → then farm it).
+        private void OnEnable()  => BuildingConstruction.OnCompleted += OnBuildingCompleted;
+        private void OnDisable() => BuildingConstruction.OnCompleted -= OnBuildingCompleted;
+
+        private void OnBuildingCompleted(Vector2Int origin)
+        {
+            if (_buildingPlacer == null) return;
+            if (!_buildingPlacer.TryGetBuildingAt(origin, out var def) || def == null) return;
+            if (def.name != _wheatBuildingName) return;
+            // Replace the built field shell with a harvestable wheat-field decoration on its cell.
+            _buildingPlacer.RemoveBuilding(origin);
+            if (_decorationMap != null && _wheatTile != null)
+                _decorationMap.SetTile(new Vector3Int(origin.x, origin.y, 0), _wheatTile);
+        }
 
         private void Update()
         {

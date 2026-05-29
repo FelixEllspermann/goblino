@@ -1234,6 +1234,9 @@ namespace RTSCL.World.Unity
         public static bool IsWheatfieldTile(string tileName) =>
             tileName.StartsWith("Wheatfield_");
 
+        public static bool IsBerryTile(string tileName) =>
+            tileName.StartsWith("BerryBush");
+
         public static bool IsRockTile(string tileName) =>
             tileName.StartsWith("Rocks_");
 
@@ -1241,11 +1244,11 @@ namespace RTSCL.World.Unity
             tileName.StartsWith("GoldOre_") || tileName.StartsWith("IronOre_") || tileName.StartsWith("CrystalOre_");
 
         public static bool IsHarvestable(string tileName) =>
-            IsTreeTile(tileName) || IsWheatfieldTile(tileName) || IsRockTile(tileName) || IsOreTile(tileName);
+            IsTreeTile(tileName) || IsWheatfieldTile(tileName) || IsBerryTile(tileName) || IsRockTile(tileName) || IsOreTile(tileName);
 
         public static ResourceKind KindOf(string tileName)
         {
-            if (IsWheatfieldTile(tileName)) return ResourceKind.Food;
+            if (IsWheatfieldTile(tileName) || IsBerryTile(tileName)) return ResourceKind.Food;
             if (IsRockTile(tileName)) return ResourceKind.Stone;
             if (tileName.StartsWith("GoldOre_")) return ResourceKind.Gold;
             if (tileName.StartsWith("IronOre_")) return ResourceKind.Iron;
@@ -1255,7 +1258,8 @@ namespace RTSCL.World.Unity
 
         public static int MaxHpFor(string tileName)
         {
-            if (IsWheatfieldTile(tileName)) return 500;
+            if (IsWheatfieldTile(tileName)) return 500;   // built field → bigger food yield
+            if (IsBerryTile(tileName)) return 100;        // wild berry bush → 100 food
             if (IsRockTile(tileName)) return 100;
             if (IsOreTile(tileName)) return 200;
             return TreeHP.MaxHP; // trees = 50

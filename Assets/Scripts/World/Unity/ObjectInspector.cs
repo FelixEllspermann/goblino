@@ -757,6 +757,7 @@ namespace RTSCL.World.Unity
             if (tileName.StartsWith("CoconutTrees_")) return "Palm Tree";
             if (tileName.StartsWith("DeadTrees_") || tileName.StartsWith("WinterDeadTrees_")) return "Dead Tree";
             if (tileName.StartsWith("Wheatfield_")) return "Wheat Field";
+            if (tileName.StartsWith("BerryBush")) return "Berry Bush";
             if (tileName.StartsWith("Rocks_")) return "Stone Deposit";
             if (tileName.StartsWith("GoldOre_")) return "Gold Deposit";
             if (tileName.StartsWith("IronOre_")) return "Iron Deposit";
@@ -770,7 +771,7 @@ namespace RTSCL.World.Unity
         private static string DecorationDesc(string tileName)
         {
             if (Goblin.IsTreeTile(tileName)) return "Chop for Wood";
-            if (tileName.StartsWith("Wheatfield_")) return "Harvest for Food";
+            if (tileName.StartsWith("Wheatfield_") || tileName.StartsWith("BerryBush")) return "Harvest for Food";
             if (tileName.StartsWith("Rocks_")) return "Mine for Stone";
             if (tileName.StartsWith("GoldOre_")) return "Mine for Gold";
             if (tileName.StartsWith("IronOre_")) return "Mine for Iron";

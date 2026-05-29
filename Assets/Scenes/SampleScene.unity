@@ -866,6 +866,9 @@ MonoBehaviour:
   _catalog: {fileID: 11400000, guid: fd7836c091ac0674d93cda3809ca517e, type: 2}
   _goblinSpawner: {fileID: 164504308}
   _terrainMap: {fileID: 1282190478}
+  _decorationMap: {fileID: 1706478009}
+  _wheatTile: {fileID: 11400000, guid: 4be893131bdac794db8d117b0fe76df8, type: 2}
+  _wheatBuildingName: Wheatfield
   _monsterSpawner: {fileID: 626648822}
   _matchManager: {fileID: 626648824}
   _mainBuildingName: Keep_0
@@ -166466,6 +166469,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: f0a3ae8163462354c908b2fea93341ab, type: 2}
   - {fileID: 11400000, guid: 8b4d8ffcd3f3b5c43b9df92dcfc41434, type: 2}
   - {fileID: 11400000, guid: 77132853792871f498f0a6f55c91e322, type: 2}
+  - {fileID: 11400000, guid: 87aaa3d4c4830484dbb3a7bd9502d961, type: 2}
   _rallyIcon: {fileID: 9000459946942271136, guid: a6a41ceea81c16246af0a410a4470f6c, type: 3}
 --- !u!114 &1575836962
 MonoBehaviour:
@@ -172838,6 +172842,8 @@ MonoBehaviour:
     StoneSizeMax: 10
     StoneRadius: 3
     WheatTile: {fileID: 11400000, guid: 4be893131bdac794db8d117b0fe76df8, type: 2}
+    BerryTile: {fileID: 0}
+    BerryScatterCount: 60
     GoldOreTile: {fileID: 11400000, guid: f58b5e40cd744ba40b3bbe3dcd1c4257, type: 2}
     GoldDeposits: 6
     IronOreTile: {fileID: 11400000, guid: dce791772b3158f4fa7ab307bf84035c, type: 2}
@@ -172847,6 +172853,7 @@ MonoBehaviour:
     SpawnReservedRadius: 2
     SafeSpawnRadius: 12
     SafeSpawnWheat: 5
+  _berryTile: {fileID: 11400000, guid: ca01cb0844c0a674da7daeb0d3f420e3, type: 2}
   _seed: -1
   _config:
     Width: 256

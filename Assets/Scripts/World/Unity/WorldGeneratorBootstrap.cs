@@ -28,6 +28,9 @@ namespace RTSCL.World.Unity
 
         [Header("Decorations")]
         [SerializeField] private DecorationPlacer.DecorationConfig _decorationConfig;
+        [Tooltip("Wild berry-bush tile (harvestable food). Injected into the decoration config at generation " +
+                 "time — set here as a top-level ref because nested-config object refs don't persist reliably.")]
+        [SerializeField] private UnityEngine.Tilemaps.TileBase _berryTile;
 
         [Header("Generation")]
         [Tooltip("-1 = pick a fresh random seed each run")]
@@ -110,6 +113,8 @@ namespace RTSCL.World.Unity
 
             // Paint terrain biome tiles, then overlay decorations (trees, stone, ore, etc.).
             new TilePainter(_terrainMap, _resolver).Paint(world);
+            // Inject the berry tile into the config (top-level ref → reliable persistence, unlike nested).
+            if (_berryTile != null && _decorationConfig != null) _decorationConfig.BerryTile = _berryTile;
             new DecorationPlacer(_decorationMap, _decorationConfig).Place(world, world.Seed);
 
             // Fit camera to world bounds and focus on spawn[0] (local player's starting keep).
