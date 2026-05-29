@@ -172725,7 +172725,7 @@ MonoBehaviour:
     CrystalOreTile: {fileID: 11400000, guid: 0528d4ba334e58848a11bf07c50ae419, type: 2}
     CrystalDeposits: 3
     SpawnReservedRadius: 2
-    SafeSpawnRadius: 25
+    SafeSpawnRadius: 12
     SafeSpawnWheat: 5
   _seed: -1
   _config:

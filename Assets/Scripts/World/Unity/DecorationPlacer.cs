@@ -73,8 +73,10 @@ namespace RTSCL.World.Unity
             [Header("Spawn")]
             /// <summary>Cells cleared around each spawn point so the keep can be placed without overlap.</summary>
             public int SpawnReservedRadius = 2;
-            /// <summary>Radius within which guaranteed-spawn resources are seeded near each spawn point.</summary>
-            public int SafeSpawnRadius = 25;
+            /// <summary>Radius within which guaranteed-spawn resources are seeded near each spawn point.
+            /// Kept small so the starting resources are close to the keep and (via reachable-cell search)
+            /// always on the same walkable landmass.</summary>
+            public int SafeSpawnRadius = 12;
             /// <summary>Number of wheat tiles guaranteed near each spawn.</summary>
             public int SafeSpawnWheat = 5;
         }
@@ -317,22 +319,58 @@ namespace RTSCL.World.Unity
             }
         }
 
-        /// <summary>Searches up to 200 times for an empty, passable, unreserved cell within radius of center.
-        /// Returns false if no suitable cell is found (caller should log and skip gracefully).</summary>
+        /// <summary>Finds an empty, unreserved cell that is REACHABLE from <paramref name="center"/> on foot
+        /// (BFS over passable, water-free cells) within Chebyshev <paramref name="radius"/>. This guarantees
+        /// guaranteed-spawn resources land on the same walkable landmass as the keep — never on an isolated
+        /// passable cell across water, and never randomly missed. Picks a random eligible cell for spread.
+        /// Returns false only if no reachable empty cell exists in range (very rare near a valid spawn).</summary>
         private bool TryFindCellInRadius(WorldData world, int2 center, int radius, bool[,] reserved,
                                          ref Random rng, out int outX, out int outY)
         {
-            for (int attempt = 0; attempt < 200; attempt++)
+            outX = 0; outY = 0;
+            if (center.x < 0 || center.x >= world.Width || center.y < 0 || center.y >= world.Height) return false;
+
+            var candidates = new List<int2>();
+            var visited = new bool[world.Width, world.Height];
+            var queue = new Queue<int2>();
+            visited[center.x, center.y] = true;
+            queue.Enqueue(center);
+
+            while (queue.Count > 0)
             {
-                int x = center.x + rng.NextInt(-radius, radius + 1);
-                int y = center.y + rng.NextInt(-radius, radius + 1);
-                if (x < 0 || x >= world.Width || y < 0 || y >= world.Height) continue;
-                if (reserved[x, y]) continue;
-                if (!IsPassableBiome(world.BiomeAt(x, y))) continue;
-                if (_decorationMap.GetTile(new Vector3Int(x, y, 0)) != null) continue;
-                outX = x; outY = y; return true;
+                var p = queue.Dequeue();
+
+                // Eligible target = walkable, empty, and not reserved (keep footprint / planned resources).
+                if (!reserved[p.x, p.y]
+                    && IsPassableBiome(world.BiomeAt(p.x, p.y))
+                    && _decorationMap.GetTile(new Vector3Int(p.x, p.y, 0)) == null)
+                    candidates.Add(p);
+
+                // Expand to 4-connected neighbours that stay walkable and within the search box.
+                TryEnqueue(world, visited, queue, center, radius, p.x + 1, p.y);
+                TryEnqueue(world, visited, queue, center, radius, p.x - 1, p.y);
+                TryEnqueue(world, visited, queue, center, radius, p.x, p.y + 1);
+                TryEnqueue(world, visited, queue, center, radius, p.x, p.y - 1);
             }
-            outX = 0; outY = 0; return false;
+
+            if (candidates.Count == 0) return false;
+            var c = candidates[rng.NextInt(0, candidates.Count)];
+            outX = c.x; outY = c.y;
+            return true;
+        }
+
+        /// <summary>BFS helper: enqueue (x,y) if in-bounds, unvisited, walkable, and within Chebyshev
+        /// <paramref name="radius"/> of <paramref name="center"/>. Traversal ignores the reserved mask
+        /// (so it can path THROUGH the keep area) — only candidacy checks reserved.</summary>
+        private static void TryEnqueue(WorldData world, bool[,] visited, Queue<int2> queue,
+                                       int2 center, int radius, int x, int y)
+        {
+            if (x < 0 || x >= world.Width || y < 0 || y >= world.Height) return;
+            if (visited[x, y]) return;
+            if (math.abs(x - center.x) > radius || math.abs(y - center.y) > radius) return;
+            if (!IsPassableBiome(world.BiomeAt(x, y))) return;
+            visited[x, y] = true;
+            queue.Enqueue(new int2(x, y));
         }
 
         // ---------- Cosmetic scatter (non-harvestable) ----------
