@@ -106,6 +106,7 @@ namespace RTSCL.World.Unity
         // enough to warrant re-pathing (avoids per-frame RepathTo calls).
         private Vector2Int _lastAttackGoalCell = new Vector2Int(int.MinValue, int.MinValue);
         private Vector3Int _treeCell;
+        private ResourceKind _harvestKind;   // kind of the node currently/last harvested — auto-find sticks to it
         private Vector2Int _buildOrigin;
         private float _harvestTimer;
         private float _buildTimer;
@@ -242,6 +243,8 @@ namespace RTSCL.World.Unity
 
             var tile = _decorationMap != null ? _decorationMap.GetTile(node) : null;
             if (tile == null || !IsHarvestable(tile.name)) { _state = State.Idle; UnitAlert.Show(this); return false; }
+            // Remember the kind so that after this node depletes, auto-find only seeks the SAME resource.
+            _harvestKind = KindOf(tile.name);
 
             // If this node has no free standing cell, find an alternative of the same kind nearby.
             if (!HarvestReservations.HasFreeSpot(node, IsCellPassable))
@@ -879,6 +882,7 @@ namespace RTSCL.World.Unity
             {
                 var c = new Vector3Int(origin.x + dx, origin.y + dy, 0);
                 if (!IsHarvestableStillThere(c)) continue;
+                if (KindOf(_decorationMap.GetTile(c).name) != _harvestKind) continue; // same resource only
                 if (!HarvestReservations.HasFreeSpot(c, IsCellPassable)) continue; // skip full nodes — no stacking
                 int sq = dx * dx + dy * dy;
                 if (sq < bestSq) { bestSq = sq; best = c; }
