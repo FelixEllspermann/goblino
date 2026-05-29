@@ -73,6 +73,7 @@ namespace RTSCL.World.Unity
             GoblinNetRegistry.Reset();
             PlayerUpgrades.Reset();
             HarvestReservations.Clear();
+            RallyPoints.Clear();
             NetworkCatalog.PopulateFromCatalog(_catalog);
             // Wire refs so NetCommandApplier can call PlaceForce / SpawnByKindAroundFootprint
             // without a direct reference to these MonoBehaviours (assembly-boundary constraint).

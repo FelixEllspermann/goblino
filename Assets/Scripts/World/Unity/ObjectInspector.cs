@@ -59,6 +59,10 @@ namespace RTSCL.World.Unity
         [Tooltip("Buildings a Farmer Goblin can construct when selected")]
         [SerializeField] private List<BuildingDefinition> _farmerBuildables = new();
 
+        [Header("Rally")]
+        [Tooltip("Flag icon shown at a building's rally point (GUI_33)")]
+        [SerializeField] private Sprite _rallyIcon;
+
         // Which type of object is currently being inspected.
         private enum SelKind { None, Building, Decoration, Goblins }
         private SelKind _selKind = SelKind.None;
@@ -131,6 +135,19 @@ namespace RTSCL.World.Unity
             if (_selKind == SelKind.Goblins) UpdateCarryUI();
             if (_selKind == SelKind.Decoration) UpdateResourceAmount();
 
+            // Right-click while a unit-training building is selected → set/move its rally point.
+            if (Mouse.current.rightButton.wasPressedThisFrame
+                && (EventSystem.current == null || !EventSystem.current.IsPointerOverGameObject())
+                && BuildingTakesRally(out var bc))
+            {
+                Vector2 rmp = Mouse.current.position.ReadValue();
+                Vector3 rworld = _camera.ScreenToWorldPoint(new Vector3(rmp.x, rmp.y, -_camera.transform.position.z));
+                var rally = new Vector3(Mathf.FloorToInt(rworld.x) + 0.5f, Mathf.FloorToInt(rworld.y) + 0.5f, 0f);
+                RallyPoints.Set(_selOrigin, rally);
+                RallyVisual.Instance.Show(bc, rally, _rallyIcon);
+                return;
+            }
+
             if (!Mouse.current.leftButton.wasPressedThisFrame) return;
             if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return;
 
@@ -180,6 +197,7 @@ namespace RTSCL.World.Unity
         {
             _selKind = SelKind.Goblins;
             _selDef = null;
+            RallyVisual.Instance.Hide();
             if (_selBuildingOwner != null) { _selBuildingOwner.SetSelected(false); _selBuildingOwner = null; }
 
             bool hasFarmer = false;
@@ -240,6 +258,35 @@ namespace RTSCL.World.Unity
 
             _popupRoot?.SetActive(true);
             Refresh();
+            ShowRallyVisual();
+        }
+
+        // True when the current selection is a local, unit-training building (eligible for a rally point).
+        // Outputs the building's footprint center in world space (line start for the rally visual).
+        private bool BuildingTakesRally(out Vector3 buildingCenter)
+        {
+            buildingCenter = default;
+            if (_selKind != SelKind.Building || _selDef == null) return false;
+            if (_selDef.TrainsUnits == null || _selDef.TrainsUnits.Length == 0) return false;
+            if (_placer != null && _placer.TryGetBuildingOwner(_selOrigin, out ulong owner)
+                && owner != WorldStartContext.LocalPlayer && owner != 0UL) return false;
+            if (_terrainMap == null) return false;
+            var w = _terrainMap.CellToWorld(new Vector3Int(_selOrigin.x, _selOrigin.y, 0));
+            buildingCenter = w + new Vector3(_selDef.Footprint.x * 0.5f, _selDef.Footprint.y * 0.5f, 0f);
+            return true;
+        }
+
+        // Show the rally flag + dashed line for the selected building (creating a default rally if none),
+        // or hide the visual when the selection isn't a rally-eligible building.
+        private void ShowRallyVisual()
+        {
+            if (!BuildingTakesRally(out var center)) { RallyVisual.Instance.Hide(); return; }
+            if (!RallyPoints.TryGet(_selOrigin, out var rally))
+            {
+                rally = RallyPoints.Default(_selOrigin, _selDef.Footprint);
+                RallyPoints.Set(_selOrigin, rally);
+            }
+            RallyVisual.Instance.Show(center, rally, _rallyIcon);
         }
 
         private void ShowSimple(string title, string description)
@@ -278,6 +325,7 @@ namespace RTSCL.World.Unity
 
         private void Hide()
         {
+            RallyVisual.Instance.Hide();
             if (_popupRoot != null) _popupRoot.SetActive(false);
             if (_selBuildingOwner != null) _selBuildingOwner.SetSelected(false);
             _selBuildingOwner = null;
@@ -619,6 +667,7 @@ namespace RTSCL.World.Unity
         // After this, UpdateResourceAmount() keeps the remaining HP line current each frame.
         private void ShowResourceNode(Vector3Int cell, string tileName)
         {
+            RallyVisual.Instance.Hide();
             _selDecoCell = cell;
             _selDecoHarvestable = Goblin.IsHarvestable(tileName);
             _selDecoBaseDesc = DecorationDesc(tileName);

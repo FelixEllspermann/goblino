@@ -268,6 +268,10 @@ namespace RTSCL.World.Unity
             BuildingHP.Register(origin, BuildingHP.MaxHpFor(def));
             if (requireConstruction) BuildingConstruction.Register(origin, go);
             else PopulationManager.AddCap(def.PopulationProvided); // instant-place (e.g. starting keep)
+
+            // Give unit-training buildings a default rally point (below the footprint) if none set yet.
+            if (def.TrainsUnits != null && def.TrainsUnits.Length > 0 && !RallyPoints.TryGet(origin, out _))
+                RallyPoints.Set(origin, RallyPoints.Default(origin, def.Footprint));
         }
 
         /// <summary>Remove all placed buildings and reset associated static registries.
