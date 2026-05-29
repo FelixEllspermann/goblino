@@ -7,7 +7,10 @@ namespace RTSCL.World.Unity
     {
         public string DisplayName;
         public Sprite Icon;
-        public int WoodCost = 100;
+        public int WoodCost = 0;
+        public int IronCost = 0;
+        public int GoldCost = 0;
+        public int CrystalCost = 0;
         public UpgradeKind Kind;
     }
 }
