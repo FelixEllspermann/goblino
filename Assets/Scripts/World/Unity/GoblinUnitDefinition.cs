@@ -40,8 +40,13 @@ namespace RTSCL.World.Unity
         public int AttackDamage = 0;
         /// <summary>Seconds between attacks. Tune here; Goblin.Update reads this.</summary>
         public float AttackInterval = 1.5f;
-        /// <summary>Attack reach in world cells.</summary>
+        /// <summary>Attack reach in world cells. Melee = 1; ranged units (e.g. Archer) use a larger value.</summary>
         public int AttackRange = 1;
+
+        /// <summary>If set, this unit is RANGED: on each attack swing it fires this sprite as a
+        /// homing projectile (see Arrow.cs) instead of a melee lunge. Null = melee.</summary>
+        [Tooltip("Set for ranged units (e.g. Archer's arrow). Null = melee.")]
+        public Sprite ProjectileSprite;
 
         /// <summary>Seconds to produce one unit. Progress bar in BuildingPaletteUI uses this.</summary>
         [Tooltip("Seconds to produce one unit at a keep")]

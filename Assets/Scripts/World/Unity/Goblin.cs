@@ -111,6 +111,7 @@ namespace RTSCL.World.Unity
         private float _buildTimer;
         private Goblin _attackTarget;
         private float _attackTimer;
+        private Sprite _projectileSprite;   // non-null = ranged unit (shoots an Arrow instead of a melee lunge)
         /// <summary>Seconds between build progress ticks. Reduce to make builders work faster.</summary>
         private const float BuildTickDuration = 1.0f;
         /// <summary>HP progress added to a building per build tick. Tune alongside BuildTickDuration.</summary>
@@ -187,6 +188,7 @@ namespace RTSCL.World.Unity
                 AttackDamage = def.AttackDamage;
                 AttackInterval = def.AttackInterval;
                 AttackRange = def.AttackRange;
+                _projectileSprite = def.ProjectileSprite;
             }
             CurrentHp = MaxHp;
 
@@ -509,13 +511,24 @@ namespace RTSCL.World.Unity
                     if (_attackTimer >= AttackInterval)
                     {
                         _attackTimer = 0f;
-                        // Hit animation runs on every client (deterministic). Damage only fires
-                        // on the attacker's owner client, which broadcasts EvDamage to remotes.
-                        StartHitAnim(new Vector3Int(
-                            Mathf.FloorToInt(_attackTarget.transform.position.x),
-                            Mathf.FloorToInt(_attackTarget.transform.position.y), 0));
-                        if (IsLocalOwner)
-                            NetCommandIssuer.IssueDamage(_attackTarget, AttackDamage, this);
+                        if (_projectileSprite != null)
+                        {
+                            // Ranged: face the target and shoot an arrow. The arrow applies damage
+                            // on impact (owner client only); remotes spawn a visual-only arrow.
+                            if (_renderer != null)
+                                _renderer.flipX = _attackTarget.transform.position.x < transform.position.x;
+                            Arrow.Spawn(transform.position, _attackTarget, AttackDamage, this, IsLocalOwner, _projectileSprite);
+                        }
+                        else
+                        {
+                            // Melee: lunge animation runs on every client (deterministic). Damage only
+                            // fires on the attacker's owner client, which broadcasts EvDamage to remotes.
+                            StartHitAnim(new Vector3Int(
+                                Mathf.FloorToInt(_attackTarget.transform.position.x),
+                                Mathf.FloorToInt(_attackTarget.transform.position.y), 0));
+                            if (IsLocalOwner)
+                                NetCommandIssuer.IssueDamage(_attackTarget, AttackDamage, this);
+                        }
                     }
                     break;
                 }
