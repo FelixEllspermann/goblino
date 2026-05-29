@@ -33,6 +33,11 @@ namespace RTSCL.World.Unity
         [SerializeField] private int _visionRadius = 6;
         [SerializeField] private int _keepVisionRadius = 10;
 
+        [Header("Military")]
+        [SerializeField] private int _armyTarget = 6;       // train up to this many military units
+        [SerializeField] private int _attackThreshold = 5;  // start attacking once the army reaches this
+        [SerializeField] private float _engageRadius = 8f;  // a military unit attacks hostiles within this
+
         private sealed class BotState
         {
             public Vector2Int Keep;
@@ -47,11 +52,17 @@ namespace RTSCL.World.Unity
             public Goblin Scout;
             public bool EnemyFound;
             public readonly HashSet<Vector2Int> DiscoveredEnemyBases = new();
+
+            // Phase 4: military.
+            public float MilTrainTimer = -1f;
+            public bool MilNextArcher;   // alternate club/archer
+            public GoblinUnitDefinition PendingMil;
+            public bool Attacking;
         }
 
         private readonly Dictionary<ulong, BotState> _states = new();
         private BuildingDefinition _hutDef, _barracksDef;
-        private GoblinUnitDefinition _farmerDef;
+        private GoblinUnitDefinition _farmerDef, _clubDef, _archerDef;
         private WorldGeneratorBootstrap _worldSource;
         private float _t;
 
@@ -63,6 +74,12 @@ namespace RTSCL.World.Unity
             var keepDef = FindBuilding(_keepName);
             if (keepDef != null && keepDef.TrainsUnits != null && keepDef.TrainsUnits.Length > 0)
                 _farmerDef = keepDef.TrainsUnits[0];
+            // Military unit defs come from the Barracks training list ([0]=Club, [1]=Archer).
+            if (_barracksDef != null && _barracksDef.TrainsUnits != null)
+            {
+                if (_barracksDef.TrainsUnits.Length > 0) _clubDef = _barracksDef.TrainsUnits[0];
+                if (_barracksDef.TrainsUnits.Length > 1) _archerDef = _barracksDef.TrainsUnits[1];
+            }
         }
 
         private BuildingDefinition FindBuilding(string n)
@@ -164,6 +181,94 @@ namespace RTSCL.World.Unity
                 else if (!nearCap && farmers >= 5 && !OwnsBuilding(owner, _barracksName) && CanAfford(owner, _barracksDef))
                     TryBuild(owner, st, _barracksDef);
             }
+
+            // 6. Military: train an army from the Barracks, then attack discovered enemies.
+            RunMilitary(owner, st, dt);
+        }
+
+        private void RunMilitary(ulong owner, BotState st, float dt)
+        {
+            bool hasBarracks = _placer.TryFindNearestBuildingByName(_barracksName, owner, st.Keep, out var barracks)
+                               && !BuildingConstruction.IsUnderConstruction(barracks);
+
+            // Census current military (non-farmer combatants).
+            int military = 0;
+            var army = new List<Goblin>();
+            foreach (var g in Goblin.All)
+            {
+                if (g == null || g.IsNeutral || g.Owner != owner) continue;
+                if (g.Kind != "FarmerGoblin") { military++; army.Add(g); }
+            }
+
+            // Train the army (one at a time, alternating Club/Archer), paid from BotEconomy.
+            if (hasBarracks && st.MilTrainTimer < 0f && military < _armyTarget)
+            {
+                var def = (st.MilNextArcher && _archerDef != null) ? _archerDef : _clubDef;
+                if (def == null) def = _clubDef ?? _archerDef;
+                if (def != null
+                    && BotEconomy.Get(owner, ResourceKind.Food) >= def.FoodCost
+                    && BotEconomy.Get(owner, ResourceKind.Wood) >= def.WoodCost
+                    && BotEconomy.CanAffordPop(owner, def.PopulationCost))
+                {
+                    BotEconomy.Add(owner, ResourceKind.Food, -def.FoodCost);
+                    BotEconomy.Add(owner, ResourceKind.Wood, -def.WoodCost);
+                    BotEconomy.AddUsed(owner, def.PopulationCost);
+                    st.MilTrainTimer = Mathf.Max(0.1f, def.SpawnDuration);
+                    st.PendingMil = def;
+                    st.MilNextArcher = !st.MilNextArcher;
+                }
+            }
+            else if (st.MilTrainTimer >= 0f)
+            {
+                st.MilTrainTimer -= dt;
+                if (st.MilTrainTimer <= 0f)
+                {
+                    st.MilTrainTimer = -1f;
+                    Vector3 at = hasBarracks ? new Vector3(barracks.x + 0.5f, barracks.y + 0.5f, 0f)
+                                             : new Vector3(st.Keep.x + 0.5f, st.Keep.y + 0.5f, 0f);
+                    if (st.PendingMil != null) _spawner.SpawnKindAt(st.PendingMil.SpawnerKindName, at, owner);
+                }
+            }
+
+            // Attack decision: commit once the army is big enough and an enemy base is known.
+            if (!st.Attacking && military >= _attackThreshold && st.EnemyFound && st.DiscoveredEnemyBases.Count > 0)
+                st.Attacking = true;
+            if (st.Attacking && military == 0) st.Attacking = false;   // wiped out → regroup
+
+            if (!st.Attacking) return;
+            foreach (var g in army)
+            {
+                var tgt = NearestHostile(g, _engageRadius);
+                if (tgt != null) g.SetAttackCommand(tgt);                 // engage anything hostile in range
+                else if (g.IsIdle && NearestBase(st, g.transform.position, out var basePos))
+                    g.SetMoveCommand(basePos);                            // else march to the known enemy base
+            }
+        }
+
+        // Nearest hostile, living goblin within radius of g (players, monsters, other bots).
+        private static Goblin NearestHostile(Goblin g, float radius)
+        {
+            Goblin best = null; float bestSq = radius * radius;
+            foreach (var o in Goblin.All)
+            {
+                if (o == null || o.CurrentHp <= 0 || !g.IsHostileTo(o)) continue;
+                float d = (o.transform.position - g.transform.position).sqrMagnitude;
+                if (d < bestSq) { bestSq = d; best = o; }
+            }
+            return best;
+        }
+
+        // World-center of the discovered enemy base nearest to 'from'.
+        private static bool NearestBase(BotState st, Vector3 from, out Vector3 pos)
+        {
+            pos = default; float bestSq = float.MaxValue; bool found = false;
+            foreach (var b in st.DiscoveredEnemyBases)
+            {
+                var c = new Vector3(b.x + 0.5f, b.y + 0.5f, 0f);
+                float d = (c - from).sqrMagnitude;
+                if (d < bestSq) { bestSq = d; pos = c; found = true; }
+            }
+            return found;
         }
 
         private bool CanAfford(ulong owner, BuildingDefinition def) =>
