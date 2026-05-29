@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e5a02d3f8b674a2c91e8d7c4f3a1b2c9, type: 3}
+  m_Name: GoblinArcher
+  m_EditorClassIdentifier: RTSCL.World.Unity::RTSCL.World.Unity.GoblinUnitDefinition
+  DisplayName: Archer Goblin
+  Icon: {fileID: 115046913211846132, guid: 59f7e8bfad34976468901a03ac2da98c, type: 3}
+  WoodCost: 0
+  FoodCost: 90
+  PopulationCost: 2
+  MaxHp: 25
+  AttackDamage: 4
+  AttackInterval: 1.8
+  AttackRange: 5
+  ProjectileSprite: {fileID: -2820039621253805247, guid: 1be4c078556799e4e9dcc024310dacb9, type: 3}
+  SpawnDuration: 7
+  SpawnerKindName: ArcherGoblin
