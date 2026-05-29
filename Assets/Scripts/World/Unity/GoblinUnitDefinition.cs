@@ -48,6 +48,9 @@ namespace RTSCL.World.Unity
         [Tooltip("Set for ranged units (e.g. Archer's arrow). Null = melee.")]
         public Sprite ProjectileSprite;
 
+        [Tooltip("Visual size multiplier applied to the unit transform on spawn (monsters scale up).")]
+        public float WorldScale = 1f;
+
         /// <summary>Seconds to produce one unit. Progress bar in BuildingPaletteUI uses this.</summary>
         [Tooltip("Seconds to produce one unit at a keep")]
         public float SpawnDuration = 3f;

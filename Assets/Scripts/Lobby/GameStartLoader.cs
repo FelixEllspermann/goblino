@@ -66,6 +66,7 @@ namespace RTSCL.Lobby
             // WorldStartContext lives in RTSCL.World.Unity which cannot reference Assembly-CSharp
             // (asmdef restriction). We push data in via public static fields / delegates.
             RTSCL.World.Unity.WorldStartContext.LocalPlayer = NetworkSession.LocalPlayer.m_SteamID;
+            RTSCL.World.Unity.WorldStartContext.HostPlayer = NetworkSession.HostPlayer.m_SteamID;
             RTSCL.World.Unity.WorldStartContext.GetPlayerColor = sid =>
                 PlayerRegistry.GetColorForPlayer(new Steamworks.CSteamID(sid));
 

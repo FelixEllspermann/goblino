@@ -190,7 +190,7 @@ namespace RTSCL.World.Unity
             foreach (var g in Goblin.All)
             {
                 if (g == null) continue;
-                if (!IsLocalOwner(g)) continue;
+                if (!IsLocalOwner(g) || g.IsNeutral) continue;
                 float d = Vector2.Distance(g.transform.position, world);
                 if (d < bestDist) { bestDist = d; best = g; }
             }
@@ -206,7 +206,7 @@ namespace RTSCL.World.Unity
             foreach (var g in Goblin.All)
             {
                 if (g == null) continue;
-                if (!IsLocalOwner(g)) continue;
+                if (!IsLocalOwner(g) || g.IsNeutral) continue;
                 Vector3 sp = _camera.WorldToScreenPoint(g.transform.position);
                 if (sp.x >= minX && sp.x <= maxX && sp.y >= minY && sp.y <= maxY)
                     hit.Add(g);

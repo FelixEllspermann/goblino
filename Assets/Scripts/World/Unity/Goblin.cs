@@ -67,6 +67,14 @@ namespace RTSCL.World.Unity
 
         public bool IsIdle => _state == State.Idle;
 
+        /// <summary>Neutral creatures (monsters): no faction tint, not player-selectable, no population cost.</summary>
+        public bool IsNeutral { get; private set; }
+        /// <summary>True on the client that authoritatively controls this unit (its owner, or solo).
+        /// Public mirror of the private IsLocalOwner so MonsterAI can gate its decision logic.</summary>
+        public bool IsOwnedLocally => Owner == WorldStartContext.LocalPlayer || Owner == 0UL;
+        /// <summary>Mark this unit as a neutral monster (call right after spawn). Refreshes visuals.</summary>
+        public void MarkNeutral() { IsNeutral = true; ApplyOwnerVisuals(); RefreshSelectionRingColor(); }
+
         /// <summary>Discriminator for owner-local queued commands. Remotes never enqueue.</summary>
         public enum CommandType { Move, Harvest, BuildAssist, Attack }
 
@@ -190,6 +198,7 @@ namespace RTSCL.World.Unity
                 AttackInterval = def.AttackInterval;
                 AttackRange = def.AttackRange;
                 _projectileSprite = def.ProjectileSprite;
+                transform.localScale = Vector3.one * Mathf.Max(0.1f, def.WorldScale);
             }
             CurrentHp = MaxHp;
 
@@ -709,6 +718,7 @@ namespace RTSCL.World.Unity
         private void ApplyOwnerVisuals()
         {
             if (_renderer == null) return;
+            if (IsNeutral) { _renderer.color = Color.white; return; } // monsters keep their natural sprite
             bool isLocal = Owner == WorldStartContext.LocalPlayer || Owner == 0UL;
             _renderer.color = isLocal ? Color.white : WorldStartContext.GetPlayerColor(Owner);
         }
@@ -720,7 +730,7 @@ namespace RTSCL.World.Unity
         {
             if (_state == State.Dying) return;
             _state = State.Dying;
-            PopulationManager.RemoveUsed(PopulationCost);
+            if (!IsNeutral) PopulationManager.RemoveUsed(PopulationCost); // monsters never used player pop
             Goblin.All.Remove(this);
             SetSelected(false);
             // Clear any in-flight lunge so it doesn't fight the hop-arc transform writes.
@@ -965,6 +975,7 @@ namespace RTSCL.World.Unity
             if (_selectionRing == null) return;
             var sr = _selectionRing.GetComponent<SpriteRenderer>();
             if (sr == null) return;
+            if (IsNeutral) { sr.color = new Color(1f, 0.5f, 0.5f, 1f); return; } // neutral ring tint
             bool isLocal = Owner == WorldStartContext.LocalPlayer || Owner == 0UL;
             sr.color = isLocal
                 ? new Color(0.95f, 0.95f, 0.95f, 1f)

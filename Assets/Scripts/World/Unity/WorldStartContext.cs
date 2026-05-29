@@ -26,6 +26,10 @@ namespace RTSCL.World.Unity
         /// Set by GameStartLoader before SampleScene loads.</summary>
         public static ulong LocalPlayer;
 
+        /// <summary>SteamID of the host player as ulong. 0 = solo. Set by GameStartLoader.
+        /// Neutral monsters are owned by the host so only the host authoritatively drives their AI/damage.</summary>
+        public static ulong HostPlayer;
+
         /// <summary>Per-player spawn assignment. null = solo (no MP slots).
         /// Each entry maps a SteamID → the spawn point index (0–3) this player owns.
         /// Read by MainBaseSetup.OnNewWorld to place each player's keep at the correct spawn.</summary>
@@ -41,6 +45,7 @@ namespace RTSCL.World.Unity
         public static void Reset()
         {
             LocalPlayer = 0UL;
+            HostPlayer = 0UL;
             PendingSlots = null;
             // GetPlayerColor intentionally not reset — it's a stable delegate set once at game start.
         }
