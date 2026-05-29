@@ -52,6 +52,10 @@ namespace RTSCL.World.Unity
             WorldGrid.Width = world.Width;
             WorldGrid.Height = world.Height;
 
+            // Starting baseline resources for the local player.
+            ResourceBank.Add(ResourceKind.Wood, 100);
+            ResourceBank.Add(ResourceKind.Food, 100);
+
             if (world.Spawns == null || world.Spawns.Length == 0) return;
 
             var def = FindBuildingDefinition(_mainBuildingName);
