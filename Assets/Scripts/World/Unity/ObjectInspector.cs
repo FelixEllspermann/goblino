@@ -59,6 +59,10 @@ namespace RTSCL.World.Unity
             public BuildingDefinition Building;
             public int WoodCost;
             public int FoodCost;
+            public int StoneCost;
+            public int IronCost;
+            public int GoldCost;
+            public int CrystalCost;
             public UpgradeDefinition Upgrade;
             public UpgradeKind UpgradeKind;
         }
@@ -280,9 +284,10 @@ namespace RTSCL.World.Unity
             foreach (var b in defs)
             {
                 if (b == null) continue;
-                var c = CreateCard(b.DisplayName, b.Sprite, $"{b.WoodCost} Wood", () => OnBuildingClicked(b));
+                var c = CreateCard(b.DisplayName, b.Sprite, FormatBuildingCost(b.WoodCost, b.StoneCost), () => OnBuildingClicked(b));
                 c.Building = b;
                 c.WoodCost = b.WoodCost;
+                c.StoneCost = b.StoneCost;
                 _cards.Add(c);
             }
         }
@@ -295,10 +300,12 @@ namespace RTSCL.World.Unity
             foreach (var u in upgrades)
             {
                 if (u == null) continue;
-                var c = CreateCard(u.DisplayName, u.Icon, $"{u.WoodCost} Wood", () => OnUpgradeClicked(u));
+                var c = CreateCard(u.DisplayName, u.Icon, FormatUpgradeCost(u.IronCost, u.GoldCost, u.CrystalCost), () => OnUpgradeClicked(u));
                 c.Upgrade = u;
                 c.UpgradeKind = u.Kind;
-                c.WoodCost = u.WoodCost;
+                c.IronCost = u.IronCost;
+                c.GoldCost = u.GoldCost;
+                c.CrystalCost = u.CrystalCost;
                 _cards.Add(c);
             }
         }
@@ -393,8 +400,13 @@ namespace RTSCL.World.Unity
             bool busy = _selKind == SelKind.Building && GoblinProduction.IsBusy(_selOrigin);
             foreach (var card in _cards)
             {
-                bool affordable = ResourceBank.Wood >= card.WoodCost
-                               && ResourceBank.Food >= card.FoodCost;
+                bool affordable = card.Upgrade != null
+                    ? ResourceBank.Get(ResourceKind.Iron) >= card.IronCost
+                      && ResourceBank.Get(ResourceKind.Gold) >= card.GoldCost
+                      && ResourceBank.Get(ResourceKind.Crystal) >= card.CrystalCost
+                    : ResourceBank.Wood >= card.WoodCost
+                      && ResourceBank.Food >= card.FoodCost
+                      && ResourceBank.Get(ResourceKind.Stone) >= card.StoneCost;
                 bool popOk = card.Unit == null || PopulationManager.CanAfford(card.Unit.PopulationCost);
                 bool alreadyOwned = card.Upgrade != null
                     && PlayerUpgrades.IsPurchased(WorldStartContext.LocalPlayer, card.UpgradeKind);
@@ -458,6 +470,7 @@ namespace RTSCL.World.Unity
         {
             if (_placer == null || def == null) return;
             if (ResourceBank.Wood < def.WoodCost) return;
+            if (ResourceBank.Get(ResourceKind.Stone) < def.StoneCost) return;
             _placer.Select(def);
         }
 
@@ -466,9 +479,13 @@ namespace RTSCL.World.Unity
             if (upgrade == null) return;
             ulong owner = WorldStartContext.LocalPlayer;
             if (PlayerUpgrades.IsPurchased(owner, upgrade.Kind)) return;
-            if (ResourceBank.Wood < upgrade.WoodCost) return;
+            if (ResourceBank.Get(ResourceKind.Iron) < upgrade.IronCost) return;
+            if (ResourceBank.Get(ResourceKind.Gold) < upgrade.GoldCost) return;
+            if (ResourceBank.Get(ResourceKind.Crystal) < upgrade.CrystalCost) return;
 
-            ResourceBank.AddWood(-upgrade.WoodCost);
+            if (upgrade.IronCost > 0) ResourceBank.Add(ResourceKind.Iron, -upgrade.IronCost);
+            if (upgrade.GoldCost > 0) ResourceBank.Add(ResourceKind.Gold, -upgrade.GoldCost);
+            if (upgrade.CrystalCost > 0) ResourceBank.Add(ResourceKind.Crystal, -upgrade.CrystalCost);
             NetCommandIssuer.IssuePurchaseUpgrade(upgrade.Kind, owner);
             Refresh();
         }
@@ -491,6 +508,23 @@ namespace RTSCL.World.Unity
             if (woodCost > 0) return $"{woodCost} Wood";
             if (foodCost > 0) return $"{foodCost} Food";
             return "Free";
+        }
+
+        private static string FormatBuildingCost(int wood, int stone)
+        {
+            if (wood > 0 && stone > 0) return $"{wood} Wood, {stone} Stone";
+            if (wood > 0) return $"{wood} Wood";
+            if (stone > 0) return $"{stone} Stone";
+            return "Free";
+        }
+
+        private static string FormatUpgradeCost(int iron, int gold, int crystal)
+        {
+            var parts = new System.Collections.Generic.List<string>(3);
+            if (iron > 0) parts.Add($"{iron} Iron");
+            if (gold > 0) parts.Add($"{gold} Gold");
+            if (crystal > 0) parts.Add($"{crystal} Crystal");
+            return parts.Count == 0 ? "Free" : string.Join(", ", parts);
         }
 
         private static string DescribeBuilding(BuildingDefinition def)
