@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -5,37 +6,75 @@ namespace RTSCL.World.Unity
 {
     public sealed class ResourceUI : MonoBehaviour
     {
-        [SerializeField] private Image _woodIcon;
-        [SerializeField] private Image _foodIcon;
-        [SerializeField] private Text _woodLabel;
-        [SerializeField] private Text _foodLabel;
+        [System.Serializable]
+        public sealed class KindIcon
+        {
+            public ResourceKind Kind;
+            public Sprite Icon;
+        }
+
+        [SerializeField] private RectTransform _countersRoot;
         [SerializeField] private Text _populationLabel;
+        [SerializeField] private Font _font;
+        [SerializeField] private List<KindIcon> _kinds = new();
+
+        [Header("Layout")]
+        [SerializeField] private float _rowHeight = 28f;
+        [SerializeField] private float _iconSize = 20f;
+        [SerializeField] private int _fontSize = 20;
+
+        private readonly Dictionary<ResourceKind, Text> _texts = new();
 
         private void OnEnable()
         {
-            ResourceBank.OnWoodChanged += UpdateWood;
-            ResourceBank.OnFoodChanged += UpdateFood;
+            BuildCounters();
+            ResourceBank.OnChanged += OnResourceChanged;
             PopulationManager.OnChanged += UpdatePopulation;
-            UpdateWood(ResourceBank.Wood);
-            UpdateFood(ResourceBank.Food);
+            foreach (var ki in _kinds)
+                if (_texts.TryGetValue(ki.Kind, out var t)) t.text = ResourceBank.Get(ki.Kind).ToString();
             UpdatePopulation();
         }
 
         private void OnDisable()
         {
-            ResourceBank.OnWoodChanged -= UpdateWood;
-            ResourceBank.OnFoodChanged -= UpdateFood;
+            ResourceBank.OnChanged -= OnResourceChanged;
             PopulationManager.OnChanged -= UpdatePopulation;
         }
 
-        private void UpdateWood(int wood)
+        private void BuildCounters()
         {
-            if (_woodLabel != null) _woodLabel.text = wood.ToString();
+            if (_countersRoot == null || _texts.Count > 0) return;
+            for (int i = 0; i < _kinds.Count; i++)
+            {
+                var ki = _kinds[i];
+                float y = -i * _rowHeight;
+
+                var iconGo = new GameObject($"{ki.Kind}Icon", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+                iconGo.transform.SetParent(_countersRoot, false);
+                var irt = (RectTransform)iconGo.transform;
+                irt.anchorMin = new Vector2(0f, 1f); irt.anchorMax = new Vector2(0f, 1f); irt.pivot = new Vector2(0f, 1f);
+                irt.sizeDelta = new Vector2(_iconSize, _iconSize);
+                irt.anchoredPosition = new Vector2(0f, y);
+                var img = iconGo.GetComponent<Image>();
+                img.sprite = ki.Icon; img.preserveAspect = true; img.raycastTarget = false;
+
+                var txtGo = new GameObject($"{ki.Kind}Count", typeof(RectTransform), typeof(CanvasRenderer), typeof(Text));
+                txtGo.transform.SetParent(_countersRoot, false);
+                var trt = (RectTransform)txtGo.transform;
+                trt.anchorMin = new Vector2(0f, 1f); trt.anchorMax = new Vector2(0f, 1f); trt.pivot = new Vector2(0f, 1f);
+                trt.sizeDelta = new Vector2(90f, _iconSize);
+                trt.anchoredPosition = new Vector2(_iconSize + 6f, y);
+                var txt = txtGo.GetComponent<Text>();
+                txt.font = _font; txt.fontSize = _fontSize; txt.color = Color.white;
+                txt.alignment = TextAnchor.MiddleLeft; txt.horizontalOverflow = HorizontalWrapMode.Overflow;
+                txt.text = "0";
+                _texts[ki.Kind] = txt;
+            }
         }
 
-        private void UpdateFood(int food)
+        private void OnResourceChanged(ResourceKind kind, int value)
         {
-            if (_foodLabel != null) _foodLabel.text = food.ToString();
+            if (_texts.TryGetValue(kind, out var t)) t.text = value.ToString();
         }
 
         private void UpdatePopulation()

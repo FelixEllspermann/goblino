@@ -68,8 +68,7 @@ namespace RTSCL.World.Unity
         {
             if (_popupRoot != null) _popupRoot.SetActive(false);
             if (_progressRow != null) _progressRow.SetActive(false);
-            ResourceBank.OnWoodChanged += _ => Refresh();
-            ResourceBank.OnFoodChanged += _ => Refresh();
+            ResourceBank.OnChanged += (_, __) => Refresh();
             PopulationManager.OnChanged += Refresh;
             GoblinProduction.OnChanged += Refresh;
             if (_selectionController != null)
