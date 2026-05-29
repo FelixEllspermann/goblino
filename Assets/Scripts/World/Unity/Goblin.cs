@@ -820,13 +820,22 @@ namespace RTSCL.World.Unity
             // the transform itself, so we skip there.
             if (_state != State.Dying) UpdateHitAnim();
 
-            // Gentle anti-stacking: nudge apart from units sharing this spot so they never sit on the
-            // exact same cell (combat clusters, idle clumps, harvesters at adjacent nodes). Cosmetic.
-            if (_state != State.Dying) ApplySeparation();
+            // Gentle anti-stacking: nudge apart from units sharing this spot, but ONLY while stationary
+            // (idle / fighting / harvesting / building). Never while walking a path — pushing moving units
+            // sideways makes them block each other at chokepoints. Cosmetic.
+            if (IsStationaryForSeparation()) ApplySeparation();
         }
 
         private const float SepRadius = 0.5f;     // units want at least this much clear space around them
         private const float SepSpeed = 2.2f;      // max nudge speed (world units / second)
+
+        // Only resolve overlap when the unit isn't navigating — walking units must be free to path.
+        private bool IsStationaryForSeparation() => _state switch
+        {
+            State.Idle or State.Harvesting or State.Building
+                or State.Attacking or State.AttackingBuilding => true,
+            _ => false,
+        };
 
         // Push slightly away from any nearby units, clamped and only onto passable cells. Runs on all
         // clients (purely cosmetic position fix-up; never affects HP, harvest totals, or pathing goals).
