@@ -75,6 +75,23 @@ namespace RTSCL.World.Unity
             return chosen;
         }
 
+        /// <summary>True if <paramref name="node"/> has at least one passable adjacent cell that is
+        /// not yet reserved by another goblin. Used to decide whether a farmer can join this node
+        /// or must look elsewhere (to avoid stacking). Note: call AFTER releasing the asking
+        /// goblin's own reservation so its previously-held cell counts as free again.</summary>
+        public static bool HasFreeSpot(Vector3Int node, Func<int, int, bool> passable)
+        {
+            _takenByNode.TryGetValue(node, out var taken);
+            foreach (var off in Offsets)
+            {
+                var nc = node + off;
+                if (passable != null && !passable(nc.x, nc.y)) continue;
+                var cell = new Vector2Int(nc.x, nc.y);
+                if (taken == null || !taken.Contains(cell)) return true;
+            }
+            return false;
+        }
+
         /// <summary>Free whatever cell g currently holds.</summary>
         public static void Release(Goblin g)
         {

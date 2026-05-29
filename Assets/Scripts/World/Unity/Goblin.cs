@@ -202,6 +202,9 @@ namespace RTSCL.World.Unity
             HarvestReservations.Release(this);
             ResetHitAnim();
             RepathTo(worldTarget);
+            // No path to a non-trivial target → can't go there: flag it and stay put.
+            if (_path.Count == 0 && (worldTarget - transform.position).sqrMagnitude > 1f)
+                UnitAlert.Show(this);
             _state = State.MovingToPoint;
         }
 
@@ -217,16 +220,70 @@ namespace RTSCL.World.Unity
             var tile = _decorationMap != null ? _decorationMap.GetTile(treeCell) : null;
             if (tile != null && CarriedAmount > 0 && KindOf(tile.name) != CarriedKind)
             {
+                HarvestReservations.Release(this);
                 _treeCell = treeCell;
                 TryStartDepositRun();    // sets _state = WalkingToDeposit and broadcasts move; resume targets _treeCell
                 return;
             }
 
-            _treeCell = treeCell;
-            var spot = HarvestReservations.Reserve(treeCell, this, IsCellPassable, transform.position);
+            TryBeginHarvest(treeCell);
+        }
+
+        /// <summary>Reserve a standing cell on <paramref name="node"/> and start walking to harvest it.
+        /// If every adjacent cell on that node is already taken (no stacking allowed), look within
+        /// <see cref="HarvestOverflowRadius"/> for the nearest node of the SAME resource kind that
+        /// still has a free spot and harvest there instead. If nothing is available, the unit stays
+        /// put (Idle) and shows a red "!" alert. Returns true if a harvest target was started.</summary>
+        private bool TryBeginHarvest(Vector3Int node)
+        {
+            HarvestReservations.Release(this);
+
+            var tile = _decorationMap != null ? _decorationMap.GetTile(node) : null;
+            if (tile == null || !IsHarvestable(tile.name)) { _state = State.Idle; UnitAlert.Show(this); return false; }
+
+            // If this node has no free standing cell, find an alternative of the same kind nearby.
+            if (!HarvestReservations.HasFreeSpot(node, IsCellPassable))
+            {
+                if (!TryFindAlternateNode(node, KindOf(tile.name), HarvestOverflowRadius, out node))
+                {
+                    _state = State.Idle;     // can't harvest anywhere reachable — don't stack, just stop
+                    UnitAlert.Show(this);
+                    return false;
+                }
+            }
+
+            _treeCell = node;
+            var spot = HarvestReservations.Reserve(node, this, IsCellPassable, transform.position);
             RepathTo(new Vector3(spot.x + 0.5f, spot.y + 0.5f, 0f));
             _state = State.MovingToTree;
             _harvestTimer = 0f;
+            return true;
+        }
+
+        /// <summary>Radius (in cells) searched for an alternative node of the same kind when the
+        /// requested node is full. Beyond this, the unit gives up rather than stacking.</summary>
+        private const int HarvestOverflowRadius = 10;
+
+        /// <summary>Find the nearest harvestable cell within <paramref name="radius"/> of
+        /// <paramref name="origin"/> that is the same <paramref name="kind"/> AND still has a free
+        /// standing cell (so no stacking). Returns false if none qualifies.</summary>
+        private bool TryFindAlternateNode(Vector3Int origin, ResourceKind kind, int radius, out Vector3Int found)
+        {
+            found = default;
+            if (_decorationMap == null) return false;
+            int bestSq = int.MaxValue;
+            for (int dy = -radius; dy <= radius; dy++)
+            for (int dx = -radius; dx <= radius; dx++)
+            {
+                if (dx == 0 && dy == 0) continue;
+                var c = new Vector3Int(origin.x + dx, origin.y + dy, 0);
+                var t = _decorationMap.GetTile(c);
+                if (t == null || !IsHarvestable(t.name) || KindOf(t.name) != kind) continue;
+                if (!HarvestReservations.HasFreeSpot(c, IsCellPassable)) continue;
+                int sq = dx * dx + dy * dy;
+                if (sq < bestSq) { bestSq = sq; found = c; }
+            }
+            return bestSq != int.MaxValue;
         }
 
         /// <summary>Command this unit to walk to a building under construction and hammer on it.
@@ -370,13 +427,11 @@ namespace RTSCL.World.Unity
                         // If commands are queued, let them take over instead of auto-resuming.
                         if (_commandQueue.Count > 0) { _state = State.Idle; break; }
 
-                        // Resume: walk back to last tree if still alive, else find nearest, else idle.
+                        // Resume: walk back to last node if still alive (re-routing to an alternative of
+                        // the same kind if its spots are now full), else find nearest, else idle.
                         if (IsHarvestableStillThere(_treeCell))
                         {
-                            var spot = HarvestReservations.Reserve(_treeCell, this, IsCellPassable, transform.position);
-                            RepathTo(new Vector3(spot.x + 0.5f, spot.y + 0.5f, 0f));
-                            _state = State.MovingToTree;
-                            SendMoveWireOnly(_moveTarget);
+                            if (TryBeginHarvest(_treeCell)) SendMoveWireOnly(_moveTarget);
                         }
                         else
                         {
@@ -808,6 +863,7 @@ namespace RTSCL.World.Unity
             {
                 var c = new Vector3Int(origin.x + dx, origin.y + dy, 0);
                 if (!IsHarvestableStillThere(c)) continue;
+                if (!HarvestReservations.HasFreeSpot(c, IsCellPassable)) continue; // skip full nodes — no stacking
                 int sq = dx * dx + dy * dy;
                 if (sq < bestSq) { bestSq = sq; best = c; }
             }
