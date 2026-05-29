@@ -40,6 +40,22 @@ namespace RTSCL.World.Unity
 
         public bool IsIdle => _state == State.Idle;
 
+        public enum CommandType { Move, Harvest, BuildAssist, Attack }
+
+        public struct GoblinCommand
+        {
+            public CommandType Type;
+            public Vector3 Point;       // Move
+            public Vector3Int Cell;     // Harvest
+            public Vector2Int Origin;   // BuildAssist
+            public Goblin Target;       // Attack
+        }
+
+        private readonly List<GoblinCommand> _commandQueue = new();
+
+        public void EnqueueCommand(GoblinCommand c) => _commandQueue.Add(c);
+        public void ClearQueue() => _commandQueue.Clear();
+
         private Sprite[] _frames;
         private Tilemap _terrainMap;
         private Tilemap _decorationMap;
