@@ -30,6 +30,8 @@ namespace RTSCL.World.Unity
         [SerializeField] private BuildingCatalog _catalog;
         [SerializeField] private GoblinSpawner _goblinSpawner;
         [SerializeField] private Tilemap _terrainMap;
+        [Tooltip("Optional: spawns neutral monsters after the player teams.")]
+        [SerializeField] private MonsterSpawner _monsterSpawner;
 
         [Header("Main Base")]
         [SerializeField] private string _mainBuildingName = "Keep_0";
@@ -108,6 +110,7 @@ namespace RTSCL.World.Unity
                 // Solo path: single team at spawn[0], owner=0UL (treated as local everywhere).
                 var s0 = world.Spawns[0];
                 SpawnTeamAt(def, new Vector2Int(s0.x, s0.y), 0UL, addPopulation: true);
+                SpawnMonsters(world);
                 return;
             }
 
@@ -126,6 +129,15 @@ namespace RTSCL.World.Unity
                 var s = world.Spawns[idx];
                 SpawnTeamAt(def, new Vector2Int(s.x, s.y), slots[i].steamId, addPopulation: isLocal);
             }
+            SpawnMonsters(world);
+        }
+
+        // Spawn neutral monsters after the player teams (so spawn order — hence NetIds — is identical
+        // across clients). Deterministic from the world seed.
+        private void SpawnMonsters(WorldData world)
+        {
+            if (_monsterSpawner != null)
+                _monsterSpawner.SpawnAll(world, (uint)world.Seed);
         }
 
         /// <summary>Place one player's Keep + starting units at spawnCell.
