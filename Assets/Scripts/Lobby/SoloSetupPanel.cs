@@ -12,10 +12,11 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using RTSCL.World.Unity;
 
 namespace RTSCL.Lobby
 {
-    /// <summary>Solo game setup: seed + bot count, then load SampleScene.</summary>
+    /// <summary>Solo game setup: seed + bot count + map size, then load SampleScene.</summary>
     public sealed class SoloSetupPanel : MonoBehaviour
     {
         private const int MaxBots = 3;
@@ -25,24 +26,33 @@ namespace RTSCL.Lobby
         [SerializeField] private Text _botCountLabel;
         [SerializeField] private Button _botMinusButton;
         [SerializeField] private Button _botPlusButton;
+        [SerializeField] private Text _sizeLabel;
+        [SerializeField] private Button _sizeMinusButton;
+        [SerializeField] private Button _sizePlusButton;
         [SerializeField] private Button _startButton;
         [SerializeField] private Button _backButton;
 
         private int _bots = 1;
+        private MapSize _size = MapSize.Large;   // long-standing default (256×256)
 
         private void OnEnable()
         {
             if (_botMinusButton != null) _botMinusButton.onClick.AddListener(BotsDown);
             if (_botPlusButton != null)  _botPlusButton.onClick.AddListener(BotsUp);
+            if (_sizeMinusButton != null) _sizeMinusButton.onClick.AddListener(SizeDown);
+            if (_sizePlusButton != null)  _sizePlusButton.onClick.AddListener(SizeUp);
             if (_startButton != null)    _startButton.onClick.AddListener(OnStart);
             if (_backButton != null)     _backButton.onClick.AddListener(OnBack);
             RefreshBots();
+            RefreshSize();
         }
 
         private void OnDisable()
         {
             if (_botMinusButton != null) _botMinusButton.onClick.RemoveListener(BotsDown);
             if (_botPlusButton != null)  _botPlusButton.onClick.RemoveListener(BotsUp);
+            if (_sizeMinusButton != null) _sizeMinusButton.onClick.RemoveListener(SizeDown);
+            if (_sizePlusButton != null)  _sizePlusButton.onClick.RemoveListener(SizeUp);
             if (_startButton != null)    _startButton.onClick.RemoveListener(OnStart);
             if (_backButton != null)     _backButton.onClick.RemoveListener(OnBack);
         }
@@ -51,6 +61,25 @@ namespace RTSCL.Lobby
         private void BotsDown() { _bots = Mathf.Max(0, _bots - 1); RefreshBots(); }
         private void RefreshBots() { if (_botCountLabel != null) _botCountLabel.text = $"Bots: {_bots}"; }
 
+        private void SizeUp()   { _size = (MapSize)Mathf.Min((int)MapSize.Gigantic, (int)_size + 1); RefreshSize(); }
+        private void SizeDown() { _size = (MapSize)Mathf.Max((int)MapSize.Tiny, (int)_size - 1); RefreshSize(); }
+        private void RefreshSize()
+        {
+            if (_sizeLabel == null) return;
+            int dim = WorldStartContext.SizeToDimension(_size);
+            _sizeLabel.text = $"Size: {SizeName(_size)} ({dim}×{dim})";
+        }
+
+        private static string SizeName(MapSize s) => s switch
+        {
+            MapSize.Tiny     => "Winzig",
+            MapSize.Small    => "Klein",
+            MapSize.Medium   => "Mittel",
+            MapSize.Large    => "Groß",
+            MapSize.Gigantic => "Gigantisch",
+            _                => s.ToString(),
+        };
+
         private void OnStart()
         {
             // Blank/invalid seed → random (PendingSeed null → WorldGeneratorBootstrap picks one).
@@ -58,8 +87,9 @@ namespace RTSCL.Lobby
             if (_seedInput != null && !string.IsNullOrWhiteSpace(_seedInput.text)
                 && int.TryParse(_seedInput.text.Trim(), out int s))
                 seed = Mathf.Abs(s);
-            RTSCL.World.Unity.WorldGeneratorBootstrap.PendingSeed = seed;
-            RTSCL.World.Unity.WorldStartContext.SoloBotCount = _bots;
+            WorldGeneratorBootstrap.PendingSeed = seed;
+            WorldStartContext.SoloBotCount = _bots;
+            WorldStartContext.PendingMapSize = _size;
             SceneManager.LoadScene("SampleScene");
         }
 

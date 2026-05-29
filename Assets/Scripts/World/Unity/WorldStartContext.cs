@@ -17,6 +17,10 @@ using UnityEngine;
 
 namespace RTSCL.World.Unity
 {
+    /// <summary>Selectable map sizes (ascending). "Large" is the historical default; it sits between
+    /// Medium and Gigantic. Edge lengths are mapped in <see cref="WorldStartContext.SizeToDimension"/>.</summary>
+    public enum MapSize { Tiny, Small, Medium, Large, Gigantic }
+
     /// <summary>Asmdef boundary bridge. The Lobby side (Assembly-CSharp) pushes
     /// session start data into these static fields; world-side scripts read them
     /// without referencing Steamworks types directly.</summary>
@@ -36,6 +40,22 @@ namespace RTSCL.World.Unity
 
         /// <summary>Number of AI bots to spawn in solo. Set by the Solo Setup menu; default 1.</summary>
         public static int SoloBotCount = 1;
+
+        /// <summary>Map size selected in the Solo Setup menu. Read + applied (then cleared) by
+        /// WorldGeneratorBootstrap to override the config's Width/Height. null → use the inspector config.
+        /// "Large" (256) is the long-standing default; Large sits between Medium and Gigantic.</summary>
+        public static MapSize? PendingMapSize;
+
+        /// <summary>Square map edge length (tiles) for each size preset.</summary>
+        public static int SizeToDimension(MapSize size) => size switch
+        {
+            MapSize.Tiny      => 96,
+            MapSize.Small     => 144,
+            MapSize.Medium    => 192,
+            MapSize.Large     => 256,
+            MapSize.Gigantic  => 384,
+            _                 => 256,
+        };
 
         /// <summary>Per-player spawn assignment. null = solo (no MP slots).
         /// Each entry maps a SteamID → the spawn point index (0–3) this player owns.

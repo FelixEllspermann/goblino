@@ -7,8 +7,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **Goblino** — a Unity 6 / URP 2D top-down RTS with Steam multiplayer. Repo: `github.com/FelixEllspermann/goblino`. Direct-to-main workflow.
 
 Current playable loop (single-player):
-- Main menu → Play Solo → **Solo setup panel** (seed + bot count) → SampleScene with random world
-- Auto-generated map (biomes, trees, resources, up to 4 spawn points; tuned for more mainland, more stone, closer + reachable safe-spawn resources)
+- Main menu → Play Solo → **Solo setup panel** (seed + bot count + **map size**) → SampleScene with random world
+- Auto-generated map (biomes, trees, resources, up to 4 spawn points; tuned for more mainland, more stone, closer + reachable safe-spawn resources). Map size presets (square edge): Winzig 96 / Klein 144 / Mittel 192 / **Groß 256 (default)** / Gigantisch 384 — `MapSize` enum + `WorldStartContext.SizeToDimension`, applied by `WorldGeneratorBootstrap` (overrides `WorldGenConfig.Width/Height`).
 - Keep at spawn[0] with starting Farmer Goblins (+ optional test Club Goblins)
 - Build Hut (+pop cap), Barracks (trains Club + Archer), or **Docks** (coastal, trains Boats) — Farmer selects, right-click building card, click to place, Farmer constructs it. Costs are asset-driven (`BuildingDefinition`).
 - Train Farmer at Keep, Club/Archer at Barracks, Boat at Docks (wood/food + pop cost, progress bar). Buildings have a **rally point** (GUI_33 flag + dashed line; right-click to set).
@@ -160,4 +160,4 @@ The Unity MCP server (`mcp__unity-mcp__*` tools) is the preferred way to drive t
 | `Assets/Scripts/World/Unity/Arrow.cs` | RTSCL.World.Unity | Homing projectile (unit damage / visual-only building hit) |
 | `Assets/Scripts/World/Unity/HitFeedback.cs` / `BuildingHitFeedback.cs` | RTSCL.World.Unity | On-hit flash + wobble + red spritz (units / buildings) |
 | `Assets/Scripts/World/Unity/ObjectInspector.cs` | RTSCL.World.Unity | Bottom info panel: building / resource / unit stat sheet + action cards |
-| `Assets/Scripts/Lobby/SoloSetupPanel.cs` | Assembly-CSharp | Solo setup menu (seed + bot count) → `WorldStartContext.SoloBotCount` |
+| `Assets/Scripts/Lobby/SoloSetupPanel.cs` | Assembly-CSharp | Solo setup menu (seed + bot count + map size) → `WorldStartContext.SoloBotCount` / `PendingMapSize` |

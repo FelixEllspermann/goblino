@@ -56,6 +56,15 @@ namespace RTSCL.World.Unity
         /// Inspector seed or a fresh random seed (solo / editor regeneration).</summary>
         private void Start()
         {
+            // Apply a map size chosen in the Solo Setup menu (consumed once), overriding the config dims.
+            if (WorldStartContext.PendingMapSize.HasValue)
+            {
+                int dim = WorldStartContext.SizeToDimension(WorldStartContext.PendingMapSize.Value);
+                _config.Width = dim;
+                _config.Height = dim;
+                WorldStartContext.PendingMapSize = null;
+            }
+
             if (PendingSeed.HasValue)
             {
                 var seed = PendingSeed.Value;
