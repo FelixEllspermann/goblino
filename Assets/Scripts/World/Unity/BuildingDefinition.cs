@@ -24,6 +24,9 @@ namespace RTSCL.World.Unity
         /// <summary>Full building sprite rendered by the placed SpriteRenderer.</summary>
         public Sprite Sprite;                          // full building sprite (one PNG)
 
+        /// <summary>Docks only: the pier sprite (Docks_1) drawn on the adjacent water cell.</summary>
+        public Sprite WaterSprite;
+
         /// <summary>Size of the building in world cells (x = width, y = height).</summary>
         public Vector2Int Footprint = Vector2Int.one;  // in cells
 

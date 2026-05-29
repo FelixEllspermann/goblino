@@ -79,6 +79,7 @@ namespace RTSCL.World.Unity
             HarvestReservations.Clear();
             RallyPoints.Clear();
             BotEconomy.Reset();
+            DockRegistry.Clear();
             Time.timeScale = 1f;   // un-pause in case we returned from a game-over overlay
             // Solo: give bot factions visible colors (player stays white via IsLocalOwner path).
             if (WorldStartContext.IsSolo)

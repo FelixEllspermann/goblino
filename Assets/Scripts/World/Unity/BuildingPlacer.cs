@@ -179,6 +179,19 @@ namespace RTSCL.World.Unity
             if (_selected.WoodCost > 0 && ResourceBank.Wood < _selected.WoodCost) return false;
             if (_selected.StoneCost > 0 && ResourceBank.Get(ResourceKind.Stone) < _selected.StoneCost) return false;
 
+            // Docks: the land cell must be buildable AND have an adjacent water cell for the pier + boats.
+            if (IsDock(_selected))
+            {
+                var t = _terrainMap.GetTile(new Vector3Int(origin.x, origin.y, 0));
+                if (t == null) return false;
+                string n = t.name;
+                if (n == "DeepWater" || n == "Shore" || n == "Cliff") return false;        // dock body sits on land
+                if (_cellOwners.ContainsKey(origin)) return false;
+                var w = _worldSource != null ? _worldSource.CurrentWorld : null;
+                if (w != null && IsResourceCell(w, origin.x, origin.y)) return false;
+                return TryFindAdjacentWater(origin, out _);
+            }
+
             var world = _worldSource != null ? _worldSource.CurrentWorld : null;
             for (int dy = 0; dy < _selected.Footprint.y; dy++)
             for (int dx = 0; dx < _selected.Footprint.x; dx++)
@@ -205,6 +218,24 @@ namespace RTSCL.World.Unity
             foreach (var cluster in world.Resources)
                 foreach (var c in cluster.Cells)
                     if (c.x == x && c.y == y) return true;
+            return false;
+        }
+
+        // A Dock is a coastal building: its body sits on land but it needs an adjacent water cell.
+        private static bool IsDock(BuildingDefinition def) => def != null && def.name.StartsWith("Docks");
+
+        // First orthogonally-adjacent water cell (DeepWater/Shore) of a land cell, for the pier + boat spawn.
+        private bool TryFindAdjacentWater(Vector2Int landCell, out Vector2Int waterCell)
+        {
+            Vector2Int[] dirs = { new(1, 0), new(-1, 0), new(0, 1), new(0, -1) };
+            foreach (var d in dirs)
+            {
+                var c = new Vector3Int(landCell.x + d.x, landCell.y + d.y, 0);
+                var t = _terrainMap.GetTile(c);
+                if (t != null && (t.name == "DeepWater" || t.name == "Shore"))
+                { waterCell = new Vector2Int(c.x, c.y); return true; }
+            }
+            waterCell = default;
             return false;
         }
 
@@ -279,6 +310,21 @@ namespace RTSCL.World.Unity
             // Give unit-training buildings a default rally point (below the footprint) if none set yet.
             if (def.TrainsUnits != null && def.TrainsUnits.Length > 0 && !RallyPoints.TryGet(origin, out _))
                 RallyPoints.Set(origin, RallyPoints.Default(origin, def.Footprint));
+
+            // Dock: record the adjacent water cell (boat spawn) and draw the pier sprite there.
+            if (IsDock(def) && TryFindAdjacentWater(origin, out var waterCell))
+            {
+                DockRegistry.Set(origin, waterCell);
+                if (def.WaterSprite != null)
+                {
+                    var pier = new GameObject($"DockPier_{origin.x}_{origin.y}");
+                    pier.transform.SetParent(go.transform, false);   // child → destroyed with the dock
+                    pier.transform.position = _terrainMap.CellToWorld(new Vector3Int(waterCell.x, waterCell.y, 0));
+                    var psr = pier.AddComponent<SpriteRenderer>();
+                    psr.sprite = def.WaterSprite;
+                    psr.sortingOrder = 15;
+                }
+            }
         }
 
         /// <summary>The footprint of the building occupying a cell (via its definition). False if none.</summary>
@@ -324,6 +370,7 @@ namespace RTSCL.World.Unity
             BuildingHP.Remove(origin);
             BuildingConstruction.Remove(origin);
             RallyPoints.Remove(origin);
+            DockRegistry.Remove(origin);
 
             if (_originToGo.TryGetValue(origin, out var go) && go != null)
             {
