@@ -416,7 +416,9 @@ namespace RTSCL.World.Unity
             var slot = GoblinProduction.Get(_selOrigin);
             if (slot == null) { _progressRow.SetActive(false); return; }
             _progressRow.SetActive(true);
-            if (_progressFill != null)  _progressFill.fillAmount = slot.Progress;
+            // Drive the bar via horizontal scale (pivot.x = 0) so it works without a Filled sprite.
+            if (_progressFill != null)
+                _progressFill.rectTransform.localScale = new Vector3(Mathf.Clamp01(slot.Progress), 1f, 1f);
             if (_progressLabel != null) _progressLabel.text = $"Producing {slot.Def.DisplayName}…";
         }
 
