@@ -30,6 +30,13 @@ namespace RTSCL.World.Unity
         /// Neutral monsters are owned by the host so only the host authoritatively drives their AI/damage.</summary>
         public static ulong HostPlayer;
 
+        /// <summary>True when no multiplayer slots were assigned → a single local client drives
+        /// every unit (including bots). In MP this is false and ownership gating applies normally.</summary>
+        public static bool IsSolo => PendingSlots == null;
+
+        /// <summary>Number of AI bots to spawn in solo. Set by the Solo Setup menu; default 1.</summary>
+        public static int SoloBotCount = 1;
+
         /// <summary>Per-player spawn assignment. null = solo (no MP slots).
         /// Each entry maps a SteamID → the spawn point index (0–3) this player owns.
         /// Read by MainBaseSetup.OnNewWorld to place each player's keep at the correct spawn.</summary>

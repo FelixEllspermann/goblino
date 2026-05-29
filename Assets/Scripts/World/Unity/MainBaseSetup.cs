@@ -76,6 +76,10 @@ namespace RTSCL.World.Unity
             PlayerUpgrades.Reset();
             HarvestReservations.Clear();
             RallyPoints.Clear();
+            BotEconomy.Reset();
+            // Solo: give bot factions visible colors (player stays white via IsLocalOwner path).
+            if (WorldStartContext.IsSolo)
+                WorldStartContext.GetPlayerColor = SoloBotColor;
             NetworkCatalog.PopulateFromCatalog(_catalog);
             // Wire refs so NetCommandApplier can call PlaceForce / SpawnByKindAroundFootprint
             // without a direct reference to these MonoBehaviours (assembly-boundary constraint).
@@ -110,6 +114,20 @@ namespace RTSCL.World.Unity
                 // Solo path: single team at spawn[0], owner=0UL (treated as local everywhere).
                 var s0 = world.Spawns[0];
                 SpawnTeamAt(def, new Vector2Int(s0.x, s0.y), 0UL, addPopulation: true);
+
+                // Spawn AI bots at the remaining spawn points (owner ids 1..N), each with the same
+                // starting team and its own seeded BotEconomy (100 wood + 100 food).
+                int bots = Mathf.Clamp(WorldStartContext.SoloBotCount, 0, world.Spawns.Length - 1);
+                for (int b = 1; b <= bots; b++)
+                {
+                    ulong botOwner = (ulong)b;
+                    var sb = world.Spawns[b];
+                    SpawnTeamAt(def, new Vector2Int(sb.x, sb.y), botOwner, addPopulation: false);
+                    BotEconomy.Seed(botOwner, 100, 100);
+                    int popPerUnit = _startingUnitDef != null ? _startingUnitDef.PopulationCost : 1;
+                    BotEconomy.AddUsed(botOwner, _startingGoblins * popPerUnit);
+                }
+
                 SpawnMonsters(world);
                 return;
             }
@@ -131,6 +149,15 @@ namespace RTSCL.World.Unity
             }
             SpawnMonsters(world);
         }
+
+        // Faction colors for solo bot factions (player = owner 0 stays white via the IsLocalOwner path).
+        private static Color SoloBotColor(ulong owner) => owner switch
+        {
+            1UL => new Color(0.9f, 0.3f, 0.3f),   // red
+            2UL => new Color(0.9f, 0.85f, 0.3f),  // yellow
+            3UL => new Color(0.4f, 0.8f, 0.4f),   // green
+            _   => Color.gray,
+        };
 
         // Spawn neutral monsters after the player teams (so spawn order — hence NetIds — is identical
         // across clients). Deterministic from the world seed.

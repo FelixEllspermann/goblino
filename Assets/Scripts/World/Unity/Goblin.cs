@@ -71,7 +71,7 @@ namespace RTSCL.World.Unity
         public bool IsNeutral { get; private set; }
         /// <summary>True on the client that authoritatively controls this unit (its owner, or solo).
         /// Public mirror of the private IsLocalOwner so MonsterAI can gate its decision logic.</summary>
-        public bool IsOwnedLocally => Owner == WorldStartContext.LocalPlayer || Owner == 0UL;
+        public bool IsOwnedLocally => WorldStartContext.IsSolo || Owner == WorldStartContext.LocalPlayer || Owner == 0UL;
         /// <summary>Mark this unit as a neutral monster (call right after spawn). Refreshes visuals.</summary>
         public void MarkNeutral() { IsNeutral = true; ApplyOwnerVisuals(); RefreshSelectionRingColor(); }
 
@@ -349,11 +349,10 @@ namespace RTSCL.World.Unity
             RepathTo(target.transform.position);
         }
 
-        // True on the local client that owns this unit (or in solo play where Owner == 0).
-        // Gates harvest ticks, WalkingToDeposit processing, and damage issuance so only
-        // one client drives the authoritative side of each action.
-        private bool IsLocalOwner =>
-            Owner == WorldStartContext.LocalPlayer || Owner == 0UL;
+        // True on the client that authoritatively drives this unit. In solo the single client owns
+        // everything (player + bots); in MP it's the owning client. Gates harvest ticks, deposit
+        // processing, and damage issuance. Mirrors the public IsOwnedLocally.
+        private bool IsLocalOwner => IsOwnedLocally;
 
         // Chebyshev distance (8-directional grid distance) used for attack-range checks.
         // Cheaper than Euclidean and matches a square grid's natural notion of adjacency.
@@ -452,8 +451,13 @@ namespace RTSCL.World.Unity
                     if (!IsLocalOwner) break;     // remotes are in MovingToPoint via ApplyMove; their walk handles itself
                     if (MoveAlongPath())
                     {
-                        // Arrived at keep — deposit the full carry slot at once.
-                        if (CarriedAmount > 0) ResourceBank.Add(CarriedKind, CarriedAmount);
+                        // Arrived at keep — deposit the full carry slot at once. Bot units (solo,
+                        // non-player owner) credit their own BotEconomy; the player uses ResourceBank.
+                        if (CarriedAmount > 0)
+                        {
+                            if (WorldStartContext.IsSolo && Owner != 0UL) BotEconomy.Add(Owner, CarriedKind, CarriedAmount);
+                            else ResourceBank.Add(CarriedKind, CarriedAmount);
+                        }
                         CarriedAmount = 0;
 
                         // If commands are queued, let them take over instead of auto-resuming.

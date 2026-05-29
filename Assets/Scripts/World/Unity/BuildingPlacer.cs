@@ -63,7 +63,11 @@ namespace RTSCL.World.Unity
         {
             // origin is the SW-corner cell; the _cellOwners entry is registered there.
             if (_cellOwners.TryGetValue(origin, out var def) && def != null)
-                PopulationManager.AddCap(def.PopulationProvided);
+            {
+                ulong o = _cellToOwner.TryGetValue(origin, out var ow) ? ow : 0UL;
+                if (WorldStartContext.IsSolo && o != 0UL) BotEconomy.AddCap(o, def.PopulationProvided);
+                else PopulationManager.AddCap(def.PopulationProvided);
+            }
         }
 
         /// <summary>Look up the BuildingDefinition occupying a cell. Returns false for empty cells.</summary>
@@ -267,6 +271,7 @@ namespace RTSCL.World.Unity
 
             BuildingHP.Register(origin, BuildingHP.MaxHpFor(def));
             if (requireConstruction) BuildingConstruction.Register(origin, go);
+            else if (WorldStartContext.IsSolo && owner != 0UL) BotEconomy.AddCap(owner, def.PopulationProvided); // bot instant-place
             else PopulationManager.AddCap(def.PopulationProvided); // instant-place (e.g. starting keep)
 
             // Give unit-training buildings a default rally point (below the footprint) if none set yet.
