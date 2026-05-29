@@ -595,13 +595,19 @@ namespace RTSCL.World.Unity
         public static bool IsRockTile(string tileName) =>
             tileName.StartsWith("Rocks_");
 
+        public static bool IsOreTile(string tileName) =>
+            tileName.StartsWith("GoldOre_") || tileName.StartsWith("IronOre_") || tileName.StartsWith("CrystalOre_");
+
         public static bool IsHarvestable(string tileName) =>
-            IsTreeTile(tileName) || IsWheatfieldTile(tileName) || IsRockTile(tileName);
+            IsTreeTile(tileName) || IsWheatfieldTile(tileName) || IsRockTile(tileName) || IsOreTile(tileName);
 
         public static ResourceKind KindOf(string tileName)
         {
             if (IsWheatfieldTile(tileName)) return ResourceKind.Food;
             if (IsRockTile(tileName)) return ResourceKind.Stone;
+            if (tileName.StartsWith("GoldOre_")) return ResourceKind.Gold;
+            if (tileName.StartsWith("IronOre_")) return ResourceKind.Iron;
+            if (tileName.StartsWith("CrystalOre_")) return ResourceKind.Crystal;
             return ResourceKind.Wood; // trees + default
         }
 
@@ -609,6 +615,7 @@ namespace RTSCL.World.Unity
         {
             if (IsWheatfieldTile(tileName)) return 500;
             if (IsRockTile(tileName)) return 100;
+            if (IsOreTile(tileName)) return 200;
             return TreeHP.MaxHP; // trees = 50
         }
 
