@@ -9,10 +9,20 @@ namespace RTSCL.World.Unity
         private float _t;
         private const float Duration = 0.28f;
 
+        // Offset that centers a sprite of any pivot inside its cell: the SpriteRenderer
+        // places the sprite's pivot at the GameObject position, so adding the normalized
+        // pivot to the cell corner centers sprites whether their pivot is (0.5,0.5) or (0,0).
+        private static Vector3 CenterOffset(Sprite sprite)
+        {
+            if (sprite == null || sprite.rect.width <= 0f || sprite.rect.height <= 0f)
+                return new Vector3(0.5f, 0.5f, 0f);
+            return new Vector3(sprite.pivot.x / sprite.rect.width, sprite.pivot.y / sprite.rect.height, 0f);
+        }
+
         public static void Spawn(Tilemap decorationMap, Vector3Int cell, Sprite sprite)
         {
             if (sprite == null) return;
-            var pos = decorationMap.CellToWorld(cell) + new Vector3(0.5f, 0.5f, 0f);
+            var pos = decorationMap.CellToWorld(cell) + CenterOffset(sprite);
             var go = new GameObject("TreeHitFx");
             go.transform.position = pos;
             var fx = go.AddComponent<TreeHitEffect>();
@@ -25,7 +35,7 @@ namespace RTSCL.World.Unity
         public static void SpawnBurst(Tilemap decorationMap, Vector3Int cell, Sprite sprite)
         {
             if (sprite == null) return;
-            var basePos = decorationMap.CellToWorld(cell) + new Vector3(0.5f, 0.5f, 0f);
+            var basePos = decorationMap.CellToWorld(cell) + CenterOffset(sprite);
             const int Count = 5;
             const float Radius = 0.35f;
             for (int i = 0; i < Count; i++)
