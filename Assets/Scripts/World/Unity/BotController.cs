@@ -494,19 +494,26 @@ namespace RTSCL.World.Unity
             var world = _worldSource != null ? _worldSource.CurrentWorld : null;
             if (world == null) return;
 
+            // (Re)designate a scout when ours is gone — dead, captured, or aboard a boat (inactive).
+            // This is how the bot "notices" its scout died: next tick it picks a fresh farmer and resumes.
+            bool justAssigned = false;
             if (st.Scout == null || st.Scout.CurrentHp <= 0 || st.Scout.Owner != owner || st.Scout.IsNeutral
-                || !st.Scout.gameObject.activeInHierarchy)   // skip while aboard a boat (inactive)
+                || !st.Scout.gameObject.activeInHierarchy)
             {
                 st.Scout = null;
+                Goblin idle = null, any = null;          // prefer an idle farmer; else interrupt any farmer
                 foreach (var g in Goblin.All)
                 {
                     if (g == null || g.IsNeutral || g.Owner != owner || g.Kind != "FarmerGoblin") continue;
                     if (!g.gameObject.activeInHierarchy) continue;
-                    st.Scout = g; break;
+                    any ??= g;
+                    if (g.IsIdle) { idle = g; break; }
                 }
+                st.Scout = idle ?? any;
                 if (st.Scout == null) return;
+                justAssigned = true;                     // command it THIS tick (interrupt its current task)
             }
-            if (!st.Scout.IsIdle) return;   // still travelling
+            if (!justAssigned && !st.Scout.IsIdle) return;   // mid-hop → let it travel
 
             Vector3 from = st.Scout.transform.position;
             int scoutComp = CompAt(st, from);

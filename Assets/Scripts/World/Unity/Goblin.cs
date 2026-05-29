@@ -536,6 +536,10 @@ namespace RTSCL.World.Unity
         {
             if (_frames == null || _frames.Length == 0) return;
 
+            // Boats animate continuously (water bob / paddles) — even while idle. Other units only
+            // animate while walking (handled in StepToward) and snap to frame 0 when idle.
+            if (_waterMode && _state != State.Dying) AdvanceFrame();
+
             switch (_state)
             {
                 case State.Idle:
@@ -1084,6 +1088,21 @@ namespace RTSCL.World.Unity
             if (delta.sqrMagnitude <= TargetReachedEpsilon * TargetReachedEpsilon)
                 return true;
 
+            if (!_waterMode) AdvanceFrame();   // boats animate in Update() instead (idle + moving)
+
+            float step = _moveSpeed * Time.deltaTime;
+            if (delta.magnitude <= step) transform.position = target;
+            else transform.position += delta.normalized * step;
+
+            // Face the direction of travel. Boat art points the opposite way from goblins, so invert it.
+            if (Mathf.Abs(delta.x) > 0.05f)
+                _renderer.flipX = _waterMode ? delta.x > 0f : delta.x < 0f;
+            return false;
+        }
+
+        // Advance the walk-cycle by one frame when the per-frame timer elapses.
+        private void AdvanceFrame()
+        {
             _frameTimer += Time.deltaTime;
             if (_frameTimer >= FrameDuration)
             {
@@ -1091,17 +1110,11 @@ namespace RTSCL.World.Unity
                 _frameIndex = (_frameIndex + 1) % _frames.Length;
                 _renderer.sprite = _frames[_frameIndex];
             }
-
-            float step = _moveSpeed * Time.deltaTime;
-            if (delta.magnitude <= step) transform.position = target;
-            else transform.position += delta.normalized * step;
-
-            if (Mathf.Abs(delta.x) > 0.05f) _renderer.flipX = delta.x < 0f;
-            return false;
         }
 
         private void ShowIdleFrame()
         {
+            if (_waterMode) return;   // boats keep their continuous animation (driven from Update)
             if (_frameIndex != 0)
             {
                 _frameIndex = 0;
