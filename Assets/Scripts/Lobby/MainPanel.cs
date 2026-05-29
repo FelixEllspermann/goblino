@@ -51,9 +51,8 @@ namespace RTSCL.Lobby
             if (_quitButton != null)        _quitButton.onClick.RemoveListener(OnQuit);
         }
 
-        // Bypasses all lobby/networking code — loads the game scene directly.
-        // In solo mode NetCommandBridge.OutgoingSender is null, making all net sends no-ops.
-        private void OnPlaySolo()    => SceneManager.LoadScene("SampleScene");
+        // Opens the solo setup panel (seed + bot count). Start there loads SampleScene.
+        private void OnPlaySolo()    => _root?.ShowSoloSetup();
         private void OnMultiplayer() => _root?.ShowMultiplayer();
         private void OnQuit()
         {

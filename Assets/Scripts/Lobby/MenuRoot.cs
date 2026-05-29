@@ -25,9 +25,12 @@ namespace RTSCL.Lobby
         [SerializeField] private GameObject _mainPanel;
         [SerializeField] private GameObject _multiplayerPanel;
         [SerializeField] private GameObject _lobbyPanel;
+        [SerializeField] private GameObject _soloSetupPanel;
 
         /// <summary>Activate the main home panel, hide the others.</summary>
         public void ShowMain()         => Show(_mainPanel);
+        /// <summary>Activate the solo setup panel (seed + bots), hide the others.</summary>
+        public void ShowSoloSetup()    => Show(_soloSetupPanel);
         /// <summary>Activate the lobby-browser panel, hide the others.</summary>
         public void ShowMultiplayer()  => Show(_multiplayerPanel);
         /// <summary>Activate the in-lobby panel, hide the others.</summary>
@@ -58,6 +61,7 @@ namespace RTSCL.Lobby
             if (_mainPanel != null)         _mainPanel.SetActive(panel == _mainPanel);
             if (_multiplayerPanel != null)  _multiplayerPanel.SetActive(panel == _multiplayerPanel);
             if (_lobbyPanel != null)        _lobbyPanel.SetActive(panel == _lobbyPanel);
+            if (_soloSetupPanel != null)    _soloSetupPanel.SetActive(panel == _soloSetupPanel);
         }
     }
 }
