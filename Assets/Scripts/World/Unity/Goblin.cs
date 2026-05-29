@@ -291,6 +291,9 @@ namespace RTSCL.World.Unity
                         if (CarriedAmount > 0) ResourceBank.Add(CarriedKind, CarriedAmount);
                         CarriedAmount = 0;
 
+                        // If commands are queued, let them take over instead of auto-resuming.
+                        if (_commandQueue.Count > 0) { _state = State.Idle; break; }
+
                         // Resume: walk back to last tree if still alive, else find nearest, else idle.
                         if (IsHarvestableStillThere(_treeCell))
                         {
@@ -398,10 +401,54 @@ namespace RTSCL.World.Unity
                     break;
             }
 
+            // Drain the command queue: whenever idle with queued commands, start the next.
+            // Queue is owner-local (remotes never enqueue), so this is a no-op on remotes.
+            if (_state == State.Idle && _commandQueue.Count > 0) ActivateNextQueued();
+
             // Hit animations (chop / build / attack) keep playing across state transitions
             // so the killing blow's lunge finishes after the target dies. Dying state owns
             // the transform itself, so we skip there.
             if (_state != State.Dying) UpdateHitAnim();
+        }
+
+        /// <summary>Pop and run the next queued command (owner-local). Invalid commands
+        /// (depleted node, dead target, finished construction) are skipped. Each activated
+        /// command fires the normal single-unit net command so remotes mirror the step.</summary>
+        private void ActivateNextQueued()
+        {
+            while (_commandQueue.Count > 0)
+            {
+                var cmd = _commandQueue[0];
+                _commandQueue.RemoveAt(0);
+                var solo = new List<Goblin> { this };
+                switch (cmd.Type)
+                {
+                    case CommandType.Move:
+                        NetCommandIssuer.IssueMove(solo, cmd.Point);
+                        return;
+                    case CommandType.Harvest:
+                        if (IsHarvestableStillThere(cmd.Cell))
+                        {
+                            NetCommandIssuer.IssueHarvest(solo, cmd.Cell);
+                            return;
+                        }
+                        break; // depleted — try next
+                    case CommandType.BuildAssist:
+                        if (BuildingConstruction.IsUnderConstruction(cmd.Origin))
+                        {
+                            NetCommandIssuer.IssueBuildAssist(solo, cmd.Origin);
+                            return;
+                        }
+                        break; // already built — try next
+                    case CommandType.Attack:
+                        if (cmd.Target != null && cmd.Target.CurrentHp > 0 && AttackDamage > 0)
+                        {
+                            NetCommandIssuer.IssueAttack(this, cmd.Target);
+                            return;
+                        }
+                        break; // dead target — try next
+                }
+            }
         }
 
         /// <summary>Apply one chop to the given tree cell. Returns true if the tree was destroyed by this hit.</summary>
@@ -643,6 +690,7 @@ namespace RTSCL.World.Unity
         private void FindNextTreeOrIdle()
         {
             HarvestReservations.Release(this);
+            if (_commandQueue.Count > 0) { _state = State.Idle; return; } // let the queue advance
             if (_decorationMap == null) { _state = State.Idle; return; }
 
             Vector3Int origin = _decorationMap.WorldToCell(transform.position);
