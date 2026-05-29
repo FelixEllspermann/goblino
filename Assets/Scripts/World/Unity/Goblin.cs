@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 using RTSCL.World;
+using Unity.Mathematics;
 
 namespace RTSCL.World.Unity
 {
@@ -49,6 +50,9 @@ namespace RTSCL.World.Unity
         private State _state = State.Idle;
 
         private Vector3 _moveTarget;
+        private readonly List<Vector3> _path = new();
+        private int _pathIndex;
+        private Vector2Int _lastAttackGoalCell = new Vector2Int(int.MinValue, int.MinValue);
         private Vector3Int _treeCell;
         private Vector2Int _buildOrigin;
         private float _harvestTimer;
@@ -123,7 +127,7 @@ namespace RTSCL.World.Unity
         {
             if (_state == State.Dying) return;
             ResetHitAnim();
-            _moveTarget = worldTarget;
+            RepathTo(worldTarget);
             _state = State.MovingToPoint;
         }
 
@@ -142,7 +146,7 @@ namespace RTSCL.World.Unity
             }
 
             _treeCell = treeCell;
-            _moveTarget = FindAdjacentStandingSpot(treeCell);
+            RepathTo(FindAdjacentStandingSpot(treeCell));
             _state = State.MovingToTree;
             _harvestTimer = 0f;
         }
@@ -153,7 +157,7 @@ namespace RTSCL.World.Unity
             ResetHitAnim();
             _buildOrigin = buildingOrigin;
             // Walk to the origin cell center — close enough to "build" the structure
-            _moveTarget = new Vector3(buildingOrigin.x + 0.5f, buildingOrigin.y + 0.5f, 0f);
+            RepathTo(new Vector3(buildingOrigin.x + 0.5f, buildingOrigin.y + 0.5f, 0f));
             _state = State.MovingToBuild;
             _buildTimer = 0f;
         }
@@ -168,6 +172,8 @@ namespace RTSCL.World.Unity
             _attackTarget = target;
             _attackTimer = 0f;
             _state = State.MovingToAttack;
+            _lastAttackGoalCell = CellOfPos(target.transform.position);
+            RepathTo(target.transform.position);
         }
 
         private bool IsLocalOwner =>
@@ -220,7 +226,7 @@ namespace RTSCL.World.Unity
             var t = _terrainMap.GetTile(cell);
             if (t == null) return false;
             var n = t.name;
-            return n != "DeepWater" && n != "Cliff";
+            return n != "DeepWater" && n != "Cliff" && n != "Shore";
         }
 
         public void SetSelected(bool sel)
@@ -247,7 +253,7 @@ namespace RTSCL.World.Unity
                     break;
 
                 case State.MovingToPoint:
-                    if (StepToward(_moveTarget)) _state = State.Idle;
+                    if (MoveAlongPath()) _state = State.Idle;
                     break;
 
                 case State.MovingToTree:
@@ -257,7 +263,7 @@ namespace RTSCL.World.Unity
                         FindNextTreeOrIdle();
                         break;
                     }
-                    if (StepToward(_moveTarget))
+                    if (MoveAlongPath())
                     {
                         _state = State.Harvesting;
                         _harvestTimer = 0f;
@@ -291,7 +297,7 @@ namespace RTSCL.World.Unity
                 case State.WalkingToDeposit:
                 {
                     if (!IsLocalOwner) break;     // remotes are in MovingToPoint via ApplyMove; their walk handles itself
-                    if (StepToward(_moveTarget))
+                    if (MoveAlongPath())
                     {
                         // Arrived at keep — deposit.
                         if (CarriedAmount > 0) ResourceBank.Add(CarriedKind, CarriedAmount);
@@ -300,7 +306,7 @@ namespace RTSCL.World.Unity
                         // Resume: walk back to last tree if still alive, else find nearest, else idle.
                         if (IsHarvestableStillThere(_treeCell))
                         {
-                            _moveTarget = FindAdjacentStandingSpot(_treeCell);
+                            RepathTo(FindAdjacentStandingSpot(_treeCell));
                             _state = State.MovingToTree;
                             SendMoveWireOnly(_moveTarget);
                         }
@@ -321,7 +327,7 @@ namespace RTSCL.World.Unity
                         _state = State.Idle;
                         break;
                     }
-                    if (StepToward(_moveTarget))
+                    if (MoveAlongPath())
                     {
                         _state = State.Building;
                         _buildTimer = 0f;
@@ -357,7 +363,13 @@ namespace RTSCL.World.Unity
                         _attackTimer = AttackInterval; // first hit immediately
                         break;
                     }
-                    StepToward(_attackTarget.transform.position);
+                    var goalCell = CellOfPos(_attackTarget.transform.position);
+                    if (goalCell != _lastAttackGoalCell)
+                    {
+                        _lastAttackGoalCell = goalCell;
+                        RepathTo(_attackTarget.transform.position);
+                    }
+                    MoveAlongPath();
                     break;
                 }
 
@@ -447,7 +459,7 @@ namespace RTSCL.World.Unity
             Vector3 target = new Vector3(keepOrigin.x - 0.5f, keepOrigin.y + 0.5f, 0f);
 
             ResetHitAnim();
-            _moveTarget = target;
+            RepathTo(target);
             _state = State.WalkingToDeposit;
             SendMoveWireOnly(target);
         }
@@ -517,6 +529,56 @@ namespace RTSCL.World.Unity
 
             _dieStartPos = transform.position;
             _dieVelocity = new Vector3(0f, DeathHopVelocity, 0f);
+        }
+
+        private static Vector2Int CellOfPos(Vector3 p) =>
+            new Vector2Int(Mathf.FloorToInt(p.x), Mathf.FloorToInt(p.y));
+
+        private bool IsCellPassable(int x, int y)
+        {
+            if (_terrainMap == null) return false;
+            var t = _terrainMap.GetTile(new Vector3Int(x, y, 0));
+            if (t == null) return false;
+            if (t.name == "DeepWater" || t.name == "Cliff" || t.name == "Shore") return false;
+            if (_decorationMap != null)
+            {
+                var d = _decorationMap.GetTile(new Vector3Int(x, y, 0));
+                if (d != null && IsHarvestable(d.name)) return false;
+            }
+            return true;
+        }
+
+        private void RepathTo(Vector3 worldTarget)
+        {
+            _moveTarget = worldTarget;
+            _path.Clear();
+            _pathIndex = 0;
+            var start = CellOfPos(transform.position);
+            var goal = CellOfPos(worldTarget);
+            var cells = Pathfinder.FindPath(new int2(start.x, start.y), new int2(goal.x, goal.y),
+                                            WorldGrid.Width, WorldGrid.Height, IsCellPassable);
+            if (cells != null && cells.Count > 0)
+            {
+                for (int i = 0; i < cells.Count; i++)
+                    _path.Add(new Vector3(cells[i].x + 0.5f, cells[i].y + 0.5f, 0f));
+                _path[_path.Count - 1] = worldTarget; // final waypoint = exact destination
+            }
+            else
+            {
+                _path.Add(worldTarget); // straight-line fallback (no path / out of bounds)
+            }
+        }
+
+        private bool MoveAlongPath()
+        {
+            if (_path.Count == 0) return StepToward(_moveTarget);
+            if (_pathIndex >= _path.Count) return true;
+            if (StepToward(_path[_pathIndex]))
+            {
+                _pathIndex++;
+                if (_pathIndex >= _path.Count) return true;
+            }
+            return false;
         }
 
         /// <summary>Returns true when target is reached.</summary>
