@@ -121,6 +121,7 @@ namespace RTSCL.World.Unity
         private Goblin _attackTarget;
         private float _attackTimer;
         private Sprite _projectileSprite;   // non-null = ranged unit (shoots an Arrow instead of a melee lunge)
+        private HitFeedback _hitFeedback;    // white flash + wobble + red spritz when hit
         /// <summary>Seconds between build progress ticks. Reduce to make builders work faster.</summary>
         private const float BuildTickDuration = 1.0f;
         /// <summary>HP progress added to a building per build tick. Tune alongside BuildTickDuration.</summary>
@@ -204,6 +205,7 @@ namespace RTSCL.World.Unity
 
             BuildSelectionRing();
             GoblinHealthBar.AttachTo(this);
+            _hitFeedback = gameObject.AddComponent<HitFeedback>();
         }
 
         /// <summary>Command this unit to walk to a world position. Cancels any harvest reservation.
@@ -356,6 +358,7 @@ namespace RTSCL.World.Unity
         {
             if (CurrentHp <= 0) return;
             CurrentHp = Mathf.Max(0, CurrentHp - damage);
+            if (_hitFeedback != null) _hitFeedback.Play();   // flash + wobble + red spritz (all clients)
             if (CurrentHp <= 0) { EnterDying(); return; }
 
             // Auto-retaliate: only when idle and capable

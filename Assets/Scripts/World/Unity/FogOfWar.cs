@@ -44,6 +44,12 @@ namespace RTSCL.World.Unity
 
         /// <summary>Three-state visibility per map cell. Byte-sized for compact 2D array storage.</summary>
         public enum Visibility : byte { Hidden = 0, Explored = 1, Visible = 2 }
+
+        /// <summary>Scene singleton so per-unit hiders (FogHide) can query visibility without a ref.</summary>
+        public static FogOfWar Instance { get; private set; }
+        private void OnEnable() => Instance = this;
+        private void OnDisable() { if (Instance == this) Instance = null; }
+
         private Visibility[,] _state;
         // _prevState mirrors last-painted values; cells that haven't changed skip SetColor.
         private Visibility[,] _prevState;
@@ -115,7 +121,7 @@ namespace RTSCL.World.Unity
             // Goblins — all units in Goblin.All are assumed friendly (local ownership).
             foreach (var g in Goblin.All)
             {
-                if (g == null) continue;
+                if (g == null || g.IsNeutral) continue;   // neutral monsters don't grant vision
                 var c = _fogMap.WorldToCell(g.transform.position);
                 MarkCircle(c.x, c.y, _goblinRadius);
             }
@@ -169,6 +175,15 @@ namespace RTSCL.World.Unity
                 };
                 _fogMap.SetColor(new Vector3Int(x, y, 0), c);
             }
+        }
+
+        /// <summary>True if the cell containing <paramref name="worldPos"/> is currently in view.
+        /// Returns true when fog isn't initialized (fail-open) so nothing is wrongly hidden pre-world.</summary>
+        public bool IsVisible(Vector3 worldPos)
+        {
+            if (_fogMap == null || _state == null) return true;
+            var c = _fogMap.WorldToCell(worldPos);
+            return GetVisibility(c.x, c.y) == Visibility.Visible;
         }
 
         /// <summary>Per-cell visibility for external consumers (e.g. the minimap).

@@ -51,6 +51,7 @@ namespace RTSCL.World.Unity
                     if (g == null) continue;
                     g.MarkNeutral();
                     g.gameObject.AddComponent<MonsterAI>().Home = pos;
+                    g.gameObject.AddComponent<FogHide>();   // hidden under fog until a unit sees it
                     placed++;
                 }
             }
