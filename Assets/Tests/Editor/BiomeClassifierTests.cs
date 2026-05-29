@@ -24,8 +24,11 @@ namespace RTSCL.World.Tests
         [Test]
         public void ShoreRange_ReturnsShore()
         {
-            var b = BiomeClassifier.Classify(0.35f, m: 0.5f, t: 0.5f, hasNearbyWater: false,
-                                             DefaultConfig());
+            // Pick the midpoint of the config's shore band so the test tracks the configured thresholds
+            // rather than a brittle literal (the band shifts when DeepWaterMax/ShoreMax are tuned).
+            var cfg = DefaultConfig();
+            float e = (cfg.DeepWaterMax + cfg.ShoreMax) * 0.5f;
+            var b = BiomeClassifier.Classify(e, m: 0.5f, t: 0.5f, hasNearbyWater: false, cfg);
             Assert.AreEqual(Biome.Shore, b);
         }
 
