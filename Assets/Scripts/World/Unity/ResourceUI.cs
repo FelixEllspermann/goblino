@@ -69,8 +69,10 @@ namespace RTSCL.World.Unity
             }
 
             // Population cell, anchored to the right edge: [farmer icon] [used / cap].
+            // Pushed further left from the edge so it isn't crammed against the corner.
+            const float popRightMargin = 80f;
             float popCellW = _iconSize + 4f + _popWidth;
-            var popCell = MakeCell("PopCell", anchorRight: true, -_pad, popCellW, "Population");
+            var popCell = MakeCell("PopCell", anchorRight: true, -(_pad + popRightMargin), popCellW, "Population");
             AddIcon(popCell, _populationIcon, 0f);
             _popText = AddText(popCell, _iconSize + 4f, _popWidth, TextAnchor.MiddleLeft);
         }
