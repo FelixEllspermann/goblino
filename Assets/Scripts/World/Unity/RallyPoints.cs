@@ -36,9 +36,9 @@ namespace RTSCL.World.Unity
     public sealed class RallyVisual : MonoBehaviour
     {
         private const float LineWidth = 0.09f;
-        private const float ScrollSpeed = 2.0f;    // marching-ants speed (texture units / sec)
-        private const float IconScale = 0.7f;
-        private const float DashesPerUnit = 1.5f;  // dash repeats per world unit of line length
+        private const float ScrollSpeed = 2.0f;          // marching-ants speed (texture units / sec)
+        private const float TargetIconWorldHeight = 0.8f; // flag drawn this tall regardless of sprite PPU/size
+        private const float DashesPerUnit = 1.5f;        // dash repeats per world unit of line length
 
         private static RallyVisual _instance;
         public static RallyVisual Instance
@@ -81,7 +81,16 @@ namespace RTSCL.World.Unity
             iconGo.transform.SetParent(transform, false);
             _icon = iconGo.AddComponent<SpriteRenderer>();
             _icon.sortingOrder = 24;
-            iconGo.transform.localScale = Vector3.one * IconScale;
+        }
+
+        // Scale the icon GameObject so the sprite renders at TargetIconWorldHeight regardless of its
+        // import PPU / pixel size (MiniWorldSprites icons are 16px@100PPU → ~0.16u without this).
+        private void SizeIcon(Sprite icon)
+        {
+            if (icon == null) return;
+            float worldH = icon.rect.height / icon.pixelsPerUnit;
+            float s = worldH > 0.0001f ? TargetIconWorldHeight / worldH : 1f;
+            _icon.transform.localScale = new Vector3(s, s, 1f);
         }
 
         /// <summary>Position the flag at <paramref name="rally"/> and draw the dashed line from
@@ -89,7 +98,7 @@ namespace RTSCL.World.Unity
         public void Show(Vector3 buildingCenter, Vector3 rally, Sprite icon)
         {
             _active = true;
-            if (icon != null && _icon.sprite != icon) _icon.sprite = icon;
+            if (icon != null && _icon.sprite != icon) { _icon.sprite = icon; SizeIcon(icon); }
             _icon.gameObject.SetActive(true);
             _icon.transform.position = new Vector3(rally.x, rally.y, 0f);
             _line.enabled = true;
