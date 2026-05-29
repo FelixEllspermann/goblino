@@ -15,7 +15,8 @@ MonoBehaviour:
   DisplayName: Workshop
   Sprite: {fileID: 3537437063389674154, guid: fbd645f06f5a96a48a800491ea7d267a, type: 3}
   Footprint: {x: 1, y: 1}
-  WoodCost: 800
+  WoodCost: 150
+  StoneCost: 100
   PopulationProvided: 0
   TrainsUnits: []
   ProvidesUpgrades:

@@ -14,5 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: RTSCL.World.Unity::RTSCL.World.Unity.UpgradeDefinition
   DisplayName: Sharper Tools
   Icon: {fileID: -697968371510223532, guid: 893be7a1426f90b43b8bb1220da96544, type: 3}
-  WoodCost: 200
+  WoodCost: 0
+  IronCost: 200
+  GoldCost: 0
+  CrystalCost: 0
   Kind: 0
