@@ -295,6 +295,34 @@ MonoBehaviour:
     - {fileID: 1669545803424335543, guid: 893be7a1426f90b43b8bb1220da96544, type: 3}
     - {fileID: 8398687342449492098, guid: 893be7a1426f90b43b8bb1220da96544, type: 3}
     Definition: {fileID: 11400000, guid: c9e4617fcfab8e60d52cf1f8e7f5060d, type: 2}
+  - Name: Slime
+    WalkFrames:
+    - {fileID: -7282886668606283007, guid: cf90a7c8338eaa347a52f53def0598d9, type: 3}
+    - {fileID: 4518187702968751635, guid: cf90a7c8338eaa347a52f53def0598d9, type: 3}
+    - {fileID: 7526866347251117655, guid: cf90a7c8338eaa347a52f53def0598d9, type: 3}
+    - {fileID: 169598284321861141, guid: cf90a7c8338eaa347a52f53def0598d9, type: 3}
+    Definition: {fileID: 11400000, guid: 664c0147b3ebae14b9a0df9253dbb19d, type: 2}
+  - Name: SlimeBlue
+    WalkFrames:
+    - {fileID: 5768707682448730334, guid: 727b371801c93804ab37ed4622954a48, type: 3}
+    - {fileID: -139900198575284219, guid: 727b371801c93804ab37ed4622954a48, type: 3}
+    - {fileID: -637681967022142092, guid: 727b371801c93804ab37ed4622954a48, type: 3}
+    - {fileID: 2701071092205909659, guid: 727b371801c93804ab37ed4622954a48, type: 3}
+    Definition: {fileID: 11400000, guid: da8d2b5fd17e74240a07ae0cb5349ecf, type: 2}
+  - Name: GiantCrab
+    WalkFrames:
+    - {fileID: -1272544982716709278, guid: c5dbcee49309f064fb5ded2b8ba76a1d, type: 3}
+    - {fileID: -790226026866052349, guid: c5dbcee49309f064fb5ded2b8ba76a1d, type: 3}
+    - {fileID: -387638344042334973, guid: c5dbcee49309f064fb5ded2b8ba76a1d, type: 3}
+    - {fileID: -6076602813397485030, guid: c5dbcee49309f064fb5ded2b8ba76a1d, type: 3}
+    Definition: {fileID: 11400000, guid: bdeba2021882bed41865e41c9a9e5ad2, type: 2}
+  - Name: Mammoth
+    WalkFrames:
+    - {fileID: -3169542317566291086, guid: 3fe8a417f4c7ea04f948c28089371c40, type: 3}
+    - {fileID: 8579345529094369758, guid: 3fe8a417f4c7ea04f948c28089371c40, type: 3}
+    - {fileID: -1129637615917428308, guid: 3fe8a417f4c7ea04f948c28089371c40, type: 3}
+    - {fileID: -2028041942904429195, guid: 3fe8a417f4c7ea04f948c28089371c40, type: 3}
+    Definition: {fileID: 11400000, guid: 47dfcf8bf0b0189419fada3cd6ed9bc6, type: 2}
 --- !u!4 &164504309
 Transform:
   m_ObjectHideFlags: 0
@@ -805,6 +833,7 @@ GameObject:
   m_Component:
   - component: {fileID: 626648821}
   - component: {fileID: 626648820}
+  - component: {fileID: 626648822}
   m_Layer: 0
   m_Name: MainBaseSetup
   m_TagString: Untagged
@@ -829,6 +858,7 @@ MonoBehaviour:
   _catalog: {fileID: 11400000, guid: fd7836c091ac0674d93cda3809ca517e, type: 2}
   _goblinSpawner: {fileID: 164504308}
   _terrainMap: {fileID: 1282190478}
+  _monsterSpawner: {fileID: 626648822}
   _mainBuildingName: Keep_0
   _startingGoblins: 5
   _startingUnitDef: {fileID: 11400000, guid: c9e4617fcfab8e60d52cf1f8e7f5060d, type: 2}
@@ -849,6 +879,37 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &626648822
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 626648819}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c8759a3a97f83ec46b9b2a34a6cc9898, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: RTSCL.World.Unity::RTSCL.World.Unity.MonsterSpawner
+  _spawner: {fileID: 164504308}
+  _types:
+  - KindName: Slime
+    Biomes: 0600000007000000
+    Count: 6
+    RequireAdjacentWater: 0
+  - KindName: SlimeBlue
+    Biomes: 0300000008000000
+    Count: 4
+    RequireAdjacentWater: 0
+  - KindName: GiantCrab
+    Biomes: 04000000050000000700000008000000
+    Count: 3
+    RequireAdjacentWater: 1
+  - KindName: Mammoth
+    Biomes: 03000000
+    Count: 2
+    RequireAdjacentWater: 0
+  _minDistanceFromSpawns: 22
 --- !u!1 &635201105
 GameObject:
   m_ObjectHideFlags: 0

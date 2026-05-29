@@ -18,6 +18,8 @@ namespace RTSCL.World.Unity
             public string KindName;     // matches a GoblinSpawner kind + GoblinUnitDefinition.SpawnerKindName
             public Biome[] Biomes;      // acceptable spawn biomes
             public int Count = 3;
+            [Tooltip("If true, only spawn on land cells adjacent to water (coastal) — e.g. Giant Crab.")]
+            public bool RequireAdjacentWater;
         }
 
         [SerializeField] private GoblinSpawner _spawner;
@@ -42,6 +44,7 @@ namespace RTSCL.World.Unity
                     int x = rng.NextInt(0, world.Width);
                     int y = rng.NextInt(0, world.Height);
                     if (!IsBiomeMatch(world, x, y, t.Biomes)) continue;
+                    if (t.RequireAdjacentWater && !HasWaterNeighbor(world, x, y)) continue;
                     if (TooCloseToSpawn(world, x, y)) continue;
                     var pos = new Vector3(x + 0.5f, y + 0.5f, 0f);
                     var g = _spawner.SpawnKindAt(t.KindName, pos, owner);
@@ -58,6 +61,21 @@ namespace RTSCL.World.Unity
             var b = w.BiomeAt(x, y);
             if (b == Biome.DeepWater || b == Biome.Shore || b == Biome.Cliff) return false;
             foreach (var wanted in biomes) if (b == wanted) return true;
+            return false;
+        }
+
+        // True if any 8-neighbour cell is water (DeepWater/Shore) — i.e. this land cell is coastal.
+        private static bool HasWaterNeighbor(WorldData w, int x, int y)
+        {
+            for (int dy = -1; dy <= 1; dy++)
+            for (int dx = -1; dx <= 1; dx++)
+            {
+                if (dx == 0 && dy == 0) continue;
+                int nx = x + dx, ny = y + dy;
+                if (nx < 0 || nx >= w.Width || ny < 0 || ny >= w.Height) continue;
+                var b = w.BiomeAt(nx, ny);
+                if (b == Biome.DeepWater || b == Biome.Shore) return true;
+            }
             return false;
         }
 

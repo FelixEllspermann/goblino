@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e5a02d3f8b674a2c91e8d7c4f3a1b2c9, type: 3}
+  m_Name: GiantCrab
+  m_EditorClassIdentifier: RTSCL.World.Unity::RTSCL.World.Unity.GoblinUnitDefinition
+  DisplayName: GiantCrab
+  Icon: {fileID: -1272544982716709278, guid: c5dbcee49309f064fb5ded2b8ba76a1d, type: 3}
+  WoodCost: 0
+  FoodCost: 0
+  PopulationCost: 0
+  MaxHp: 140
+  AttackDamage: 9
+  AttackInterval: 1.8
+  AttackRange: 1
+  ProjectileSprite: {fileID: 0}
+  WorldScale: 1.6
+  SpawnDuration: 1
+  SpawnerKindName: GiantCrab
