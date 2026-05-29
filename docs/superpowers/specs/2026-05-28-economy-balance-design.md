@@ -94,6 +94,39 @@ This runs once per world load on the local client (ResourceBank is the local pla
 
 ResourceBank + costs are owner-local. No wire change (train/place/upgrade already issue local-immediate + sync the action, not the cost). Each client deducts its own bank on its own issued actions; remote-apply paths don't deduct (existing behavior).
 
+## Resource-Node Info Display
+
+When the player clicks a spawnable decoration/resource tile, the inspector shows a proper **name** + **description**, and for harvestable nodes the **remaining / max amount** (live while it's being harvested).
+
+### Names + descriptions (by tile prefix)
+| Tile prefix | Name | Description | Harvestable? |
+|---|---|---|---|
+| `Trees_` | Oak Tree | Chop for Wood | yes (Wood) |
+| `PineTrees_` / `WinterTrees_` | Pine Tree | Chop for Wood | yes (Wood) |
+| `CoconutTrees_` | Palm Tree | Chop for Wood | yes (Wood) |
+| `DeadTrees_` / `WinterDeadTrees_` | Dead Tree | Chop for Wood | yes (Wood) |
+| `Wheatfield_` | Wheat Field | Harvest for Food | yes (Food) |
+| `Rocks_` | Stone Deposit | Mine for Stone | yes (Stone) |
+| `GoldOre_` | Gold Deposit | Mine for Gold | yes (Gold) |
+| `IronOre_` | Iron Deposit | Mine for Iron | yes (Iron) |
+| `CrystalOre_` | Crystal Deposit | Mine for Crystal | yes (Crystal) |
+| `Cactus_` | Cactus | Desert flora | no |
+| `Tumbleweed_` | Tumbleweed | Desert flora | no |
+
+### Amount line
+For a harvestable node, append a line: `"{ResourceKind}: {current} / {max}"`, e.g. `Stone: 73 / 100`, `Wood: 41 / 50`, `Crystal: 188 / 200`.
+- `max = Goblin.MaxHpFor(tileName)` (make it `public static`).
+- `current = TreeHP.GetHP(cell, max)` (TreeHP stores 1 HP per remaining resource unit; full when never hit).
+- Cosmetic tiles (cactus/tumbleweed) show just name + description, no amount line.
+
+### Live update
+Store the selected decoration cell + whether it's harvestable. While `SelKind == Decoration` and harvestable, recompute the amount line each frame (same polling pattern as `UpdateCarryUI`), so the count ticks down as a farmer mines it. When the node is depleted (tile removed), hide the popup.
+
+### Where
+- New `Goblin.MaxHpFor` → `public static int MaxHpFor(string tileName)` (currently private).
+- `ObjectInspector`: replace `DescribeDecoration` usage in the decoration-click branch with `ShowResourceNode(cell, tileName)` that sets name/desc/amount; add `_selDecoCell`/`_selDecoIsHarvestable` + `UpdateResourceAmount()` polled in `Update` under `SelKind.Decoration`.
+- Name/description mapping lives in `ObjectInspector` (a `DecorationName`/`DecorationDesc` helper keyed by prefix), replacing the current generic `DescribeDecoration`.
+
 ## File Plan
 
 ### Modified
@@ -104,6 +137,8 @@ ResourceBank + costs are owner-local. No wire change (train/place/upgrade alread
 | `BuildingPlacer.cs` | wood+stone affordability + deduct in IsValid/PlaceForce |
 | `ObjectInspector.cs` | CardRefs ore/stone fields; FormatBuildingCost/FormatUpgradeCost; building+upgrade affordability in Refresh; OnBuildingClicked stone check; OnUpgradeClicked ore check+deduct; card cost strings |
 | `MainBaseSetup.cs` | grant 100 Wood + 100 Food after Reset |
+| `Goblin.cs` | `MaxHpFor` → public static |
+| `ObjectInspector.cs` (info) | resource-node name/desc + remaining/max amount, live-polled |
 | `Units/*.asset`, `Buildings/*.asset`, `Upgrades/*.asset` | balance numbers (Unity MCP) |
 
 ## Testing
@@ -116,6 +151,9 @@ ResourceBank + costs are owner-local. No wire change (train/place/upgrade alread
   - Workshop upgrades show ore costs; greyed until enough Iron/Gold/Crystal; purchase deducts the ores.
   - Tough Hide (200 Gold + 150 Crystal) is the steepest — needs heavy ore mining.
   - Cards display correct multi-resource cost strings.
+  - Click a tree → "Oak/Pine/Palm/Dead Tree", "Chop for Wood", "Wood: X / 50". Click a rock → "Stone Deposit", "Mine for Stone", "Stone: X / 100". Click gold/iron/crystal → matching name + "Y / 200". Wheat → "Wheat Field", "Food: X / 500".
+  - Amount ticks down live while a farmer harvests the selected node.
+  - Cactus/tumbleweed show name + "Desert flora", no amount line.
 
 ## Risks
 | Risk | Mitigation |
