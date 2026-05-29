@@ -371,7 +371,7 @@ namespace RTSCL.World.Unity
             nameText.fontSize = 16;
             nameText.color = _cardTextNormal;
             nameText.alignment = TextAnchor.MiddleLeft;
-            nameText.horizontalOverflow = HorizontalWrapMode.Overflow;
+            nameText.horizontalOverflow = HorizontalWrapMode.Wrap;
 
             var costGo = new GameObject("Cost");
             costGo.transform.SetParent(textGo.transform, false);
@@ -381,7 +381,7 @@ namespace RTSCL.World.Unity
             costLabel.fontSize = 12;
             costLabel.color = new Color(0.85f, 0.75f, 0.45f);
             costLabel.alignment = TextAnchor.MiddleLeft;
-            costLabel.horizontalOverflow = HorizontalWrapMode.Overflow;
+            costLabel.horizontalOverflow = HorizontalWrapMode.Wrap;
 
             btn.onClick.AddListener(() => onClick?.Invoke());
 
