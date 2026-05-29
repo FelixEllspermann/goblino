@@ -126,6 +126,7 @@ namespace RTSCL.World.Unity
         public void SetMoveCommand(Vector3 worldTarget)
         {
             if (_state == State.Dying) return;
+            HarvestReservations.Release(this);
             ResetHitAnim();
             RepathTo(worldTarget);
             _state = State.MovingToPoint;
@@ -146,7 +147,8 @@ namespace RTSCL.World.Unity
             }
 
             _treeCell = treeCell;
-            RepathTo(FindAdjacentStandingSpot(treeCell));
+            var spot = HarvestReservations.Reserve(treeCell, this, IsCellPassable, transform.position);
+            RepathTo(new Vector3(spot.x + 0.5f, spot.y + 0.5f, 0f));
             _state = State.MovingToTree;
             _harvestTimer = 0f;
         }
@@ -154,6 +156,7 @@ namespace RTSCL.World.Unity
         public void SetBuildCommand(Vector2Int buildingOrigin)
         {
             if (_state == State.Dying) return;
+            HarvestReservations.Release(this);
             ResetHitAnim();
             _buildOrigin = buildingOrigin;
             // Walk to the origin cell center — close enough to "build" the structure
@@ -168,6 +171,7 @@ namespace RTSCL.World.Unity
             if (target == null || target == this) return;
             if (AttackDamage <= 0) return;   // non-combatants (Farmers) ignore
             if (target.CurrentHp <= 0) return;
+            HarvestReservations.Release(this);
             ResetHitAnim();
             _attackTarget = target;
             _attackTimer = 0f;
@@ -195,38 +199,6 @@ namespace RTSCL.World.Unity
             // Auto-retaliate: only when idle and capable
             if (IsIdle && AttackDamage > 0 && attacker != null && attacker.CurrentHp > 0)
                 SetAttackCommand(attacker);
-        }
-
-        // Returns the world position of the passable cell adjacent to the tree closest to the goblin.
-        // Falls back to the tree cell center if no adjacent cell is passable.
-        private Vector3 FindAdjacentStandingSpot(Vector3Int treeCell)
-        {
-            Vector3 goblinPos = transform.position;
-            Vector3Int[] offsets = {
-                new( 1, 0, 0), new(-1, 0, 0), new( 0, 1, 0), new( 0,-1, 0),
-                new( 1, 1, 0), new( 1,-1, 0), new(-1, 1, 0), new(-1,-1, 0),
-            };
-            Vector3 best = CellCenter(treeCell);
-            float bestDist = float.MaxValue;
-            bool found = false;
-            foreach (var off in offsets)
-            {
-                var nc = treeCell + off;
-                if (!IsTerrainPassable(nc)) continue;
-                Vector3 p = CellCenter(nc);
-                float d = (p - goblinPos).sqrMagnitude;
-                if (d < bestDist) { bestDist = d; best = p; found = true; }
-            }
-            return found ? best : CellCenter(treeCell);
-        }
-
-        private bool IsTerrainPassable(Vector3Int cell)
-        {
-            if (_terrainMap == null) return true;
-            var t = _terrainMap.GetTile(cell);
-            if (t == null) return false;
-            var n = t.name;
-            return n != "DeepWater" && n != "Cliff" && n != "Shore";
         }
 
         public void SetSelected(bool sel)
@@ -306,7 +278,8 @@ namespace RTSCL.World.Unity
                         // Resume: walk back to last tree if still alive, else find nearest, else idle.
                         if (IsHarvestableStillThere(_treeCell))
                         {
-                            RepathTo(FindAdjacentStandingSpot(_treeCell));
+                            var spot = HarvestReservations.Reserve(_treeCell, this, IsCellPassable, transform.position);
+                            RepathTo(new Vector3(spot.x + 0.5f, spot.y + 0.5f, 0f));
                             _state = State.MovingToTree;
                             SendMoveWireOnly(_moveTarget);
                         }
@@ -526,6 +499,7 @@ namespace RTSCL.World.Unity
             SetSelected(false);
             // Clear any in-flight lunge so it doesn't fight the hop-arc transform writes.
             ResetHitAnim();
+            HarvestReservations.Release(this);
 
             _dieStartPos = transform.position;
             _dieVelocity = new Vector3(0f, DeathHopVelocity, 0f);
@@ -652,6 +626,7 @@ namespace RTSCL.World.Unity
 
         private void FindNextTreeOrIdle()
         {
+            HarvestReservations.Release(this);
             if (_decorationMap == null) { _state = State.Idle; return; }
 
             Vector3Int origin = _decorationMap.WorldToCell(transform.position);
