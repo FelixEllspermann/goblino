@@ -29,6 +29,10 @@ namespace RTSCL.World.Unity
         [SerializeField] private string _hutName = "Huts_0";
         [SerializeField] private string _barracksName = "Barracks_0";
 
+        [Header("Vision / Scouting")]
+        [SerializeField] private int _visionRadius = 6;
+        [SerializeField] private int _keepVisionRadius = 10;
+
         private sealed class BotState
         {
             public Vector2Int Keep;
@@ -37,15 +41,23 @@ namespace RTSCL.World.Unity
             public Vector2Int BuildSite;
             public bool Building;
             public int AssignCycle;
+
+            // Phase 3: the bot's own exploration of the map (it only "knows" what it has seen).
+            public bool[,] Explored;
+            public Goblin Scout;
+            public bool EnemyFound;
+            public readonly HashSet<Vector2Int> DiscoveredEnemyBases = new();
         }
 
         private readonly Dictionary<ulong, BotState> _states = new();
         private BuildingDefinition _hutDef, _barracksDef;
         private GoblinUnitDefinition _farmerDef;
+        private WorldGeneratorBootstrap _worldSource;
         private float _t;
 
         private void Start()
         {
+            _worldSource = UnityEngine.Object.FindFirstObjectByType<WorldGeneratorBootstrap>();
             _hutDef = FindBuilding(_hutName);
             _barracksDef = FindBuilding(_barracksName);
             var keepDef = FindBuilding(_keepName);
@@ -86,7 +98,14 @@ namespace RTSCL.World.Unity
             }
             Vector3 keepWorld = new(st.Keep.x + 0.5f, st.Keep.y + 0.5f, 0f);
 
-            // 2. Census of this bot's units.
+            // 1b. Update the bot's own vision (explored map) and discover enemy bases it can see.
+            UpdateVision(owner, st);
+            ScanForEnemies(owner, st);
+            // 1c. Scout for the enemy until one is found (a dedicated farmer explores other spawns).
+            if (!st.EnemyFound) Scout(owner, st);
+            else st.Scout = null;   // release the scout back to the economy once the enemy is known
+
+            // 2. Census of this bot's units (the scout is excluded from harvest assignment).
             int farmers = 0;
             var idleFarmers = new List<Goblin>();
             foreach (var g in Goblin.All)
@@ -95,7 +114,7 @@ namespace RTSCL.World.Unity
                 if (g.Kind == "FarmerGoblin")
                 {
                     farmers++;
-                    if (g.IsIdle) idleFarmers.Add(g);
+                    if (g.IsIdle && g != st.Scout) idleFarmers.Add(g);
                 }
             }
 
@@ -180,6 +199,90 @@ namespace RTSCL.World.Unity
                 if (_placer.TryGetBuildingOwner(kv.Key, out var o) && o == owner) return true;
             }
             return false;
+        }
+
+        // ---------- Phase 3: vision + scouting ----------
+
+        // Mark cells around the bot's units and buildings as explored (the bot's own fog of war).
+        private void UpdateVision(ulong owner, BotState st)
+        {
+            var world = _worldSource != null ? _worldSource.CurrentWorld : null;
+            if (world == null) return;
+            if (st.Explored == null || st.Explored.GetLength(0) != world.Width || st.Explored.GetLength(1) != world.Height)
+                st.Explored = new bool[world.Width, world.Height];
+
+            foreach (var g in Goblin.All)
+            {
+                if (g == null || g.IsNeutral || g.Owner != owner) continue;
+                MarkExplored(st.Explored, Mathf.FloorToInt(g.transform.position.x), Mathf.FloorToInt(g.transform.position.y), _visionRadius);
+            }
+            foreach (var kv in _placer.AllOccupied)
+            {
+                if (!_placer.TryGetBuildingOwner(kv.Key, out var o) || o != owner) continue;
+                int r = (kv.Value != null && kv.Value.name.StartsWith("Keep")) ? _keepVisionRadius : _visionRadius;
+                MarkExplored(st.Explored, kv.Key.x, kv.Key.y, r);
+            }
+        }
+
+        private static void MarkExplored(bool[,] ex, int cx, int cy, int r)
+        {
+            int w = ex.GetLength(0), h = ex.GetLength(1), r2 = r * r;
+            for (int y = Mathf.Max(0, cy - r); y <= Mathf.Min(h - 1, cy + r); y++)
+            for (int x = Mathf.Max(0, cx - r); x <= Mathf.Min(w - 1, cx + r); x++)
+            {
+                int dx = x - cx, dy = y - cy;
+                if (dx * dx + dy * dy <= r2) ex[x, y] = true;
+            }
+        }
+
+        // Any enemy building whose origin the bot has explored becomes a known target.
+        private void ScanForEnemies(ulong owner, BotState st)
+        {
+            if (st.Explored == null) return;
+            int w = st.Explored.GetLength(0), h = st.Explored.GetLength(1);
+            foreach (var kv in _placer.AllOccupied)
+            {
+                if (!_placer.TryGetBuildingOwner(kv.Key, out var o) || o == owner) continue; // own / unknown
+                if (!_placer.TryGetBuildingOrigin(kv.Key, out var origin)) origin = kv.Key;
+                if (origin.x < 0 || origin.y < 0 || origin.x >= w || origin.y >= h) continue;
+                if (st.Explored[origin.x, origin.y]) { st.DiscoveredEnemyBases.Add(origin); st.EnemyFound = true; }
+            }
+        }
+
+        // Send a dedicated scout toward the nearest not-yet-explored spawn point to find the enemy.
+        private void Scout(ulong owner, BotState st)
+        {
+            var world = _worldSource != null ? _worldSource.CurrentWorld : null;
+            if (world == null || world.Spawns == null) return;
+
+            if (st.Scout == null || st.Scout.CurrentHp <= 0 || st.Scout.Owner != owner || st.Scout.IsNeutral)
+            {
+                st.Scout = null;
+                foreach (var g in Goblin.All)
+                {
+                    if (g == null || g.IsNeutral || g.Owner != owner || g.Kind != "FarmerGoblin") continue;
+                    st.Scout = g; break;
+                }
+                if (st.Scout == null) return;
+            }
+            if (!st.Scout.IsIdle) return;   // still travelling
+
+            var sc = new Vector2Int(Mathf.FloorToInt(st.Scout.transform.position.x), Mathf.FloorToInt(st.Scout.transform.position.y));
+            int best = -1, bestSq = int.MaxValue;
+            int w = st.Explored != null ? st.Explored.GetLength(0) : 0, h = st.Explored != null ? st.Explored.GetLength(1) : 0;
+            for (int i = 0; i < world.Spawns.Length; i++)
+            {
+                var sp = world.Spawns[i];
+                bool explored = st.Explored != null && sp.x >= 0 && sp.y >= 0 && sp.x < w && sp.y < h && st.Explored[sp.x, sp.y];
+                if (explored) continue;
+                int dx = sp.x - sc.x, dy = sp.y - sc.y, d = dx * dx + dy * dy;
+                if (d < bestSq) { bestSq = d; best = i; }
+            }
+            if (best >= 0)
+            {
+                var sp = world.Spawns[best];
+                st.Scout.SetMoveCommand(new Vector3(sp.x + 0.5f, sp.y + 0.5f, 0f));
+            }
         }
 
         // Nearest harvestable decoration tile of the given kind (or any kind if kind == null) within radius.
