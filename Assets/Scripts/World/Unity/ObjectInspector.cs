@@ -221,9 +221,10 @@ namespace RTSCL.World.Unity
             }
 
             string name = sel.Count == 1 ? PrettyKindName(firstKind) : $"{PrettyKindName(firstKind)} × {sel.Count}";
-            string desc = hasFarmer
-                ? "Worker — chops trees, builds buildings"
-                : "Warrior — melee unit";
+            // Single unit → full stat sheet (HP / damage / attack speed / range). Multi → brief summary.
+            string desc = (sel.Count == 1 && sel[0] != null)
+                ? UnitStatsDesc(sel[0])
+                : (hasFarmer ? "Workers" : "Warriors");
             _lastGoblinDescBase = desc;
             _lastCarryLine = "";
             SetHeader(name, desc);
@@ -249,7 +250,7 @@ namespace RTSCL.World.Unity
             if (_selBuildingOwner != null) { _selBuildingOwner.SetSelected(false); _selBuildingOwner = null; }
             ClearCards();
             if (_progressRow != null) _progressRow.SetActive(false);
-            SetHeader(UnitInfoTitle(g), UnitInfoDesc(g));
+            SetHeader(UnitInfoTitle(g), UnitStatsDesc(g));
             _popupRoot?.SetActive(true);
         }
 
@@ -258,7 +259,7 @@ namespace RTSCL.World.Unity
         {
             if (_inspectedUnit == null || _inspectedUnit.CurrentHp <= 0 || !_inspectedUnit.gameObject.activeInHierarchy)
             { Hide(); return; }
-            if (_descriptionLabel != null) _descriptionLabel.text = UnitInfoDesc(_inspectedUnit);
+            if (_descriptionLabel != null) _descriptionLabel.text = UnitStatsDesc(_inspectedUnit);
         }
 
         private static string UnitInfoTitle(Goblin g)
@@ -267,10 +268,20 @@ namespace RTSCL.World.Unity
             return $"{side} {PrettyKindName(g.Kind)}";
         }
 
-        private static string UnitInfoDesc(Goblin g)
+        // Shared stat sheet for a unit: type, HP, and (for combat units) damage / attack speed / range.
+        private static string UnitStatsDesc(Goblin g)
         {
-            string type = g.Kind == "FarmerGoblin" ? "Worker" : (g.AttackDamage > 0 ? "Warrior" : "Unit");
-            return $"{type}\nHP: {g.CurrentHp} / {g.MaxHp}";
+            string type = g.Kind == "FarmerGoblin" ? "Worker — chops trees, builds"
+                        : (g.AttackDamage > 0 ? "Warrior" : "Unit");
+            string s = $"{type}\nHP: {g.CurrentHp} / {g.MaxHp}";
+            if (g.AttackDamage > 0)
+            {
+                float aps = g.AttackInterval > 0.001f ? 1f / g.AttackInterval : 0f;
+                s += $"\nDamage: {g.AttackDamage}";
+                s += $"\nAttack Speed: {aps:0.0}/s";
+                s += $"\nRange: {g.AttackRange}";
+            }
+            return s;
         }
 
         private void ShowBuilding(BuildingDefinition def, Vector2Int origin)
@@ -587,17 +598,14 @@ namespace RTSCL.World.Unity
         {
             if (_selectionController == null) return;
             var sel = _selectionController.Selection;
-            string newCarry = "";
-            if (sel.Count == 1 && sel[0] != null && sel[0].Kind == "FarmerGoblin" && sel[0].CarriedAmount > 0)
-            {
-                newCarry = $"Carrying: {sel[0].CarriedAmount} {sel[0].CarriedKind.ToString().ToLowerInvariant()}";
-            }
-            if (newCarry == _lastCarryLine) return;
-            _lastCarryLine = newCarry;
-            string full = string.IsNullOrEmpty(newCarry)
-                ? _lastGoblinDescBase
-                : _lastGoblinDescBase + "\n" + newCarry;
-            if (_descriptionLabel != null) _descriptionLabel.text = full;
+            if (sel.Count != 1 || sel[0] == null) return;   // only a single unit shows live stats
+            var g = sel[0];
+            string desc = UnitStatsDesc(g);
+            if (g.Kind == "FarmerGoblin" && g.CarriedAmount > 0)
+                desc += $"\nCarrying: {g.CarriedAmount} {g.CarriedKind.ToString().ToLowerInvariant()}";
+            if (desc == _lastCarryLine) return;             // cache full text to skip redundant writes
+            _lastCarryLine = desc;
+            if (_descriptionLabel != null) _descriptionLabel.text = desc;
         }
 
         // Poll the resource node's remaining HP each frame and append an amount line.
