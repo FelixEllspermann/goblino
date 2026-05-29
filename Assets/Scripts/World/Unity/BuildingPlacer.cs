@@ -133,8 +133,9 @@ namespace RTSCL.World.Unity
 
         private bool IsValid(Vector2Int origin)
         {
-            // Affordability
+            // Affordability (wood + stone)
             if (_selected.WoodCost > 0 && ResourceBank.Wood < _selected.WoodCost) return false;
+            if (_selected.StoneCost > 0 && ResourceBank.Get(ResourceKind.Stone) < _selected.StoneCost) return false;
 
             var world = _worldSource != null ? _worldSource.CurrentWorld : null;
             for (int dy = 0; dy < _selected.Footprint.y; dy++)
@@ -179,10 +180,12 @@ namespace RTSCL.World.Unity
         {
             if (def == null || def.Sprite == null) return;
 
-            if (charge && def.WoodCost > 0)
+            if (charge)
             {
                 if (ResourceBank.Wood < def.WoodCost) return;
-                ResourceBank.AddWood(-def.WoodCost);
+                if (ResourceBank.Get(ResourceKind.Stone) < def.StoneCost) return;
+                if (def.WoodCost > 0) ResourceBank.AddWood(-def.WoodCost);
+                if (def.StoneCost > 0) ResourceBank.Add(ResourceKind.Stone, -def.StoneCost);
             }
 
             var go = new GameObject($"Building_{def.name}_{origin.x}_{origin.y}");
