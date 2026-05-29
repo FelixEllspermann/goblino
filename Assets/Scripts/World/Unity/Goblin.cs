@@ -129,6 +129,12 @@ namespace RTSCL.World.Unity
 
         /// <summary>True if this unit is a boat (water transport).</summary>
         public bool IsBoat => _waterMode;
+        /// <summary>World-space AABB of the rendered sprite. Used for click-selection so large or
+        /// pivot-offset sprites (boats, monsters) are pickable across their full visual extent, not
+        /// just a fixed radius around the transform.</summary>
+        public Bounds SelectionBounds => _renderer != null
+            ? _renderer.bounds
+            : new Bounds(transform.position, new Vector3(0.5f, 0.5f, 0.5f));
         /// <summary>True if a boat still has room for more passengers.</summary>
         public bool BoatHasRoom => _waterMode && _passengers.Count < BoatCapacity;
         /// <summary>Number of units currently aboard this boat.</summary>

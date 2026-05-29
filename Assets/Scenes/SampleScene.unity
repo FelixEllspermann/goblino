@@ -328,7 +328,7 @@ MonoBehaviour:
     - {fileID: -3510124300914468012, guid: 1643cd0390ee9414fb27677111889f5a, type: 3}
     - {fileID: -2369018739697091014, guid: 1643cd0390ee9414fb27677111889f5a, type: 3}
     - {fileID: 8849086363888833396, guid: 1643cd0390ee9414fb27677111889f5a, type: 3}
-    Definition: {fileID: 0}
+    Definition: {fileID: 11400000, guid: 1c639a79eb1b8144a8daf206e2ffe877, type: 2}
 --- !u!4 &164504309
 Transform:
   m_ObjectHideFlags: 0
@@ -942,6 +942,7 @@ MonoBehaviour:
   _keepName: Keep_0
   _hutName: Huts_0
   _barracksName: Barracks_0
+  _dockName: Docks_0
   _visionRadius: 6
   _keepVisionRadius: 10
   _engageRadius: 8

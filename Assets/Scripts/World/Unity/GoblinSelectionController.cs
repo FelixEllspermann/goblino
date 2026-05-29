@@ -218,6 +218,8 @@ namespace RTSCL.World.Unity
             {
                 if (g == null) continue;
                 if (!IsLocalOwner(g) || g.IsNeutral) continue;
+                // A direct hit on the sprite's visual bounds wins outright (handles big sprites like boats).
+                if (PointInBounds(g.SelectionBounds, world)) { best = g; break; }
                 float d = Vector2.Distance(g.transform.position, world);
                 if (d < bestDist) { bestDist = d; best = g; }
             }
@@ -294,6 +296,10 @@ namespace RTSCL.World.Unity
             return false;
         }
 
+        // 2D point-in-AABB test (ignores z) against a sprite's world bounds.
+        private static bool PointInBounds(Bounds b, Vector3 world)
+            => world.x >= b.min.x && world.x <= b.max.x && world.y >= b.min.y && world.y <= b.max.y;
+
         // Nearest friendly boat under the cursor (for boarding), within the click pick radius.
         private bool TryGetFriendlyBoatAt(Vector3 worldPos, out Goblin boat)
         {
@@ -302,6 +308,8 @@ namespace RTSCL.World.Unity
             foreach (var g in Goblin.All)
             {
                 if (g == null || !g.IsBoat || !IsLocalOwner(g)) continue;
+                // Boats are large — a click anywhere on the hull (its sprite bounds) counts as a hit.
+                if (PointInBounds(g.SelectionBounds, worldPos)) { boat = g; return true; }
                 float d = (g.transform.position - worldPos).sqrMagnitude;
                 if (d < bestSq) { bestSq = d; boat = g; }
             }
