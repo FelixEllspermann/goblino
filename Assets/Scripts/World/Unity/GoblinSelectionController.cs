@@ -69,7 +69,7 @@ namespace RTSCL.World.Unity
                 Vector3 worldTarget = _camera.ScreenToWorldPoint(
                     new Vector3(mp.x, mp.y, -_camera.transform.position.z));
 
-                if (TryGetTreeAt(worldTarget, out var treeCell))
+                if (TryGetHarvestableAt(worldTarget, out var treeCell))
                 {
                     Vector3 treeCenter = _decorationMap.CellToWorld(treeCell) + new Vector3(0.5f, 0.5f, 0f);
                     ClickFeedback.Spawn(treeCenter, new Color(0.4f, 1f, 0.4f, 0.85f));  // green = harvest
@@ -106,13 +106,13 @@ namespace RTSCL.World.Unity
             return BuildingConstruction.IsUnderConstruction(origin);
         }
 
-        private bool TryGetTreeAt(Vector3 world, out Vector3Int cell)
+        private bool TryGetHarvestableAt(Vector3 world, out Vector3Int cell)
         {
             cell = default;
             if (_decorationMap == null) return false;
             cell = _decorationMap.WorldToCell(world);
             var t = _decorationMap.GetTile(cell);
-            return t != null && Goblin.IsTreeTile(t.name);
+            return t != null && Goblin.IsHarvestable(t.name);
         }
 
         private void CommandHarvest(Vector3Int clickedTree)
@@ -123,7 +123,7 @@ namespace RTSCL.World.Unity
             if (workers.Count == 0) return;
 
             // Find up to N nearest trees around the click (one per worker)
-            var trees = FindNearbyTrees(clickedTree, workers.Count, _harvestSpreadRadius);
+            var trees = FindNearbyHarvestables(clickedTree, workers.Count, _harvestSpreadRadius);
             if (trees.Count == 0) return;
             // Group workers by their assigned tree, then issue one network command per tree.
             var byTree = new Dictionary<Vector3Int, List<Goblin>>();
@@ -141,7 +141,7 @@ namespace RTSCL.World.Unity
         private static bool IsWorker(Goblin g) =>
             g != null && g.Kind == "FarmerGoblin";
 
-        private List<Vector3Int> FindNearbyTrees(Vector3Int origin, int maxCount, int radius)
+        private List<Vector3Int> FindNearbyHarvestables(Vector3Int origin, int maxCount, int radius)
         {
             var found = new List<(Vector3Int cell, int distSq)>();
             for (int dy = -radius; dy <= radius; dy++)
@@ -150,7 +150,7 @@ namespace RTSCL.World.Unity
                 var c = new Vector3Int(origin.x + dx, origin.y + dy, 0);
                 var t = _decorationMap.GetTile(c);
                 if (t == null) continue;
-                if (!Goblin.IsTreeTile(t.name)) continue;
+                if (!Goblin.IsHarvestable(t.name)) continue;
                 found.Add((c, dx * dx + dy * dy));
             }
             found.Sort((a, b) => a.distSq.CompareTo(b.distSq));
