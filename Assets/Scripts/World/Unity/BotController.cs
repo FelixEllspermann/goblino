@@ -238,10 +238,25 @@ namespace RTSCL.World.Unity
             foreach (var g in army)
             {
                 var tgt = NearestHostile(g, _engageRadius);
-                if (tgt != null) g.SetAttackCommand(tgt);                 // engage anything hostile in range
-                else if (g.IsIdle && NearestBase(st, g.transform.position, out var basePos))
-                    g.SetMoveCommand(basePos);                            // else march to the known enemy base
+                if (tgt != null) { g.SetAttackCommand(tgt); continue; }   // engage hostile units in range
+                if (NearestAliveBase(st, g.transform.position, out var bo))
+                    g.SetAttackBuildingCommand(bo);                       // else go raze a known enemy building
+                else if (g.IsIdle && NearestBase(st, g.transform.position, out var bp))
+                    g.SetMoveCommand(bp);                                 // else march toward the base area
             }
+        }
+
+        // Nearest still-standing discovered enemy building to 'from'.
+        private static bool NearestAliveBase(BotState st, Vector3 from, out Vector2Int origin)
+        {
+            origin = default; float bestSq = float.MaxValue; bool found = false;
+            foreach (var b in st.DiscoveredEnemyBases)
+            {
+                if (!BuildingHP.TryGet(b, out int cur, out _) || cur <= 0) continue;
+                float d = (new Vector3(b.x + 0.5f, b.y + 0.5f, 0f) - from).sqrMagnitude;
+                if (d < bestSq) { bestSq = d; origin = b; found = true; }
+            }
+            return found;
         }
 
         // Train military one at a time (alternating Club/Archer) up to the planned size, paid from BotEconomy.

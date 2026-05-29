@@ -51,6 +51,7 @@ namespace RTSCL.World.Unity
         private readonly Dictionary<Vector2Int, BuildingDefinition> _cellOwners = new();
         private readonly Dictionary<Vector2Int, Vector2Int> _cellToOrigin = new();
         private readonly Dictionary<Vector2Int, ulong> _cellToOwner = new();
+        private readonly Dictionary<Vector2Int, GameObject> _originToGo = new();   // origin → building GameObject
 
         /// <summary>The BuildingDefinition currently queued for placement, or null if not in placement mode.</summary>
         public BuildingDefinition Selected => _selected;
@@ -268,6 +269,7 @@ namespace RTSCL.World.Unity
                 _cellToOrigin[c] = origin;
                 _cellToOwner[c] = owner;
             }
+            _originToGo[origin] = go;
 
             BuildingHP.Register(origin, BuildingHP.MaxHpFor(def));
             if (requireConstruction) BuildingConstruction.Register(origin, go);
@@ -279,6 +281,59 @@ namespace RTSCL.World.Unity
                 RallyPoints.Set(origin, RallyPoints.Default(origin, def.Footprint));
         }
 
+        /// <summary>The footprint of the building occupying a cell (via its definition). False if none.</summary>
+        public bool TryGetFootprint(Vector2Int cell, out Vector2Int footprint)
+        {
+            if (_cellOwners.TryGetValue(cell, out var def) && def != null) { footprint = def.Footprint; return true; }
+            footprint = Vector2Int.one; return false;
+        }
+
+        /// <summary>True if <paramref name="owner"/> still owns at least one building (alive faction).</summary>
+        public bool HasAnyBuilding(ulong owner)
+        {
+            foreach (var o in _cellToOwner.Values) if (o == owner) return true;
+            return false;
+        }
+
+        /// <summary>Destroy the building at <paramref name="origin"/>: refund pop cap (if it provided any
+        /// and was completed), clear all registries for its footprint, drop construction, remove the
+        /// GameObject, and play a burst. Safe to call with an unknown origin.</summary>
+        public void RemoveBuilding(Vector2Int origin)
+        {
+            if (!_cellOwners.TryGetValue(origin, out var def) || def == null) return;
+            ulong owner = _cellToOwner.TryGetValue(origin, out var ow) ? ow : 0UL;
+            bool wasCompleted = !BuildingConstruction.IsUnderConstruction(origin);
+
+            // Refund the population cap only for completed buildings that granted it.
+            if (wasCompleted && def.PopulationProvided > 0)
+            {
+                if (WorldStartContext.IsSolo && owner != 0UL) BotEconomy.AddCap(owner, -def.PopulationProvided);
+                else PopulationManager.AddCap(-def.PopulationProvided);
+            }
+
+            // Clear every footprint cell from the registries.
+            for (int dy = 0; dy < def.Footprint.y; dy++)
+            for (int dx = 0; dx < def.Footprint.x; dx++)
+            {
+                var c = new Vector2Int(origin.x + dx, origin.y + dy);
+                _cellOwners.Remove(c);
+                _cellToOrigin.Remove(c);
+                _cellToOwner.Remove(c);
+            }
+
+            BuildingHP.Remove(origin);
+            BuildingConstruction.Remove(origin);
+            RallyPoints.Remove(origin);
+
+            if (_originToGo.TryGetValue(origin, out var go) && go != null)
+            {
+                DeathBurst.SpawnCustom(go.transform.position + new Vector3(def.Footprint.x * 0.5f, def.Footprint.y * 0.5f, 0f),
+                                       16, 0.18f, 1.5f, 3f, 0.6f, 0.7f, 0.6f, new Color(0.6f, 0.5f, 0.4f, 1f));
+                Destroy(go);
+            }
+            _originToGo.Remove(origin);
+        }
+
         /// <summary>Remove all placed buildings and reset associated static registries.
         /// Called by MainBaseSetup.OnNewWorld before generating a new world.</summary>
         public void ClearAllPlaced()
@@ -286,6 +341,7 @@ namespace RTSCL.World.Unity
             _cellOwners.Clear();
             _cellToOrigin.Clear();
             _cellToOwner.Clear();
+            _originToGo.Clear();
             BuildingHP.Clear();
             BuildingConstruction.Clear();
             if (_buildingsRoot == null) return;

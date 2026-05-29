@@ -115,8 +115,11 @@ namespace RTSCL.World.Unity
 
         // FSM state. Transitions are driven entirely inside Update; public Set*Command methods
         // only set up the parameters then change state — they do not tick logic themselves.
-        private enum State { Idle, MovingToPoint, MovingToTree, Harvesting, WalkingToDeposit, MovingToBuild, Building, MovingToAttack, Attacking, Dying }
+        private enum State { Idle, MovingToPoint, MovingToTree, Harvesting, WalkingToDeposit, MovingToBuild, Building, MovingToAttack, Attacking, MovingToAttackBuilding, AttackingBuilding, Dying }
         private State _state = State.Idle;
+
+        private Vector2Int _buildingTarget;   // origin of the enemy building being attacked
+        private bool _hasBuildingTarget;
 
         private Vector3 _moveTarget;
         private readonly List<Vector3> _path = new();   // A* waypoints in world space
@@ -345,8 +348,65 @@ namespace RTSCL.World.Unity
             _attackTarget = target;
             _attackTimer = 0f;
             _state = State.MovingToAttack;
+            _hasBuildingTarget = false;
             _lastAttackGoalCell = CellOfPos(target.transform.position);
             RepathTo(target.transform.position);
+        }
+
+        /// <summary>Command this unit to march to an (enemy) building and attack it until destroyed.
+        /// Ignored for non-combatants or if no building is registered at the origin.</summary>
+        public void SetAttackBuildingCommand(Vector2Int origin)
+        {
+            if (_state == State.Dying || AttackDamage <= 0) return;
+            if (!BuildingHP.TryGet(origin, out int cur, out _) || cur <= 0) return;
+            // Re-issuing on the same building we're already attacking is a no-op (preserve the cooldown).
+            if (_hasBuildingTarget && _buildingTarget == origin
+                && (_state == State.MovingToAttackBuilding || _state == State.AttackingBuilding)) return;
+            HarvestReservations.Release(this);
+            ResetHitAnim();
+            _buildingTarget = origin;
+            _hasBuildingTarget = true;
+            _attackTimer = 0f;
+            _state = State.MovingToAttackBuilding;
+            RepathTo(NearestStandToFootprint(origin));
+        }
+
+        private static bool BuildingAlive(Vector2Int origin) =>
+            BuildingHP.TryGet(origin, out int cur, out _) && cur > 0;
+
+        // Footprint of the targeted building (via the placer); defaults to 1×1 if unknown.
+        private static Vector2Int FootprintOf(Vector2Int origin) =>
+            NetCommandApplier.Placer != null && NetCommandApplier.Placer.TryGetFootprint(origin, out var fp) ? fp : Vector2Int.one;
+
+        // Chebyshev distance from the unit's cell to the building footprint rectangle (0 = adjacent/on it).
+        private int ChebyshevToFootprint(Vector2Int origin, Vector2Int fp)
+        {
+            var u = CellOfPos(transform.position);
+            int maxX = origin.x + fp.x - 1, maxY = origin.y + fp.y - 1;
+            int dx = Mathf.Max(0, Mathf.Max(origin.x - u.x, u.x - maxX));
+            int dy = Mathf.Max(0, Mathf.Max(origin.y - u.y, u.y - maxY));
+            return Mathf.Max(dx, dy);
+        }
+
+        // Nearest passable cell on the ring just outside the footprint — where the unit stands to attack.
+        private Vector3 NearestStandToFootprint(Vector2Int origin)
+        {
+            var fp = FootprintOf(origin);
+            Vector3 pos = transform.position;
+            Vector3 best = new(origin.x + 0.5f, origin.y + 0.5f, 0f);
+            float bestD = float.MaxValue; bool found = false;
+            for (int dy = -1; dy <= fp.y; dy++)
+            for (int dx = -1; dx <= fp.x; dx++)
+            {
+                bool border = dx == -1 || dy == -1 || dx == fp.x || dy == fp.y;
+                if (!border) continue;
+                int x = origin.x + dx, y = origin.y + dy;
+                if (!IsCellPassable(x, y)) continue;
+                Vector3 c = new(x + 0.5f, y + 0.5f, 0f);
+                float d = (c - pos).sqrMagnitude;
+                if (d < bestD) { bestD = d; best = c; found = true; }
+            }
+            return found ? best : new Vector3(origin.x + 0.5f, origin.y + 0.5f, 0f);
         }
 
         // True on the client that authoritatively drives this unit. In solo the single client owns
@@ -562,6 +622,53 @@ namespace RTSCL.World.Unity
                                 Mathf.FloorToInt(_attackTarget.transform.position.y), 0));
                             if (IsLocalOwner)
                                 NetCommandIssuer.IssueDamage(_attackTarget, AttackDamage, this);
+                        }
+                    }
+                    break;
+                }
+
+                case State.MovingToAttackBuilding:
+                {
+                    if (!BuildingAlive(_buildingTarget)) { _state = State.Idle; _hasBuildingTarget = false; break; }
+                    if (ChebyshevToFootprint(_buildingTarget, FootprintOf(_buildingTarget)) <= AttackRange)
+                    {
+                        _state = State.AttackingBuilding;
+                        _attackTimer = AttackInterval; // first hit promptly
+                        break;
+                    }
+                    if (MoveAlongPath())   // arrived but still out of range → can't reach, give up
+                    {
+                        if (ChebyshevToFootprint(_buildingTarget, FootprintOf(_buildingTarget)) > AttackRange)
+                        { _state = State.Idle; _hasBuildingTarget = false; }
+                    }
+                    break;
+                }
+
+                case State.AttackingBuilding:
+                {
+                    if (!BuildingAlive(_buildingTarget)) { _state = State.Idle; _hasBuildingTarget = false; break; }
+                    if (ChebyshevToFootprint(_buildingTarget, FootprintOf(_buildingTarget)) > AttackRange)
+                    {
+                        _state = State.MovingToAttackBuilding;
+                        RepathTo(NearestStandToFootprint(_buildingTarget));
+                        break;
+                    }
+                    _attackTimer += Time.deltaTime;
+                    if (_attackTimer >= AttackInterval)
+                    {
+                        _attackTimer = 0f;
+                        var fp = FootprintOf(_buildingTarget);
+                        if (_projectileSprite == null)   // melee lunge toward building center (ranged: no anim)
+                            StartHitAnim(new Vector3Int(Mathf.FloorToInt(_buildingTarget.x + fp.x * 0.5f),
+                                                        Mathf.FloorToInt(_buildingTarget.y + fp.y * 0.5f), 0));
+                        if (IsLocalOwner)
+                        {
+                            BuildingHP.Damage(_buildingTarget, AttackDamage);
+                            if (!BuildingAlive(_buildingTarget))
+                            {
+                                NetCommandApplier.Placer?.RemoveBuilding(_buildingTarget);
+                                _state = State.Idle; _hasBuildingTarget = false;
+                            }
                         }
                     }
                     break;

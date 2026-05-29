@@ -32,6 +32,8 @@ namespace RTSCL.World.Unity
         [SerializeField] private Tilemap _terrainMap;
         [Tooltip("Optional: spawns neutral monsters after the player teams.")]
         [SerializeField] private MonsterSpawner _monsterSpawner;
+        [Tooltip("Optional: tracks win/lose by building ownership.")]
+        [SerializeField] private MatchManager _matchManager;
 
         [Header("Main Base")]
         [SerializeField] private string _mainBuildingName = "Keep_0";
@@ -77,6 +79,7 @@ namespace RTSCL.World.Unity
             HarvestReservations.Clear();
             RallyPoints.Clear();
             BotEconomy.Reset();
+            Time.timeScale = 1f;   // un-pause in case we returned from a game-over overlay
             // Solo: give bot factions visible colors (player stays white via IsLocalOwner path).
             if (WorldStartContext.IsSolo)
                 WorldStartContext.GetPlayerColor = SoloBotColor;
@@ -126,6 +129,14 @@ namespace RTSCL.World.Unity
                     BotEconomy.Seed(botOwner, 100, 100);
                     int popPerUnit = _startingUnitDef != null ? _startingUnitDef.PopulationCost : 1;
                     BotEconomy.AddUsed(botOwner, _startingGoblins * popPerUnit);
+                }
+
+                // Start win/lose tracking for the player (0) + the spawned bots (1..N).
+                if (_matchManager != null)
+                {
+                    var owners = new System.Collections.Generic.List<ulong> { 0UL };
+                    for (int b = 1; b <= bots; b++) owners.Add((ulong)b);
+                    _matchManager.Begin(owners);
                 }
 
                 SpawnMonsters(world);

@@ -835,6 +835,7 @@ GameObject:
   - component: {fileID: 626648820}
   - component: {fileID: 626648822}
   - component: {fileID: 626648823}
+  - component: {fileID: 626648824}
   m_Layer: 0
   m_Name: MainBaseSetup
   m_TagString: Untagged
@@ -860,6 +861,7 @@ MonoBehaviour:
   _goblinSpawner: {fileID: 164504308}
   _terrainMap: {fileID: 1282190478}
   _monsterSpawner: {fileID: 626648822}
+  _matchManager: {fileID: 626648824}
   _mainBuildingName: Keep_0
   _startingGoblins: 5
   _startingUnitDef: {fileID: 11400000, guid: c9e4617fcfab8e60d52cf1f8e7f5060d, type: 2}
@@ -934,6 +936,25 @@ MonoBehaviour:
   _keepName: Keep_0
   _hutName: Huts_0
   _barracksName: Barracks_0
+  _visionRadius: 6
+  _keepVisionRadius: 10
+  _engageRadius: 8
+  _attackCooldown: 300
+--- !u!114 &626648824
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 626648819}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 505cb6b7c23084d43b854e8549a0d4d3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: RTSCL.World.Unity::RTSCL.World.Unity.MatchManager
+  _placer: {fileID: 1966971705}
+  _font: {fileID: 12800000, guid: 9e2df1d63f1cf514aa45d7730f0b04cb, type: 3}
+  _checkInterval: 0.5
 --- !u!1 &635201105
 GameObject:
   m_ObjectHideFlags: 0

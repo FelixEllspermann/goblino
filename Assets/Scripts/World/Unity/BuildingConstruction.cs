@@ -89,6 +89,9 @@ namespace RTSCL.World.Unity
             return true;
         }
 
+        /// <summary>Drop a single in-progress site (e.g. when a half-built building is destroyed).</summary>
+        public static void Remove(Vector2Int origin) => _sites.Remove(origin);
+
         /// <summary>Wipe all in-progress construction sites. Called when a new world is generated.</summary>
         public static void Clear() => _sites.Clear();
     }

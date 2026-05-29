@@ -101,11 +101,20 @@ namespace RTSCL.World.Unity
                     ClickFeedback.Spawn(treeCenter, new Color(0.4f, 1f, 0.4f, 0.85f));  // green = harvest
                     if (shift) EnqueueHarvest(treeCell); else { ClearQueues(); CommandHarvest(treeCell); }
                 }
-                else if (TryGetConstructionAt(worldTarget, out var buildOrigin))
+                else if (TryGetBuildingTarget(worldTarget, out var bOrigin, out bool bMine, out bool bUnderConstruction)
+                         && ((bMine && bUnderConstruction) || !bMine))
                 {
-                    Vector3 c = new(buildOrigin.x + 0.5f, buildOrigin.y + 0.5f, 0f);
-                    ClickFeedback.Spawn(c, new Color(1f, 0.7f, 0.2f, 0.9f));  // orange = build
-                    if (shift) EnqueueBuildAssist(buildOrigin); else { ClearQueues(); CommandBuildAssist(buildOrigin); }
+                    Vector3 c = new(bOrigin.x + 0.5f, bOrigin.y + 0.5f, 0f);
+                    if (bMine)
+                    {
+                        ClickFeedback.Spawn(c, new Color(1f, 0.7f, 0.2f, 0.9f));  // orange = build-assist
+                        if (shift) EnqueueBuildAssist(bOrigin); else { ClearQueues(); CommandBuildAssist(bOrigin); }
+                    }
+                    else
+                    {
+                        ClickFeedback.Spawn(c, new Color(1f, 0.3f, 0.3f, 0.9f)); // red = attack building
+                        ClearQueues(); CommandAttackBuilding(bOrigin);
+                    }
                 }
                 else if (TryGetGoblinAt(worldTarget, out var enemy))
                 {
@@ -120,16 +129,28 @@ namespace RTSCL.World.Unity
             }
         }
 
-        // Returns true if worldPos overlaps a building cell that is still under construction.
-        // Used to distinguish "right-click on construction site" from a plain move command.
-        private bool TryGetConstructionAt(Vector3 worldPos, out Vector2Int origin)
+        // Resolve a building under the cursor: its origin, whether it's the local player's, and whether
+        // it's still under construction. Drives right-click: own+construction → build-assist; enemy → attack.
+        private bool TryGetBuildingTarget(Vector3 worldPos, out Vector2Int origin, out bool mine, out bool underConstruction)
         {
-            origin = default;
+            origin = default; mine = false; underConstruction = false;
             if (_terrainMap == null || _buildingPlacer == null) return false;
             var cell = _terrainMap.WorldToCell(worldPos);
             var cell2 = new Vector2Int(cell.x, cell.y);
-            if (!_buildingPlacer.TryGetBuildingOrigin(cell2, out origin)) return false;
-            return BuildingConstruction.IsUnderConstruction(origin);
+            if (!_buildingPlacer.TryGetBuildingAt(cell2, out var def) || def == null) return false;
+            if (!_buildingPlacer.TryGetBuildingOrigin(cell2, out origin)) origin = cell2;
+            ulong owner = _buildingPlacer.TryGetBuildingOwner(cell2, out var o) ? o : 0UL;
+            mine = owner == WorldStartContext.LocalPlayer || owner == 0UL;
+            underConstruction = BuildingConstruction.IsUnderConstruction(origin);
+            return true;
+        }
+
+        // Order every combat-capable selected unit to attack the building at origin.
+        private void CommandAttackBuilding(Vector2Int origin)
+        {
+            foreach (var g in _selected)
+                if (g != null && g.AttackDamage > 0)
+                    g.SetAttackBuildingCommand(origin);
         }
 
         // Returns true if the decoration tile at world falls under Goblin.IsHarvestable.
