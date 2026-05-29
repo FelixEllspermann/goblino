@@ -311,6 +311,9 @@ namespace RTSCL.World.Unity
             if (target == null || target == this) return;
             if (AttackDamage <= 0) return;   // non-combatants (Farmers) ignore
             if (target.CurrentHp <= 0) return;
+            // Re-issuing an attack on the SAME target we're already engaging is a no-op: it must
+            // not reset the attack cooldown, otherwise right-click spam fires with no cooldown.
+            if (target == _attackTarget && (_state == State.MovingToAttack || _state == State.Attacking)) return;
             HarvestReservations.Release(this);
             ResetHitAnim();
             _attackTarget = target;

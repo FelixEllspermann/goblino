@@ -21,6 +21,6 @@ MonoBehaviour:
   AttackDamage: 4
   AttackInterval: 1.8
   AttackRange: 5
-  ProjectileSprite: {fileID: -2820039621253805247, guid: 1be4c078556799e4e9dcc024310dacb9, type: 3}
+  ProjectileSprite: {fileID: 1237148648781045066, guid: 1be4c078556799e4e9dcc024310dacb9, type: 3}
   SpawnDuration: 7
   SpawnerKindName: ArcherGoblin
