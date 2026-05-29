@@ -115,27 +115,14 @@ namespace RTSCL.World.Unity
             return t != null && Goblin.IsHarvestable(t.name);
         }
 
-        private void CommandHarvest(Vector3Int clickedTree)
+        private void CommandHarvest(Vector3Int clickedNode)
         {
-            // Only worker units (Farmer Goblins) can harvest
+            // Only worker units (Farmer Goblins) can harvest. All selected workers go to the
+            // SAME clicked node; HarvestReservations fans them out onto distinct adjacent cells.
             var workers = new List<Goblin>();
             foreach (var g in _selected) if (IsWorker(g)) workers.Add(g);
             if (workers.Count == 0) return;
-
-            // Find up to N nearest trees around the click (one per worker)
-            var trees = FindNearbyHarvestables(clickedTree, workers.Count, _harvestSpreadRadius);
-            if (trees.Count == 0) return;
-            // Group workers by their assigned tree, then issue one network command per tree.
-            var byTree = new Dictionary<Vector3Int, List<Goblin>>();
-            for (int i = 0; i < workers.Count; i++)
-            {
-                var assigned = trees[i % trees.Count];
-                if (!byTree.TryGetValue(assigned, out var list))
-                { list = new List<Goblin>(); byTree[assigned] = list; }
-                list.Add(workers[i]);
-            }
-            foreach (var kvp in byTree)
-                NetCommandIssuer.IssueHarvest(kvp.Value, kvp.Key);
+            NetCommandIssuer.IssueHarvest(workers, clickedNode);
         }
 
         private static bool IsWorker(Goblin g) =>
