@@ -75,6 +75,17 @@ namespace RTSCL.World.Unity
         /// <summary>Mark this unit as a neutral monster (call right after spawn). Refreshes visuals.</summary>
         public void MarkNeutral() { IsNeutral = true; ApplyOwnerVisuals(); RefreshSelectionRingColor(); }
 
+        /// <summary>True if <paramref name="other"/> is a valid hostile target (no friendly fire):
+        /// monsters fight any non-monster; players fight only across different owners; same owner
+        /// (and monster-vs-monster) is friendly.</summary>
+        public bool IsHostileTo(Goblin other)
+        {
+            if (other == null || other == this) return false;
+            if (IsNeutral && other.IsNeutral) return false;      // monsters don't fight each other
+            if (IsNeutral || other.IsNeutral) return true;       // monster vs player = hostile
+            return Owner != other.Owner;                          // players: only across factions
+        }
+
         /// <summary>Discriminator for owner-local queued commands. Remotes never enqueue.</summary>
         public enum CommandType { Move, Harvest, BuildAssist, Attack }
 
@@ -325,6 +336,7 @@ namespace RTSCL.World.Unity
             if (target == null || target == this) return;
             if (AttackDamage <= 0) return;   // non-combatants (Farmers) ignore
             if (target.CurrentHp <= 0) return;
+            if (!IsHostileTo(target)) return;   // no friendly fire
             // Re-issuing an attack on the SAME target we're already engaging is a no-op: it must
             // not reset the attack cooldown, otherwise right-click spam fires with no cooldown.
             if (target == _attackTarget && (_state == State.MovingToAttack || _state == State.Attacking)) return;

@@ -246,6 +246,9 @@ namespace RTSCL.World.Unity
                 // Don't pick a currently-selected goblin (so right-click on your own selection
                 // doesn't accidentally target one of your own as the victim).
                 if (_selected.Contains(g)) continue;
+                // No friendly fire: skip own (non-neutral, locally-owned) units — only enemies/monsters
+                // are valid attack targets. A right-click on a friendly falls through to a move command.
+                if (IsLocalOwner(g) && !g.IsNeutral) continue;
                 float d = (g.transform.position - worldPos).sqrMagnitude;
                 if (d < bestDistSq) { bestDistSq = d; target = g; }
             }
