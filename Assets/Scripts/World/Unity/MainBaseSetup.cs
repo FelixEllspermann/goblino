@@ -49,6 +49,8 @@ namespace RTSCL.World.Unity
             NetworkCatalog.PopulateFromCatalog(_catalog);
             NetCommandApplier.Placer = _buildingPlacer;
             NetCommandApplier.Spawner = _goblinSpawner;
+            WorldGrid.Width = world.Width;
+            WorldGrid.Height = world.Height;
 
             if (world.Spawns == null || world.Spawns.Length == 0) return;
 
