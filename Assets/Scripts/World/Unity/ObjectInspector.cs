@@ -58,6 +58,7 @@ namespace RTSCL.World.Unity
             public GoblinUnitDefinition Unit;
             public BuildingDefinition Building;
             public int WoodCost;
+            public int FoodCost;
             public UpgradeDefinition Upgrade;
             public UpgradeKind UpgradeKind;
         }
@@ -263,8 +264,10 @@ namespace RTSCL.World.Unity
             foreach (var u in units)
             {
                 if (u == null) continue;
-                var c = CreateCard(u.DisplayName, u.Icon, u.WoodCost, () => OnUnitClicked(u));
+                var c = CreateCard(u.DisplayName, u.Icon, FormatUnitCost(u.WoodCost, u.FoodCost), () => OnUnitClicked(u));
                 c.Unit = u;
+                c.WoodCost = u.WoodCost;
+                c.FoodCost = u.FoodCost;
                 _cards.Add(c);
             }
         }
@@ -277,8 +280,9 @@ namespace RTSCL.World.Unity
             foreach (var b in defs)
             {
                 if (b == null) continue;
-                var c = CreateCard(b.DisplayName, b.Sprite, b.WoodCost, () => OnBuildingClicked(b));
+                var c = CreateCard(b.DisplayName, b.Sprite, $"{b.WoodCost} Wood", () => OnBuildingClicked(b));
                 c.Building = b;
+                c.WoodCost = b.WoodCost;
                 _cards.Add(c);
             }
         }
@@ -291,14 +295,15 @@ namespace RTSCL.World.Unity
             foreach (var u in upgrades)
             {
                 if (u == null) continue;
-                var c = CreateCard(u.DisplayName, u.Icon, u.WoodCost, () => OnUpgradeClicked(u));
+                var c = CreateCard(u.DisplayName, u.Icon, $"{u.WoodCost} Wood", () => OnUpgradeClicked(u));
                 c.Upgrade = u;
                 c.UpgradeKind = u.Kind;
+                c.WoodCost = u.WoodCost;
                 _cards.Add(c);
             }
         }
 
-        private CardRefs CreateCard(string title, Sprite icon, int woodCost, Action onClick)
+        private CardRefs CreateCard(string title, Sprite icon, string costText, Action onClick)
         {
             var card = new GameObject($"Card_{title}");
             card.transform.SetParent(_unitCardsContainer, false);
@@ -358,13 +363,13 @@ namespace RTSCL.World.Unity
 
             var costGo = new GameObject("Cost");
             costGo.transform.SetParent(textGo.transform, false);
-            var costText = costGo.AddComponent<Text>();
-            costText.text = $"{woodCost} Wood";
-            costText.font = _cardFont;
-            costText.fontSize = 12;
-            costText.color = new Color(0.85f, 0.75f, 0.45f);
-            costText.alignment = TextAnchor.MiddleLeft;
-            costText.horizontalOverflow = HorizontalWrapMode.Overflow;
+            var costLabel = costGo.AddComponent<Text>();
+            costLabel.text = costText;
+            costLabel.font = _cardFont;
+            costLabel.fontSize = 12;
+            costLabel.color = new Color(0.85f, 0.75f, 0.45f);
+            costLabel.alignment = TextAnchor.MiddleLeft;
+            costLabel.horizontalOverflow = HorizontalWrapMode.Overflow;
 
             btn.onClick.AddListener(() => onClick?.Invoke());
 
@@ -375,8 +380,7 @@ namespace RTSCL.World.Unity
                 Bg = bg,
                 Icon = iconImg,
                 Name = nameText,
-                Cost = costText,
-                WoodCost = woodCost,
+                Cost = costLabel,
             };
         }
 
@@ -478,6 +482,14 @@ namespace RTSCL.World.Unity
             null           => "Goblin",
             _              => kind,
         };
+
+        private static string FormatUnitCost(int woodCost, int foodCost)
+        {
+            if (woodCost > 0 && foodCost > 0) return $"{woodCost} Wood, {foodCost} Food";
+            if (woodCost > 0) return $"{woodCost} Wood";
+            if (foodCost > 0) return $"{foodCost} Food";
+            return "Free";
+        }
 
         private static string DescribeBuilding(BuildingDefinition def)
         {
