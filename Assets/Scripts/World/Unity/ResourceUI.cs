@@ -5,6 +5,8 @@ namespace RTSCL.World.Unity
 {
     public sealed class ResourceUI : MonoBehaviour
     {
+        [SerializeField] private Image _woodIcon;
+        [SerializeField] private Image _foodIcon;
         [SerializeField] private Text _woodLabel;
         [SerializeField] private Text _foodLabel;
         [SerializeField] private Text _populationLabel;
