@@ -834,6 +834,7 @@ GameObject:
   - component: {fileID: 626648821}
   - component: {fileID: 626648820}
   - component: {fileID: 626648822}
+  - component: {fileID: 626648823}
   m_Layer: 0
   m_Name: MainBaseSetup
   m_TagString: Untagged
@@ -910,6 +911,29 @@ MonoBehaviour:
     Count: 2
     RequireAdjacentWater: 0
   _minDistanceFromSpawns: 22
+--- !u!114 &626648823
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 626648819}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eb0ac91baa786984a9663bc88753dea4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: RTSCL.World.Unity::RTSCL.World.Unity.BotController
+  _placer: {fileID: 1966971705}
+  _spawner: {fileID: 164504308}
+  _catalog: {fileID: 11400000, guid: fd7836c091ac0674d93cda3809ca517e, type: 2}
+  _terrainMap: {fileID: 1282190478}
+  _decorationMap: {fileID: 1706478009}
+  _tickInterval: 1
+  _farmerTarget: 8
+  _searchRadius: 32
+  _keepName: Keep_0
+  _hutName: Huts_0
+  _barracksName: Barracks_0
 --- !u!1 &635201105
 GameObject:
   m_ObjectHideFlags: 0

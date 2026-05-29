@@ -25,6 +25,9 @@ namespace RTSCL.World.Unity
             _popCap[owner] = BasePopCap;
         }
 
+        /// <summary>All bot owner ids that currently have an economy (for the BotController to iterate).</summary>
+        public static IEnumerable<ulong> Owners => _res.Keys;
+
         public static bool Has(ulong owner) => _res.ContainsKey(owner);
         public static int Get(ulong owner, ResourceKind k) => _res.TryGetValue(owner, out var r) ? r[(int)k] : 0;
 

@@ -749,7 +749,13 @@ namespace RTSCL.World.Unity
         {
             if (_state == State.Dying) return;
             _state = State.Dying;
-            if (!IsNeutral) PopulationManager.RemoveUsed(PopulationCost); // monsters never used player pop
+            // Release population: bot units (solo, non-player owner) from BotEconomy; the player from
+            // PopulationManager; monsters never consumed any.
+            if (!IsNeutral)
+            {
+                if (WorldStartContext.IsSolo && Owner != 0UL) BotEconomy.RemoveUsed(Owner, PopulationCost);
+                else PopulationManager.RemoveUsed(PopulationCost);
+            }
             Goblin.All.Remove(this);
             SetSelected(false);
             // Clear any in-flight lunge so it doesn't fight the hop-arc transform writes.
