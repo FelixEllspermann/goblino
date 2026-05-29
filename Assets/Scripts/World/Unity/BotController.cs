@@ -248,11 +248,11 @@ namespace RTSCL.World.Unity
             }
             int aboard = boat != null ? boat.PassengerCount : 0;
 
-            // ── DEFENSE: a neutral monster harassing the base → form a squad and kill it. This overrides
-            //    the attack plan for as long as the threat is near; it can also train urgently in downtime. ──
-            if (NearbyNeutralThreat(owner, st, out var monster))
+            // ── DEFENSE: a hostile unit (neutral monster or enemy combatant) near the base → form a squad
+            //    and kill it. Overrides the attack plan while the threat is near; trains urgently if needed. ──
+            if (NearbyThreat(owner, st, out var threat))
             {
-                foreach (var g in army) g.SetAttackCommand(monster);   // every combatant converges on it
+                foreach (var g in army) g.SetAttackCommand(threat);    // every combatant converges on it
                 if (military < _defenseSquadSize)
                     TrainMilitary(owner, st, dt, hasBarracks, barracks, military, _defenseSquadSize);
                 return;
@@ -408,31 +408,36 @@ namespace RTSCL.World.Unity
                       $"weights now S:{w[0]:0} M:{w[1]:0} L:{w[2]:0}");
         }
 
-        // A neutral monster is a threat if it's near the keep or right next to one of the bot's units
-        // (i.e. harassing / aggroing the base). Returns the nearest such monster to the keep.
-        private bool NearbyNeutralThreat(ulong owner, BotState st, out Goblin monster)
+        // Defense trigger: any HOSTILE unit (neutral monster OR an enemy player's/other bot's combat unit)
+        // that is near the keep or right next to one of the bot's units. Returns the nearest one to the keep.
+        // Enemy non-combat units (farmers/scouts) don't trigger it; neutral monsters always do.
+        private bool NearbyThreat(ulong owner, BotState st, out Goblin threat)
         {
-            monster = null;
+            threat = null;
             Vector3 keep = new(st.Keep.x + 0.5f, st.Keep.y + 0.5f, 0f);
             float keepR2 = _defenseRadius * _defenseRadius;
             float bestSq = float.MaxValue;
             foreach (var m in Goblin.All)
             {
-                if (m == null || !m.IsNeutral || m.CurrentHp <= 0) continue;
+                if (m == null || m.CurrentHp <= 0) continue;
+                bool isEnemy = m.IsNeutral || m.Owner != owner;       // not one of our own units
+                if (!isEnemy) continue;
+                if (!m.IsNeutral && m.AttackDamage <= 0) continue;     // ignore harmless enemy workers/scouts
+
                 float dk = (m.transform.position - keep).sqrMagnitude;
-                bool threat = dk <= keepR2;
-                if (!threat)
+                bool near = dk <= keepR2;
+                if (!near)
                 {
-                    foreach (var g in Goblin.All)   // near any of our units → it's engaging us
+                    foreach (var g in Goblin.All)   // engaging one of our units?
                     {
                         if (g == null || g.IsNeutral || g.Owner != owner || g.CurrentHp <= 0) continue;
-                        if (g.Kind == "FarmerGoblin") continue;   // ignore harmless workers as the trigger
-                        if ((m.transform.position - g.transform.position).sqrMagnitude <= 36f) { threat = true; break; }
+                        if (g.Kind == "FarmerGoblin") continue;
+                        if ((m.transform.position - g.transform.position).sqrMagnitude <= 36f) { near = true; break; }
                     }
                 }
-                if (threat && dk < bestSq) { bestSq = dk; monster = m; }
+                if (near && dk < bestSq) { bestSq = dk; threat = m; }
             }
-            return monster != null;
+            return threat != null;
         }
 
         // Nearest hostile, living goblin within radius of g (players, monsters, other bots).

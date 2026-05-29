@@ -27,10 +27,11 @@ namespace RTSCL.World.Unity
     /// divergence is purely cosmetic.</summary>
     public static class HarvestReservations
     {
-        // Maps each goblin to the (node tile-cell, reserved standing cell) it currently holds.
-        private static readonly Dictionary<Goblin, (Vector3Int node, Vector2Int cell)> _byGoblin = new();
-        // Maps each node tile-cell to the set of standing cells already reserved by other goblins.
-        private static readonly Dictionary<Vector3Int, HashSet<Vector2Int>> _takenByNode = new();
+        // Maps each goblin to the standing cell it currently holds.
+        private static readonly Dictionary<Goblin, Vector2Int> _byGoblin = new();
+        // GLOBAL set of every reserved standing cell across ALL nodes — so harvesters at two adjacent
+        // resource nodes can't be handed the same cell (which previously let them overlap).
+        private static readonly HashSet<Vector2Int> _taken = new();
 
         // 8-directional adjacency, tried in this order during Reserve to pick the nearest free spot.
         private static readonly Vector3Int[] Offsets =
@@ -46,12 +47,6 @@ namespace RTSCL.World.Unity
         {
             Release(g);
 
-            if (!_takenByNode.TryGetValue(node, out var taken))
-            {
-                taken = new HashSet<Vector2Int>();
-                _takenByNode[node] = taken;
-            }
-
             Vector2Int bestFree = default; float bestFreeDist = float.MaxValue; bool foundFree = false;
             Vector2Int bestAny = default;  float bestAnyDist  = float.MaxValue; bool foundAny = false;
 
@@ -62,7 +57,7 @@ namespace RTSCL.World.Unity
                 var cell = new Vector2Int(nc.x, nc.y);
                 float d = (new Vector3(nc.x + 0.5f, nc.y + 0.5f, 0f) - from).sqrMagnitude;
                 if (d < bestAnyDist) { bestAnyDist = d; bestAny = cell; foundAny = true; }
-                if (!taken.Contains(cell) && d < bestFreeDist) { bestFreeDist = d; bestFree = cell; foundFree = true; }
+                if (!_taken.Contains(cell) && d < bestFreeDist) { bestFreeDist = d; bestFree = cell; foundFree = true; }
             }
 
             Vector2Int chosen;
@@ -70,8 +65,8 @@ namespace RTSCL.World.Unity
             else if (foundAny)  chosen = bestAny;          // all free taken → stack on closest passable
             else                chosen = new Vector2Int(node.x, node.y); // nothing passable → node center
 
-            taken.Add(chosen);
-            _byGoblin[g] = (node, chosen);
+            _taken.Add(chosen);
+            _byGoblin[g] = chosen;
             return chosen;
         }
 
@@ -81,13 +76,11 @@ namespace RTSCL.World.Unity
         /// goblin's own reservation so its previously-held cell counts as free again.</summary>
         public static bool HasFreeSpot(Vector3Int node, Func<int, int, bool> passable)
         {
-            _takenByNode.TryGetValue(node, out var taken);
             foreach (var off in Offsets)
             {
                 var nc = node + off;
                 if (passable != null && !passable(nc.x, nc.y)) continue;
-                var cell = new Vector2Int(nc.x, nc.y);
-                if (taken == null || !taken.Contains(cell)) return true;
+                if (!_taken.Contains(new Vector2Int(nc.x, nc.y))) return true;
             }
             return false;
         }
@@ -96,20 +89,14 @@ namespace RTSCL.World.Unity
         public static void Release(Goblin g)
         {
             if (g == null) return;
-            if (!_byGoblin.TryGetValue(g, out var held)) return;
-            _byGoblin.Remove(g);
-            if (_takenByNode.TryGetValue(held.node, out var taken))
-            {
-                taken.Remove(held.cell);
-                if (taken.Count == 0) _takenByNode.Remove(held.node);
-            }
+            if (_byGoblin.TryGetValue(g, out var cell)) { _taken.Remove(cell); _byGoblin.Remove(g); }
         }
 
         /// <summary>Wipe all reservations (new world).</summary>
         public static void Clear()
         {
             _byGoblin.Clear();
-            _takenByNode.Clear();
+            _taken.Clear();
         }
     }
 }

@@ -64,8 +64,9 @@ namespace RTSCL.World.Unity
         [SerializeField] private Sprite _rallyIcon;
 
         // Which type of object is currently being inspected.
-        private enum SelKind { None, Building, Decoration, Goblins }
+        private enum SelKind { None, Building, Decoration, Goblins, UnitInfo }
         private SelKind _selKind = SelKind.None;
+        private Goblin _inspectedUnit;            // enemy/neutral unit shown in UnitInfo mode (read-only)
         // Cached state for the active display mode; updated each time Show*() is called.
         private Vector2Int _selOrigin;            // SW-corner of selected building (Building mode)
         private BuildingDefinition _selDef;       // definition of selected building
@@ -112,7 +113,10 @@ namespace RTSCL.World.Unity
             PopulationManager.OnChanged += Refresh;
             GoblinProduction.OnChanged += Refresh;
             if (_selectionController != null)
+            {
                 _selectionController.OnSelectionChanged += OnGoblinSelectionChanged;
+                _selectionController.OnInspectUnit += ShowUnitInfo;
+            }
         }
 
         private void OnDestroy()
@@ -121,7 +125,10 @@ namespace RTSCL.World.Unity
             PopulationManager.OnChanged -= Refresh;
             GoblinProduction.OnChanged -= Refresh;
             if (_selectionController != null)
+            {
                 _selectionController.OnSelectionChanged -= OnGoblinSelectionChanged;
+                _selectionController.OnInspectUnit -= ShowUnitInfo;
+            }
         }
 
         private void Update()
@@ -134,6 +141,7 @@ namespace RTSCL.World.Unity
             if (_selKind == SelKind.Building) UpdateProgressUI();
             if (_selKind == SelKind.Goblins) UpdateCarryUI();
             if (_selKind == SelKind.Decoration) UpdateResourceAmount();
+            if (_selKind == SelKind.UnitInfo) UpdateInspectedUnit();
 
             // Right-click while a unit-training building is selected → set/move its rally point.
             if (Mouse.current.rightButton.wasPressedThisFrame
@@ -174,7 +182,9 @@ namespace RTSCL.World.Unity
                     return;
                 }
             }
-            // Click on empty terrain — if no goblin selection, hide popup
+            // Click on empty terrain — if no goblin selection, hide popup. (UnitInfo panels are opened by
+            // GoblinSelectionController on mouse-release, a later frame than this press-driven check, so
+            // this won't clobber them; clicking empty ground here correctly dismisses a shown panel.)
             if (_selectionController == null || _selectionController.Selection.Count == 0)
                 Hide();
         }
@@ -226,6 +236,41 @@ namespace RTSCL.World.Unity
             if (_progressRow != null) _progressRow.SetActive(false);
             _popupRoot?.SetActive(true);
             Refresh();
+        }
+
+        // Read-only info for an enemy / neutral unit clicked on the map (no action cards, no commands).
+        private void ShowUnitInfo(Goblin g)
+        {
+            if (g == null) return;
+            _selKind = SelKind.UnitInfo;
+            _selDef = null;
+            _inspectedUnit = g;
+            RallyVisual.Instance.Hide();
+            if (_selBuildingOwner != null) { _selBuildingOwner.SetSelected(false); _selBuildingOwner = null; }
+            ClearCards();
+            if (_progressRow != null) _progressRow.SetActive(false);
+            SetHeader(UnitInfoTitle(g), UnitInfoDesc(g));
+            _popupRoot?.SetActive(true);
+        }
+
+        // Live-refresh the inspected unit's HP; hide once it dies or is removed (e.g. boards a boat).
+        private void UpdateInspectedUnit()
+        {
+            if (_inspectedUnit == null || _inspectedUnit.CurrentHp <= 0 || !_inspectedUnit.gameObject.activeInHierarchy)
+            { Hide(); return; }
+            if (_descriptionLabel != null) _descriptionLabel.text = UnitInfoDesc(_inspectedUnit);
+        }
+
+        private static string UnitInfoTitle(Goblin g)
+        {
+            string side = g.IsNeutral ? "Neutral" : "Enemy";
+            return $"{side} {PrettyKindName(g.Kind)}";
+        }
+
+        private static string UnitInfoDesc(Goblin g)
+        {
+            string type = g.Kind == "FarmerGoblin" ? "Worker" : (g.AttackDamage > 0 ? "Warrior" : "Unit");
+            return $"{type}\nHP: {g.CurrentHp} / {g.MaxHp}";
         }
 
         private void ShowBuilding(BuildingDefinition def, Vector2Int origin)
@@ -331,6 +376,7 @@ namespace RTSCL.World.Unity
             _selBuildingOwner = null;
             _selKind = SelKind.None;
             _selDef = null;
+            _inspectedUnit = null;
             ClearCards();
         }
 

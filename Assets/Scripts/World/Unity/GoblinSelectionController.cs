@@ -30,6 +30,9 @@ namespace RTSCL.World.Unity
         public IReadOnlyList<Goblin> Selection => _selected;
         /// <summary>Fires whenever the selection list changes (units selected/deselected).</summary>
         public event Action OnSelectionChanged;
+        /// <summary>Fires when an enemy/neutral unit is left-clicked (for read-only inspection — it is
+        /// NOT added to the commandable selection, so the player can't control enemy units).</summary>
+        public event Action<Goblin> OnInspectUnit;
 
         [SerializeField] private Camera _camera;
         [SerializeField] private BuildingPlacer _buildingPlacer;
@@ -223,7 +226,20 @@ namespace RTSCL.World.Unity
                 float d = Vector2.Distance(g.transform.position, world);
                 if (d < bestDist) { bestDist = d; best = g; }
             }
-            SetSelection(best != null ? new List<Goblin> { best } : new List<Goblin>());
+            if (best != null) { SetSelection(new List<Goblin> { best }); return; }
+
+            // No friendly under the cursor → inspect an enemy/neutral unit (read-only; never commanded).
+            Goblin other = null; float otherDist = _clickPickRadius;
+            foreach (var g in Goblin.All)
+            {
+                if (g == null) continue;
+                if (IsLocalOwner(g) && !g.IsNeutral) continue;   // our own units were handled above
+                if (PointInBounds(g.SelectionBounds, world)) { other = g; break; }
+                float d = Vector2.Distance(g.transform.position, world);
+                if (d < otherDist) { otherDist = d; other = g; }
+            }
+            SetSelection(new List<Goblin>());                    // clear the commandable selection
+            if (other != null) OnInspectUnit?.Invoke(other);
         }
 
         // Select all local goblins whose screen position falls within the drag rectangle.

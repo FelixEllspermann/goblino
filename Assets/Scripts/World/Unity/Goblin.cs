@@ -129,12 +129,19 @@ namespace RTSCL.World.Unity
 
         /// <summary>True if this unit is a boat (water transport).</summary>
         public bool IsBoat => _waterMode;
-        /// <summary>World-space AABB of the rendered sprite. Used for click-selection so large or
-        /// pivot-offset sprites (boats, monsters) are pickable across their full visual extent, not
-        /// just a fixed radius around the transform.</summary>
-        public Bounds SelectionBounds => _renderer != null
-            ? _renderer.bounds
-            : new Bounds(transform.position, new Vector3(0.5f, 0.5f, 0.5f));
+        /// <summary>World-space AABB of the rendered sprite, padded a little, for click-selection.
+        /// Centered on the actual sprite (correct even when the pivot is at the feet) and inflated so
+        /// the unit is easy to click — large/offset sprites (boats, monsters) are fully pickable.</summary>
+        public Bounds SelectionBounds
+        {
+            get
+            {
+                var b = _renderer != null ? _renderer.bounds
+                                          : new Bounds(transform.position, new Vector3(0.5f, 0.5f, 0f));
+                b.Expand(0.4f);   // ~0.2 world units of slack on each side
+                return b;
+            }
+        }
         /// <summary>True if a boat still has room for more passengers.</summary>
         public bool BoatHasRoom => _waterMode && _passengers.Count < BoatCapacity;
         /// <summary>Number of units currently aboard this boat.</summary>
@@ -812,6 +819,38 @@ namespace RTSCL.World.Unity
             // so the killing blow's lunge finishes after the target dies. Dying state owns
             // the transform itself, so we skip there.
             if (_state != State.Dying) UpdateHitAnim();
+
+            // Gentle anti-stacking: nudge apart from units sharing this spot so they never sit on the
+            // exact same cell (combat clusters, idle clumps, harvesters at adjacent nodes). Cosmetic.
+            if (_state != State.Dying) ApplySeparation();
+        }
+
+        private const float SepRadius = 0.5f;     // units want at least this much clear space around them
+        private const float SepSpeed = 2.2f;      // max nudge speed (world units / second)
+
+        // Push slightly away from any nearby units, clamped and only onto passable cells. Runs on all
+        // clients (purely cosmetic position fix-up; never affects HP, harvest totals, or pathing goals).
+        private void ApplySeparation()
+        {
+            Vector3 push = Vector3.zero;
+            foreach (var o in All)
+            {
+                if (o == null || o == this) continue;
+                Vector3 d = transform.position - o.transform.position;
+                float sq = d.sqrMagnitude;
+                if (sq >= SepRadius * SepRadius) continue;
+                if (sq < 1e-5f) { push += new Vector3((NetId.LocalIndex % 2 == 0) ? 0.01f : -0.01f, 0.013f, 0f); continue; }
+                float dist = Mathf.Sqrt(sq);
+                push += d / dist * (SepRadius - dist);   // stronger the closer they are
+            }
+            if (push == Vector3.zero) return;
+
+            float maxStep = SepSpeed * Time.deltaTime;
+            if (push.magnitude > maxStep) push = push.normalized * maxStep;
+            Vector3 next = transform.position + push;
+            // Don't let separation shove a unit into impassable terrain (water/cliff for land units, etc.).
+            if (IsCellPassable(Mathf.FloorToInt(next.x), Mathf.FloorToInt(next.y)))
+                transform.position = next;
         }
 
         /// <summary>Pop and run the next queued command (owner-local). Invalid commands
