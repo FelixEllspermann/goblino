@@ -85,6 +85,7 @@ namespace RTSCL.World.Unity
         private const int WoodPerHit = 1;
         private const int MaxCarriedWood = 10;
         public int CarriedWood { get; private set; }
+        public int CarriedFood { get; private set; }
         private const int AutoFindRadius = 12;
         private const float HitAnimDuration = 0.32f;
         private const float HitLungeAmount = 0.30f;    // world units lurch forward
@@ -132,6 +133,19 @@ namespace RTSCL.World.Unity
         {
             if (_state == State.Dying) return;
             ResetHitAnim();
+
+            // Mutual exclusion: if carrying the opposite resource, deposit first then resume to this cell.
+            var tile = _decorationMap != null ? _decorationMap.GetTile(treeCell) : null;
+            bool targetIsWheat = tile != null && IsWheatfieldTile(tile.name);
+            bool carryingOppositeWood = CarriedWood > 0 && targetIsWheat;
+            bool carryingOppositeFood = CarriedFood > 0 && !targetIsWheat;
+            if (carryingOppositeWood || carryingOppositeFood)
+            {
+                _treeCell = treeCell;
+                TryStartDepositRun();    // sets _state = WalkingToDeposit and broadcasts move; resume targets _treeCell
+                return;
+            }
+
             _treeCell = treeCell;
             _moveTarget = FindAdjacentStandingSpot(treeCell);
             _state = State.MovingToTree;
@@ -272,8 +286,8 @@ namespace RTSCL.World.Unity
                     if (_harvestTimer >= _chopTickDuration)
                     {
                         _harvestTimer = 0f;
-                        bool destroyed = HitTree(_treeCell);
-                        if (CarriedWood >= MaxCarriedWood || destroyed)
+                        bool destroyed = HitHarvestable(_treeCell);
+                        if (CarriedWood >= MaxCarriedWood || CarriedFood >= MaxCarriedWood || destroyed)
                             TryStartDepositRun();
                     }
                     break;
@@ -285,8 +299,10 @@ namespace RTSCL.World.Unity
                     if (StepToward(_moveTarget))
                     {
                         // Arrived at keep — deposit.
-                        ResourceBank.AddWood(CarriedWood);
+                        if (CarriedWood > 0) ResourceBank.AddWood(CarriedWood);
+                        if (CarriedFood > 0) ResourceBank.AddFood(CarriedFood);
                         CarriedWood = 0;
+                        CarriedFood = 0;
 
                         // Resume: walk back to last tree if still alive, else find nearest, else idle.
                         if (IsHarvestableStillThere(_treeCell))
@@ -395,19 +411,26 @@ namespace RTSCL.World.Unity
         }
 
         /// <summary>Apply one chop to the given tree cell. Returns true if the tree was destroyed by this hit.</summary>
-        private bool HitTree(Vector3Int cell)
+        private bool HitHarvestable(Vector3Int cell)
         {
             var tile = _decorationMap.GetTile(cell) as UnityEngine.Tilemaps.Tile;
             var sprite = tile != null ? tile.sprite : null;
+            string tileName = tile != null ? tile.name : "";
 
-            int remaining = TreeHP.Hit(cell, 1);
-            CarriedWood = Mathf.Min(MaxCarriedWood, CarriedWood + WoodPerHit);
+            bool isWheatfield = IsWheatfieldTile(tileName);
+            int maxHp = isWheatfield ? 500 : TreeHP.MaxHP;
+            int remaining = TreeHP.Hit(cell, 1, maxHp);
+
+            if (isWheatfield) CarriedFood = Mathf.Min(MaxCarriedWood, CarriedFood + 1);
+            else              CarriedWood = Mathf.Min(MaxCarriedWood, CarriedWood + 1);
+
             StartHitAnim(cell);
             TreeHitEffect.Spawn(_decorationMap, cell, sprite);
 
             if (remaining <= 0)
             {
                 _decorationMap.SetTile(cell, null);
+                TreeHitEffect.SpawnBurst(_decorationMap, cell, sprite);
                 return true;
             }
             return false;
