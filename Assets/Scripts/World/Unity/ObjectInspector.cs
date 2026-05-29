@@ -427,12 +427,9 @@ namespace RTSCL.World.Unity
             if (_selectionController == null) return;
             var sel = _selectionController.Selection;
             string newCarry = "";
-            if (sel.Count == 1 && sel[0] != null && sel[0].Kind == "FarmerGoblin")
+            if (sel.Count == 1 && sel[0] != null && sel[0].Kind == "FarmerGoblin" && sel[0].CarriedAmount > 0)
             {
-                int wood = sel[0].CarriedWood;
-                int food = sel[0].CarriedFood;
-                if (wood > 0) newCarry = $"Carrying: {wood} wood";
-                else if (food > 0) newCarry = $"Carrying: {food} food";
+                newCarry = $"Carrying: {sel[0].CarriedAmount} {sel[0].CarriedKind.ToString().ToLowerInvariant()}";
             }
             if (newCarry == _lastCarryLine) return;
             _lastCarryLine = newCarry;

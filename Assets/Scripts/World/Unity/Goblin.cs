@@ -82,10 +82,9 @@ namespace RTSCL.World.Unity
             HarvestSpeedMul = Mathf.Max(0.01f, mul);
             _chopTickDuration = 2.0f / HarvestSpeedMul;
         }
-        private const int WoodPerHit = 1;
-        private const int MaxCarriedWood = 10;
-        public int CarriedWood { get; private set; }
-        public int CarriedFood { get; private set; }
+        private const int MaxCarried = 10;
+        public ResourceKind CarriedKind { get; private set; }
+        public int CarriedAmount { get; private set; }
         private const int AutoFindRadius = 12;
         private const float HitAnimDuration = 0.32f;
         private const float HitLungeAmount = 0.30f;    // world units lurch forward
@@ -133,12 +132,9 @@ namespace RTSCL.World.Unity
             if (_state == State.Dying) return;
             ResetHitAnim();
 
-            // Mutual exclusion: if carrying the opposite resource, deposit first then resume to this cell.
+            // Mutual exclusion: if carrying a different resource kind, deposit first then resume to this cell.
             var tile = _decorationMap != null ? _decorationMap.GetTile(treeCell) : null;
-            bool targetIsWheat = tile != null && IsWheatfieldTile(tile.name);
-            bool carryingOppositeWood = CarriedWood > 0 && targetIsWheat;
-            bool carryingOppositeFood = CarriedFood > 0 && !targetIsWheat;
-            if (carryingOppositeWood || carryingOppositeFood)
+            if (tile != null && CarriedAmount > 0 && KindOf(tile.name) != CarriedKind)
             {
                 _treeCell = treeCell;
                 TryStartDepositRun();    // sets _state = WalkingToDeposit and broadcasts move; resume targets _treeCell
@@ -277,7 +273,7 @@ namespace RTSCL.World.Unity
                     if (!IsHarvestableStillThere(_treeCell))
                     {
                         ResetHitAnim();
-                        if (CarriedWood > 0) TryStartDepositRun();
+                        if (CarriedAmount > 0) TryStartDepositRun();
                         else FindNextTreeOrIdle();
                         break;
                     }
@@ -286,7 +282,7 @@ namespace RTSCL.World.Unity
                     {
                         _harvestTimer = 0f;
                         bool destroyed = HitHarvestable(_treeCell);
-                        if (CarriedWood >= MaxCarriedWood || CarriedFood >= MaxCarriedWood || destroyed)
+                        if (CarriedAmount >= MaxCarried || destroyed)
                             TryStartDepositRun();
                     }
                     break;
@@ -298,10 +294,8 @@ namespace RTSCL.World.Unity
                     if (StepToward(_moveTarget))
                     {
                         // Arrived at keep — deposit.
-                        if (CarriedWood > 0) ResourceBank.AddWood(CarriedWood);
-                        if (CarriedFood > 0) ResourceBank.AddFood(CarriedFood);
-                        CarriedWood = 0;
-                        CarriedFood = 0;
+                        if (CarriedAmount > 0) ResourceBank.Add(CarriedKind, CarriedAmount);
+                        CarriedAmount = 0;
 
                         // Resume: walk back to last tree if still alive, else find nearest, else idle.
                         if (IsHarvestableStillThere(_treeCell))
@@ -416,12 +410,9 @@ namespace RTSCL.World.Unity
             var sprite = tile != null ? tile.sprite : null;
             string tileName = tile != null ? tile.name : "";
 
-            bool isWheatfield = IsWheatfieldTile(tileName);
-            int maxHp = isWheatfield ? 500 : TreeHP.MaxHP;
-            int remaining = TreeHP.Hit(cell, 1, maxHp);
-
-            if (isWheatfield) CarriedFood = Mathf.Min(MaxCarriedWood, CarriedFood + 1);
-            else              CarriedWood = Mathf.Min(MaxCarriedWood, CarriedWood + 1);
+            int remaining = TreeHP.Hit(cell, 1, MaxHpFor(tileName));
+            CarriedKind = KindOf(tileName);
+            CarriedAmount = Mathf.Min(MaxCarried, CarriedAmount + 1);
 
             StartHitAnim(cell);
             TreeHitEffect.Spawn(_decorationMap, cell, sprite);
@@ -601,8 +592,25 @@ namespace RTSCL.World.Unity
         public static bool IsWheatfieldTile(string tileName) =>
             tileName.StartsWith("Wheatfield_");
 
+        public static bool IsRockTile(string tileName) =>
+            tileName.StartsWith("Rocks_");
+
         public static bool IsHarvestable(string tileName) =>
-            IsTreeTile(tileName) || IsWheatfieldTile(tileName);
+            IsTreeTile(tileName) || IsWheatfieldTile(tileName) || IsRockTile(tileName);
+
+        public static ResourceKind KindOf(string tileName)
+        {
+            if (IsWheatfieldTile(tileName)) return ResourceKind.Food;
+            if (IsRockTile(tileName)) return ResourceKind.Stone;
+            return ResourceKind.Wood; // trees + default
+        }
+
+        private static int MaxHpFor(string tileName)
+        {
+            if (IsWheatfieldTile(tileName)) return 500;
+            if (IsRockTile(tileName)) return 100;
+            return TreeHP.MaxHP; // trees = 50
+        }
 
         private static Vector3 CellCenter(Vector3Int cell) =>
             new(cell.x + 0.5f, cell.y + 0.5f, 0f);
