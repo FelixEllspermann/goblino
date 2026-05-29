@@ -421,11 +421,14 @@ namespace RTSCL.World.Unity
             }
         }
 
-        // Send a dedicated scout toward the nearest not-yet-explored spawn point to find the enemy.
+        // Send a dedicated scout to WANDER into unexplored territory — the bot does NOT know where the
+        // enemy is; it must stumble onto them. Each idle hop the scout heads ~22 cells toward a fresh
+        // random unexplored land cell (short hops keep each A* path within budget). Discovery happens
+        // when the scout's vision reaches an enemy building (ScanForEnemies).
         private void Scout(ulong owner, BotState st)
         {
             var world = _worldSource != null ? _worldSource.CurrentWorld : null;
-            if (world == null || world.Spawns == null) return;
+            if (world == null) return;
 
             if (st.Scout == null || st.Scout.CurrentHp <= 0 || st.Scout.Owner != owner || st.Scout.IsNeutral)
             {
@@ -439,22 +442,29 @@ namespace RTSCL.World.Unity
             }
             if (!st.Scout.IsIdle) return;   // still travelling
 
-            var sc = new Vector2Int(Mathf.FloorToInt(st.Scout.transform.position.x), Mathf.FloorToInt(st.Scout.transform.position.y));
-            int best = -1, bestSq = int.MaxValue;
-            int w = st.Explored != null ? st.Explored.GetLength(0) : 0, h = st.Explored != null ? st.Explored.GetLength(1) : 0;
-            for (int i = 0; i < world.Spawns.Length; i++)
+            if (!PickRandomUnexploredTarget(world, st, out var target)) return;
+            Vector3 from = st.Scout.transform.position;
+            Vector3 delta = target - from;
+            const float StepDist = 22f;
+            Vector3 step = delta.magnitude <= StepDist ? target : from + delta.normalized * StepDist;
+            st.Scout.SetMoveCommand(step);
+        }
+
+        // Random unexplored, walkable land cell (sampled) — the scout's wander target. No spawn knowledge.
+        private bool PickRandomUnexploredTarget(WorldData world, BotState st, out Vector3 target)
+        {
+            for (int i = 0; i < 30; i++)
             {
-                var sp = world.Spawns[i];
-                bool explored = st.Explored != null && sp.x >= 0 && sp.y >= 0 && sp.x < w && sp.y < h && st.Explored[sp.x, sp.y];
-                if (explored) continue;
-                int dx = sp.x - sc.x, dy = sp.y - sc.y, d = dx * dx + dy * dy;
-                if (d < bestSq) { bestSq = d; best = i; }
+                int x = Random.Range(0, world.Width), y = Random.Range(0, world.Height);
+                if (st.Explored != null && st.Explored[x, y]) continue;     // already seen
+                var t = _terrainMap != null ? _terrainMap.GetTile(new Vector3Int(x, y, 0)) : null;
+                if (t == null) continue;
+                if (t.name == "DeepWater" || t.name == "Shore" || t.name == "Cliff") continue; // land only
+                target = new Vector3(x + 0.5f, y + 0.5f, 0f);
+                return true;
             }
-            if (best >= 0)
-            {
-                var sp = world.Spawns[best];
-                st.Scout.SetMoveCommand(new Vector3(sp.x + 0.5f, sp.y + 0.5f, 0f));
-            }
+            target = default;
+            return false;
         }
 
         // Nearest harvestable decoration tile of the given kind (or any kind if kind == null) within radius.
