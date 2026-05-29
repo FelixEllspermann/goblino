@@ -23,7 +23,7 @@ namespace RTSCL.World.Unity
         [SerializeField] private float _tickInterval = 1f;
 
         [Header("Targets")]
-        [SerializeField] private int _farmerTarget = 8;
+        [SerializeField] private int _farmerTarget = 14;
         [SerializeField] private int _searchRadius = 32;
         [SerializeField] private string _keepName = "Keep_0";
         [SerializeField] private string _hutName = "Huts_0";
@@ -38,10 +38,12 @@ namespace RTSCL.World.Unity
         [SerializeField] private int _maxScouts = 4;
 
         [Header("Defense")]
-        [Tooltip("Neutral monsters within this radius of the keep (or near a unit) trigger a defense squad.")]
-        [SerializeField] private float _defenseRadius = 12f;
-        [Tooltip("How many combat units the bot tries to field when defending against a neutral monster.")]
+        [Tooltip("Hostile units within this radius of the keep (or near a unit) trigger a defense squad. Ignores the bot's fog — it always feels threats this close.")]
+        [SerializeField] private float _defenseRadius = 30f;
+        [Tooltip("How many combat units the bot tries to field when defending.")]
         [SerializeField] private int _defenseSquadSize = 4;
+        [Tooltip("How many combat units the bot fields to proactively raid a neutral monster it has spotted.")]
+        [SerializeField] private int _raidSquadSize = 3;
 
         [Header("Military / Attack plans")]
         [SerializeField] private float _engageRadius = 8f;     // a military unit attacks hostiles within this
@@ -205,21 +207,19 @@ namespace RTSCL.World.Unity
 
             if (!st.Building)
             {
-                // Keep expanding: raise the pop cap at the limit, get a barracks, then a 2nd one, and
-                // proactively add huts while wood-rich so the bot keeps growing its base.
-                bool nearCap = BotEconomy.PopUsed(owner) >= BotEconomy.PopCap(owner) - 2;
+                // Actively expand: build huts EARLY (well before the cap) to keep growing pop room, get a
+                // barracks quickly, then a 2nd, so the base keeps spreading instead of stalling.
+                int popUsed = BotEconomy.PopUsed(owner), popCap = BotEconomy.PopCap(owner);
+                bool nearCap = popUsed >= popCap - 3;
+                bool wantRoom = popCap < 90 && popUsed >= popCap * 0.6f;   // grow before hitting the wall
                 bool hasBarracks = OwnsBuilding(owner, _barracksName);
-                int wood = BotEconomy.Get(owner, ResourceKind.Wood);
-                if (nearCap && CanAfford(owner, _hutDef))
-                    TryBuild(owner, st, _hutDef);                                  // raise the pop cap
-                else if (!hasBarracks && farmers >= 5 && CanAfford(owner, _barracksDef))
-                    TryBuild(owner, st, _barracksDef);                            // first barracks
-                else if (hasBarracks && farmers >= _farmerTarget && CountOwned(owner, _barracksName) < 2
+                if ((nearCap || wantRoom) && CanAfford(owner, _hutDef))
+                    TryBuild(owner, st, _hutDef);                                  // more huts → more pop
+                else if (!hasBarracks && farmers >= 4 && CanAfford(owner, _barracksDef))
+                    TryBuild(owner, st, _barracksDef);                            // first barracks (early)
+                else if (hasBarracks && CountOwned(owner, _barracksName) < 2 && farmers >= 8
                          && CanAfford(owner, _barracksDef))
                     TryBuild(owner, st, _barracksDef);                            // expand: a 2nd barracks
-                else if (hasBarracks && _hutDef != null && wood >= _hutDef.WoodCost + 200
-                         && BotEconomy.PopCap(owner) < 60 && CanAfford(owner, _hutDef))
-                    TryBuild(owner, st, _hutDef);                                 // grow pop room when wood-rich
             }
 
             // 6. Military: train an army from the Barracks, then attack discovered enemies.
@@ -258,11 +258,18 @@ namespace RTSCL.World.Unity
                 return;
             }
 
-            // ── Downtime: just grow + scout; only roll a plan once the enemy has been found. ──
+            // ── Downtime: grow + scout. Proactively RAID a neutral monster we've spotted (field a small
+            //    squad and hunt it); otherwise roll the next attack plan once an enemy has been found. ──
             if (st.PlanTargetSize == 0)
             {
                 st.PlanTimer += dt;
-                if (st.PlanTimer >= _attackCooldown && st.EnemyFound && st.DiscoveredEnemyBases.Count > 0)
+                if (SeenNeutralMonster(owner, st, out var prey))
+                {
+                    foreach (var g in army) g.SetAttackCommand(prey);
+                    if (military < _raidSquadSize)
+                        TrainMilitary(owner, st, dt, hasBarracks, barracks, military, _raidSquadSize);
+                }
+                else if (st.PlanTimer >= _attackCooldown && st.EnemyFound && st.DiscoveredEnemyBases.Count > 0)
                     RollPlan(owner, st);
                 return;
             }
@@ -438,6 +445,31 @@ namespace RTSCL.World.Unity
                 if (near && dk < bestSq) { bestSq = dk; threat = m; }
             }
             return threat != null;
+        }
+
+        // Nearest neutral monster currently WITHIN SIGHT of the bot — i.e. inside vision range of one of
+        // its units (so the bot only raids what it has actually seen, not the whole map). Picks the one
+        // nearest the keep. Used for proactive raiding during downtime.
+        private bool SeenNeutralMonster(ulong owner, BotState st, out Goblin monster)
+        {
+            monster = null;
+            Vector3 keep = new(st.Keep.x + 0.5f, st.Keep.y + 0.5f, 0f);
+            int vr2 = (_visionRadius + 1) * (_visionRadius + 1);
+            float bestSq = float.MaxValue;
+            foreach (var m in Goblin.All)
+            {
+                if (m == null || !m.IsNeutral || m.CurrentHp <= 0) continue;
+                bool seen = false;
+                foreach (var g in Goblin.All)
+                {
+                    if (g == null || g.IsNeutral || g.Owner != owner || g.CurrentHp <= 0) continue;
+                    if ((m.transform.position - g.transform.position).sqrMagnitude <= vr2) { seen = true; break; }
+                }
+                if (!seen) continue;
+                float dk = (m.transform.position - keep).sqrMagnitude;
+                if (dk < bestSq) { bestSq = dk; monster = m; }
+            }
+            return monster != null;
         }
 
         // Nearest hostile, living goblin within radius of g (players, monsters, other bots).
@@ -713,7 +745,7 @@ namespace RTSCL.World.Unity
         private bool TryFindBuildSite(Vector2Int keep, Vector2Int footprint, out Vector2Int site)
         {
             site = default;
-            for (int ring = 2; ring <= 10; ring++)
+            for (int ring = 2; ring <= 18; ring++)   // search farther so a cluttered base keeps expanding
             for (int dy = -ring; dy <= ring; dy++)
             for (int dx = -ring; dx <= ring; dx++)
             {

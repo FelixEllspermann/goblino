@@ -118,19 +118,21 @@ namespace RTSCL.World.Unity
             for (int x = 0; x < _width; x++)
                 if (_state[x, y] == Visibility.Visible) _state[x, y] = Visibility.Explored;
 
-            // Goblins — all units in Goblin.All are assumed friendly (local ownership).
+            // Goblins — ONLY the local player's units grant vision. Enemy/bot units (and neutral
+            // monsters) must not reveal the map, or the player would see through the bots' eyes.
             foreach (var g in Goblin.All)
             {
-                if (g == null || g.IsNeutral) continue;   // neutral monsters don't grant vision
+                if (g == null || g.IsNeutral || !IsLocalPlayer(g.Owner)) continue;
                 var c = _fogMap.WorldToCell(g.transform.position);
                 MarkCircle(c.x, c.y, _goblinRadius);
             }
 
-            // Buildings
+            // Buildings — likewise, only the local player's buildings grant vision.
             if (_buildingPlacer != null)
             {
                 foreach (var kv in _buildingPlacer.AllOccupied)
                 {
+                    if (!_buildingPlacer.TryGetBuildingOwner(kv.Key, out var o) || !IsLocalPlayer(o)) continue;
                     var def = kv.Value;
                     // Keep buildings have a larger radius; all others use _buildingRadius.
                     int r = (def != null && def.name.StartsWith("Keep")) ? _keepRadius : _buildingRadius;
@@ -138,6 +140,10 @@ namespace RTSCL.World.Unity
                 }
             }
         }
+
+        // The local player owns either their assigned slot id or owner 0 (solo / single-client path).
+        private static bool IsLocalPlayer(ulong owner) =>
+            owner == WorldStartContext.LocalPlayer || owner == 0UL;
 
         /// <summary>Marks all cells within <paramref name="radius"/> of (cx, cy) as Visible.
         /// Uses squared-distance check to avoid sqrt; clamps to map bounds for safety.</summary>

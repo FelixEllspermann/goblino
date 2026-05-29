@@ -937,7 +937,7 @@ MonoBehaviour:
   _terrainMap: {fileID: 1282190478}
   _decorationMap: {fileID: 1706478009}
   _tickInterval: 1
-  _farmerTarget: 8
+  _farmerTarget: 14
   _searchRadius: 32
   _keepName: Keep_0
   _hutName: Huts_0
@@ -945,6 +945,11 @@ MonoBehaviour:
   _dockName: Docks_0
   _visionRadius: 6
   _keepVisionRadius: 10
+  _scoutEscalateInterval: 180
+  _maxScouts: 4
+  _defenseRadius: 30
+  _defenseSquadSize: 4
+  _raidSquadSize: 3
   _engageRadius: 8
   _attackCooldown: 300
 --- !u!114 &626648824
