@@ -47,6 +47,16 @@ namespace RTSCL.World.Unity
             _userInteracted = false;
         }
 
+        /// <summary>Center the camera on a world XY (keeps z + ortho size) and clamp to map bounds.
+        /// Used by the minimap for click-to-navigate.</summary>
+        public void JumpTo(Vector2 worldXY)
+        {
+            if (_camera == null) return;
+            _camera.transform.position = new Vector3(worldXY.x, worldXY.y, -10f);
+            _userInteracted = true;
+            ClampPosition();
+        }
+
         private void LateUpdate()
         {
             if (_camera == null || !_camera.orthographic) return;
