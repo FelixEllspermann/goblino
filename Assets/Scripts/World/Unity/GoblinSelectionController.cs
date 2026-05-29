@@ -116,6 +116,12 @@ namespace RTSCL.World.Unity
                         ClearQueues(); CommandAttackBuilding(bOrigin);
                     }
                 }
+                else if (TryGetFriendlyBoatAt(worldTarget, out var boat) && HasNonBoatSelected())
+                {
+                    ClickFeedback.Spawn(boat.transform.position, new Color(0.3f, 0.7f, 1f, 0.9f)); // cyan = board
+                    ClearQueues();
+                    foreach (var g in _selected) if (g != null && !g.IsBoat) g.SetBoardCommand(boat);
+                }
                 else if (TryGetGoblinAt(worldTarget, out var enemy))
                 {
                     ClickFeedback.Spawn(enemy.transform.position, new Color(1f, 0.3f, 0.3f, 0.9f)); // red = attack
@@ -124,7 +130,7 @@ namespace RTSCL.World.Unity
                 else
                 {
                     ClickFeedback.Spawn(worldTarget, new Color(1f, 1f, 1f, 0.85f));    // white = move
-                    if (shift) EnqueueMove(worldTarget); else { ClearQueues(); CommandFormation(worldTarget); }
+                    if (shift) EnqueueMove(worldTarget); else { ClearQueues(); CommandMoveOrUnload(worldTarget); }
                 }
             }
         }
@@ -253,6 +259,53 @@ namespace RTSCL.World.Unity
         private void CommandFormation(Vector3 worldCenter)
         {
             NetCommandIssuer.IssueMove(_selected, worldCenter);
+        }
+
+        // Move command that also handles boats: a boat right-clicked onto land unloads there; onto
+        // water it sails; land units move in formation as usual.
+        private void CommandMoveOrUnload(Vector3 worldTarget)
+        {
+            bool targetIsLand = IsLandCell(worldTarget);
+            var landUnits = new List<Goblin>();
+            foreach (var g in _selected)
+            {
+                if (g == null) continue;
+                if (g.IsBoat)
+                {
+                    if (targetIsLand) g.SetUnloadCommand(worldTarget);
+                    else g.SetMoveCommand(worldTarget);
+                }
+                else landUnits.Add(g);
+            }
+            if (landUnits.Count > 0) NetCommandIssuer.IssueMove(landUnits, worldTarget);
+        }
+
+        private bool IsLandCell(Vector3 world)
+        {
+            if (_terrainMap == null) return true;
+            var t = _terrainMap.GetTile(_terrainMap.WorldToCell(world));
+            if (t == null) return false;
+            return t.name != "DeepWater" && t.name != "Shore" && t.name != "Cliff";
+        }
+
+        private bool HasNonBoatSelected()
+        {
+            foreach (var g in _selected) if (g != null && !g.IsBoat) return true;
+            return false;
+        }
+
+        // Nearest friendly boat under the cursor (for boarding), within the click pick radius.
+        private bool TryGetFriendlyBoatAt(Vector3 worldPos, out Goblin boat)
+        {
+            boat = null;
+            float bestSq = _clickPickRadius * _clickPickRadius;
+            foreach (var g in Goblin.All)
+            {
+                if (g == null || !g.IsBoat || !IsLocalOwner(g)) continue;
+                float d = (g.transform.position - worldPos).sqrMagnitude;
+                if (d < bestSq) { bestSq = d; boat = g; }
+            }
+            return boat != null;
         }
 
         // Find the nearest goblin not in _selected within the click radius.

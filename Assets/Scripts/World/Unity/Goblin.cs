@@ -115,11 +115,22 @@ namespace RTSCL.World.Unity
 
         // FSM state. Transitions are driven entirely inside Update; public Set*Command methods
         // only set up the parameters then change state — they do not tick logic themselves.
-        private enum State { Idle, MovingToPoint, MovingToTree, Harvesting, WalkingToDeposit, MovingToBuild, Building, MovingToAttack, Attacking, MovingToAttackBuilding, AttackingBuilding, Dying }
+        private enum State { Idle, MovingToPoint, MovingToTree, Harvesting, WalkingToDeposit, MovingToBuild, Building, MovingToAttack, Attacking, MovingToAttackBuilding, AttackingBuilding, MovingToBoard, MovingToUnload, Dying }
         private State _state = State.Idle;
 
         private Vector2Int _buildingTarget;   // origin of the enemy building being attacked
         private bool _hasBuildingTarget;
+
+        // Boat transport: boats carry passengers; land units board a boat.
+        private const int BoatCapacity = 6;
+        private readonly List<Goblin> _passengers = new();   // boats only
+        private Goblin _boardBoat;                            // land unit's target boat while boarding
+        private Vector3 _unloadTarget;                        // boat's requested unload land point
+
+        /// <summary>True if this unit is a boat (water transport).</summary>
+        public bool IsBoat => _waterMode;
+        /// <summary>True if a boat still has room for more passengers.</summary>
+        public bool BoatHasRoom => _waterMode && _passengers.Count < BoatCapacity;
 
         private Vector3 _moveTarget;
         private readonly List<Vector3> _path = new();   // A* waypoints in world space
@@ -371,6 +382,64 @@ namespace RTSCL.World.Unity
             _attackTimer = 0f;
             _state = State.MovingToAttackBuilding;
             RepathTo(NearestStandToFootprint(origin));
+        }
+
+        /// <summary>Land unit: walk to <paramref name="boat"/> and board it (if there's room).</summary>
+        public void SetBoardCommand(Goblin boat)
+        {
+            if (_state == State.Dying || _waterMode) return;       // boats can't board boats
+            if (boat == null || !boat._waterMode || !boat.BoatHasRoom) return;
+            HarvestReservations.Release(this);
+            ResetHitAnim();
+            _hasBuildingTarget = false;
+            _boardBoat = boat;
+            _state = State.MovingToBoard;
+            RepathTo(boat.transform.position);   // water target → snaps to nearest land cell next to the boat
+        }
+
+        /// <summary>Boat: travel to the shore nearest <paramref name="landTarget"/> and drop passengers.</summary>
+        public void SetUnloadCommand(Vector3 landTarget)
+        {
+            if (_state == State.Dying || !_waterMode) return;
+            ResetHitAnim();
+            _unloadTarget = landTarget;
+            _state = State.MovingToUnload;
+            RepathTo(landTarget);   // boat is a water unit → snaps to the nearest water cell by the shore
+        }
+
+        // Eject all passengers onto nearby passable land cells, then clear the manifest.
+        private void EjectPassengers()
+        {
+            var bc = CellOfPos(transform.position);
+            foreach (var p in _passengers)
+            {
+                if (p == null) continue;
+                Vector2Int cell = TryFindLandNear(bc, out var c) ? c : bc;
+                p.transform.position = new Vector3(cell.x + 0.5f, cell.y + 0.5f, 0f);
+                p.gameObject.SetActive(true);   // re-enters Goblin.All via OnEnable
+            }
+            _passengers.Clear();
+        }
+
+        // Nearest land cell (terrain walkable, not occupied) within a few rings of center, for unloading.
+        private bool TryFindLandNear(Vector2Int center, out Vector2Int found)
+        {
+            for (int r = 1; r <= 6; r++)
+            for (int dy = -r; dy <= r; dy++)
+            for (int dx = -r; dx <= r; dx++)
+            {
+                if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dy)) != r) continue;
+                int x = center.x + dx, y = center.y + dy;
+                var t = _terrainMap != null ? _terrainMap.GetTile(new Vector3Int(x, y, 0)) : null;
+                if (t == null) continue;
+                if (t.name == "DeepWater" || t.name == "Shore" || t.name == "Cliff") continue; // must be land
+                var center2 = new Vector3(x + 0.5f, y + 0.5f, 0f);
+                bool occupied = false;
+                foreach (var g in All) { if (g != null && (g.transform.position - center2).sqrMagnitude < 0.36f) { occupied = true; break; } }
+                if (!occupied) { found = new Vector2Int(x, y); return true; }
+            }
+            found = default;
+            return false;
         }
 
         private static bool BuildingAlive(Vector2Int origin) =>
@@ -676,6 +745,28 @@ namespace RTSCL.World.Unity
                     break;
                 }
 
+                case State.MovingToBoard:
+                {
+                    if (_boardBoat == null || _boardBoat.CurrentHp <= 0 || !_boardBoat.gameObject.activeInHierarchy)
+                    { _boardBoat = null; _state = State.Idle; break; }
+                    if (ChebyshevDistance(transform.position, _boardBoat.transform.position) <= 1)
+                    {
+                        // Board: hop into the boat (deactivate → leaves Goblin.All) if there's room.
+                        if (_boardBoat.BoatHasRoom) { _boardBoat._passengers.Add(this); _state = State.Idle; gameObject.SetActive(false); }
+                        else { _boardBoat = null; _state = State.Idle; }
+                        break;
+                    }
+                    RepathTo(_boardBoat.transform.position);   // re-target the boat as it moves
+                    MoveAlongPath();
+                    break;
+                }
+
+                case State.MovingToUnload:
+                {
+                    if (MoveAlongPath()) { EjectPassengers(); _state = State.Idle; }
+                    break;
+                }
+
                 case State.Dying:
                     // Simple Euler integration for the hop arc. Gravity is applied until
                     // the goblin returns to its starting Y, at which point it lands.
@@ -870,6 +961,13 @@ namespace RTSCL.World.Unity
             // Clear any in-flight lunge so it doesn't fight the hop-arc transform writes.
             ResetHitAnim();
             HarvestReservations.Release(this);
+
+            // A sinking boat takes its passengers down with it.
+            if (_waterMode && _passengers.Count > 0)
+            {
+                foreach (var p in _passengers) if (p != null) Destroy(p.gameObject);
+                _passengers.Clear();
+            }
 
             _dieStartPos = transform.position;
             _dieVelocity = new Vector3(0f, DeathHopVelocity, 0f);
