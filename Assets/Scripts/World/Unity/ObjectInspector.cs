@@ -103,10 +103,16 @@ namespace RTSCL.World.Unity
         }
         private readonly List<CardRefs> _cards = new();
 
+        // Extra line spacing applied to all info-panel / card text for a roomier, more readable layout.
+        private const float LineSpacing = 1.45f;
+
         private void Start()
         {
             if (_popupRoot != null) _popupRoot.SetActive(false);
             if (_progressRow != null) _progressRow.SetActive(false);
+            if (_nameLabel != null) _nameLabel.lineSpacing = LineSpacing;
+            if (_descriptionLabel != null) _descriptionLabel.lineSpacing = LineSpacing;
+            if (_progressLabel != null) _progressLabel.lineSpacing = LineSpacing;
             // Subscribe to resource/population/production changes so cards refresh
             // affordability without polling. Lambda wraps Refresh to match the delegate signature.
             ResourceBank.OnChanged += (_, __) => Refresh();
@@ -520,6 +526,7 @@ namespace RTSCL.World.Unity
             nameText.color = _cardTextNormal;
             nameText.alignment = TextAnchor.MiddleLeft;
             nameText.horizontalOverflow = HorizontalWrapMode.Wrap;
+            nameText.lineSpacing = LineSpacing;
 
             var costGo = new GameObject("Cost");
             costGo.transform.SetParent(textGo.transform, false);
@@ -530,6 +537,7 @@ namespace RTSCL.World.Unity
             costLabel.color = new Color(0.85f, 0.75f, 0.45f);
             costLabel.alignment = TextAnchor.MiddleLeft;
             costLabel.horizontalOverflow = HorizontalWrapMode.Wrap;
+            costLabel.lineSpacing = LineSpacing;
 
             btn.onClick.AddListener(() => onClick?.Invoke());
 
