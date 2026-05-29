@@ -54,9 +54,9 @@ namespace RTSCL.World.Unity
 
             [Header("Stone")]
             public TileBase[] RockTiles;          // Rocks_*
-            public int StoneClusterCount = 12;
-            public int StoneSizeMin = 3;
-            public int StoneSizeMax = 8;
+            public int StoneClusterCount = 20;
+            public int StoneSizeMin = 4;
+            public int StoneSizeMax = 10;
             public int StoneRadius = 3;
 
             [Header("Wheat")]

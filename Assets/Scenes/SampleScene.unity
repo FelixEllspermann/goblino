@@ -172713,9 +172713,9 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 80097172f5022514cb91e51f8bda3140, type: 2}
     - {fileID: 11400000, guid: 30db464f846360d4e99dfb37d2033018, type: 2}
     - {fileID: 11400000, guid: 6b11f17bd68913d46adf62dbc8e7aa54, type: 2}
-    StoneClusterCount: 12
-    StoneSizeMin: 3
-    StoneSizeMax: 8
+    StoneClusterCount: 20
+    StoneSizeMin: 4
+    StoneSizeMax: 10
     StoneRadius: 3
     WheatTile: {fileID: 11400000, guid: 4be893131bdac794db8d117b0fe76df8, type: 2}
     GoldOreTile: {fileID: 11400000, guid: f58b5e40cd744ba40b3bbe3dcd1c4257, type: 2}
