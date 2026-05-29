@@ -46,6 +46,7 @@ namespace RTSCL.World.Unity
             // Net-state setup for this world.
             GoblinNetRegistry.Reset();
             PlayerUpgrades.Reset();
+            HarvestReservations.Clear();
             NetworkCatalog.PopulateFromCatalog(_catalog);
             NetCommandApplier.Placer = _buildingPlacer;
             NetCommandApplier.Spawner = _goblinSpawner;
