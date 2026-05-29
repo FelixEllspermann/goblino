@@ -21,7 +21,7 @@ namespace RTSCL.World.Unity
         [SerializeField] private Color _exploredTint = new(0f, 0f, 0f, 0.55f);
         [SerializeField] private Color _visibleTint  = new(0f, 0f, 0f, 0.00f);
 
-        private enum Visibility : byte { Hidden = 0, Explored = 1, Visible = 2 }
+        public enum Visibility : byte { Hidden = 0, Explored = 1, Visible = 2 }
         private Visibility[,] _state;
         private Visibility[,] _prevState;
         private TileBase _blackTile;
@@ -135,6 +135,15 @@ namespace RTSCL.World.Unity
                 };
                 _fogMap.SetColor(new Vector3Int(x, y, 0), c);
             }
+        }
+
+        /// <summary>Per-cell visibility for external consumers (e.g. the minimap).
+        /// Returns Hidden for out-of-range cells or before the world is initialized.</summary>
+        public Visibility GetVisibility(int x, int y)
+        {
+            if (_state == null || x < 0 || y < 0 || x >= _width || y >= _height)
+                return Visibility.Hidden;
+            return _state[x, y];
         }
 
         private void EnsureBlackTile()
