@@ -167,11 +167,14 @@ namespace RTSCL.World.Unity
             foreach (var g in Goblin.All)
             {
                 if (g == null) continue;
-                bool isLocal = g.Owner == local || g.Owner == 0UL;
-                // Hide enemy units not currently visible.
+                // Neutral monsters are never "local" — they only show when currently in vision.
+                bool isLocal = !g.IsNeutral && (g.Owner == local || g.Owner == 0UL);
+                // Hide enemy units AND neutral monsters when their cell isn't currently visible.
                 if (!isLocal && VisAt(CellOf(g.transform.position)) != FogOfWar.Visibility.Visible)
                     continue;
-                Color col = isLocal ? Color.white : WorldStartContext.GetPlayerColor(g.Owner);
+                Color col = isLocal ? Color.white
+                    : g.IsNeutral ? new Color(0.9f, 0.4f, 0.2f)   // neutral monster dot
+                    : WorldStartContext.GetPlayerColor(g.Owner);
                 PlaceDot(g.transform.position.x, g.transform.position.y, _unitDotSize, col);
             }
 
