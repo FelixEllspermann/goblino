@@ -39,6 +39,14 @@ namespace RTSCL.World.Unity
             public TileBase[] CliffTiles;        // Rocks only
 
             public int SpawnReservedRadius = 2;  // total reserved area = (2r+1)²
+
+            [Header("Ore Deposits")]
+            public TileBase GoldOreTile;
+            public int GoldDeposits = 6;
+            public TileBase IronOreTile;
+            public int IronDeposits = 6;
+            public TileBase CrystalOreTile;
+            public int CrystalDeposits = 3;
         }
 
         private readonly Tilemap _decorationMap;
@@ -69,7 +77,36 @@ namespace RTSCL.World.Unity
                 var tile = pool[rng.NextInt(0, pool.Length)];
                 _decorationMap.SetTile(new Vector3Int(x, y, 0), tile);
             }
+
+            // Sparse ore deposits (after the per-biome decoration pass so the existing
+            // decoration output is unchanged for a given seed; ore appends to the rng stream).
+            PlaceOre(world, _cfg.GoldOreTile, _cfg.GoldDeposits, reserved, ref rng);
+            PlaceOre(world, _cfg.IronOreTile, _cfg.IronDeposits, reserved, ref rng);
+            PlaceOre(world, _cfg.CrystalOreTile, _cfg.CrystalDeposits, reserved, ref rng);
+
             _decorationMap.RefreshAllTiles();
+        }
+
+        private void PlaceOre(WorldData world, TileBase tile, int count, bool[,] reserved, ref Random rng)
+        {
+            if (tile == null || count <= 0) return;
+            int placed = 0;
+            int attempts = 0;
+            int maxAttempts = count * 40;
+            while (placed < count && attempts < maxAttempts)
+            {
+                attempts++;
+                int x = rng.NextInt(0, world.Width);
+                int y = rng.NextInt(0, world.Height);
+                if (reserved[x, y]) continue;
+                var biome = world.BiomeAt(x, y);
+                if (biome == Biome.DeepWater || biome == Biome.Cliff || biome == Biome.Shore) continue;
+                var cell = new Vector3Int(x, y, 0);
+                if (_decorationMap.GetTile(cell) != null) continue; // don't overwrite a tree/rock
+                _decorationMap.SetTile(cell, tile);
+                reserved[x, y] = true; // prevent another ore landing on the same cell
+                placed++;
+            }
         }
 
         private (float, TileBase[]) PoolFor(Biome b) => b switch
