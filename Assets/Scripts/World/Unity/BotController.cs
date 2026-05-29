@@ -33,6 +33,15 @@ namespace RTSCL.World.Unity
         [Header("Vision / Scouting")]
         [SerializeField] private int _visionRadius = 6;
         [SerializeField] private int _keepVisionRadius = 10;
+        [Tooltip("While no enemy is found, send one more scout every this many seconds (up to the max).")]
+        [SerializeField] private float _scoutEscalateInterval = 180f;
+        [SerializeField] private int _maxScouts = 4;
+
+        [Header("Defense")]
+        [Tooltip("Neutral monsters within this radius of the keep (or near a unit) trigger a defense squad.")]
+        [SerializeField] private float _defenseRadius = 12f;
+        [Tooltip("How many combat units the bot tries to field when defending against a neutral monster.")]
+        [SerializeField] private int _defenseSquadSize = 4;
 
         [Header("Military / Attack plans")]
         [SerializeField] private float _engageRadius = 8f;     // a military unit attacks hostiles within this
@@ -50,7 +59,9 @@ namespace RTSCL.World.Unity
 
             // Phase 3: the bot's own exploration of the map (it only "knows" what it has seen).
             public bool[,] Explored;
-            public Goblin Scout;
+            public readonly List<Goblin> Scouts = new();   // active scouts; count escalates while no enemy found
+            public int ScoutDesired = 1;                   // how many scouts to run right now
+            public float ScoutEscalateTimer;               // counts up; +1 scout every _scoutEscalateInterval
             public bool EnemyFound;
             public readonly HashSet<Vector2Int> DiscoveredEnemyBases = new();
 
@@ -135,9 +146,12 @@ namespace RTSCL.World.Unity
             // 1b'. Keep the land connected-components map fresh (used for reachability / naval decisions).
             var world = _worldSource != null ? _worldSource.CurrentWorld : null;
             if (world != null) EnsureComponents(st, world, dt);
-            // 1c. Scout for the enemy until one is found (a dedicated farmer explores; boats cross water).
+            // 1c. Scout for the enemy until one is found (farmers explore; escalates over time; boats cross water).
             if (!st.EnemyFound) Scout(owner, st, dt);
-            else st.Scout = null;   // release the scout back to the economy once the enemy is known
+            else if (st.Scouts.Count > 0)   // enemy known → release scouts back to the economy, reset escalation
+            {
+                st.Scouts.Clear(); st.ScoutDesired = 1; st.ScoutEscalateTimer = 0f;
+            }
 
             // 2. Census of this bot's units (the scout is excluded from harvest assignment).
             int farmers = 0;
@@ -148,7 +162,7 @@ namespace RTSCL.World.Unity
                 if (g.Kind == "FarmerGoblin")
                 {
                     farmers++;
-                    if (g.IsIdle && g != st.Scout) idleFarmers.Add(g);
+                    if (g.IsIdle && !st.Scouts.Contains(g)) idleFarmers.Add(g);
                 }
             }
 
@@ -191,12 +205,21 @@ namespace RTSCL.World.Unity
 
             if (!st.Building)
             {
-                // Build a Hut when near the population cap, else a Barracks once we have a workforce.
+                // Keep expanding: raise the pop cap at the limit, get a barracks, then a 2nd one, and
+                // proactively add huts while wood-rich so the bot keeps growing its base.
                 bool nearCap = BotEconomy.PopUsed(owner) >= BotEconomy.PopCap(owner) - 2;
+                bool hasBarracks = OwnsBuilding(owner, _barracksName);
+                int wood = BotEconomy.Get(owner, ResourceKind.Wood);
                 if (nearCap && CanAfford(owner, _hutDef))
-                    TryBuild(owner, st, _hutDef);
-                else if (!nearCap && farmers >= 5 && !OwnsBuilding(owner, _barracksName) && CanAfford(owner, _barracksDef))
-                    TryBuild(owner, st, _barracksDef);
+                    TryBuild(owner, st, _hutDef);                                  // raise the pop cap
+                else if (!hasBarracks && farmers >= 5 && CanAfford(owner, _barracksDef))
+                    TryBuild(owner, st, _barracksDef);                            // first barracks
+                else if (hasBarracks && farmers >= _farmerTarget && CountOwned(owner, _barracksName) < 2
+                         && CanAfford(owner, _barracksDef))
+                    TryBuild(owner, st, _barracksDef);                            // expand: a 2nd barracks
+                else if (hasBarracks && _hutDef != null && wood >= _hutDef.WoodCost + 200
+                         && BotEconomy.PopCap(owner) < 60 && CanAfford(owner, _hutDef))
+                    TryBuild(owner, st, _hutDef);                                 // grow pop room when wood-rich
             }
 
             // 6. Military: train an army from the Barracks, then attack discovered enemies.
@@ -225,6 +248,16 @@ namespace RTSCL.World.Unity
             }
             int aboard = boat != null ? boat.PassengerCount : 0;
 
+            // ── DEFENSE: a neutral monster harassing the base → form a squad and kill it. This overrides
+            //    the attack plan for as long as the threat is near; it can also train urgently in downtime. ──
+            if (NearbyNeutralThreat(owner, st, out var monster))
+            {
+                foreach (var g in army) g.SetAttackCommand(monster);   // every combatant converges on it
+                if (military < _defenseSquadSize)
+                    TrainMilitary(owner, st, dt, hasBarracks, barracks, military, _defenseSquadSize);
+                return;
+            }
+
             // ── Downtime: just grow + scout; only roll a plan once the enemy has been found. ──
             if (st.PlanTargetSize == 0)
             {
@@ -237,7 +270,7 @@ namespace RTSCL.World.Unity
             // ── Building toward the planned army size. ──
             if (!st.PlanAttacking)
             {
-                TrainMilitary(owner, st, dt, hasBarracks, barracks, military);
+                TrainMilitary(owner, st, dt, hasBarracks, barracks, military, st.PlanTargetSize);
                 if (military >= st.PlanTargetSize && st.EnemyFound && st.DiscoveredEnemyBases.Count > 0)
                 {
                     st.PlanAttacking = true;
@@ -323,9 +356,9 @@ namespace RTSCL.World.Unity
         }
 
         // Train military one at a time (alternating Club/Archer) up to the planned size, paid from BotEconomy.
-        private void TrainMilitary(ulong owner, BotState st, float dt, bool hasBarracks, Vector2Int barracks, int military)
+        private void TrainMilitary(ulong owner, BotState st, float dt, bool hasBarracks, Vector2Int barracks, int military, int targetSize)
         {
-            if (hasBarracks && st.MilTrainTimer < 0f && military < st.PlanTargetSize)
+            if (hasBarracks && st.MilTrainTimer < 0f && military < targetSize)
             {
                 var def = (st.MilNextArcher && _archerDef != null) ? _archerDef : _clubDef;
                 if (def == null) def = _clubDef ?? _archerDef;
@@ -373,6 +406,33 @@ namespace RTSCL.World.Unity
             string size = i == 0 ? "SMALL" : i == 1 ? "MEDIUM" : "LARGE";
             Debug.Log($"[Bot {owner}] rolled {size} attack plan → target {st.PlanTargetSize} units. " +
                       $"weights now S:{w[0]:0} M:{w[1]:0} L:{w[2]:0}");
+        }
+
+        // A neutral monster is a threat if it's near the keep or right next to one of the bot's units
+        // (i.e. harassing / aggroing the base). Returns the nearest such monster to the keep.
+        private bool NearbyNeutralThreat(ulong owner, BotState st, out Goblin monster)
+        {
+            monster = null;
+            Vector3 keep = new(st.Keep.x + 0.5f, st.Keep.y + 0.5f, 0f);
+            float keepR2 = _defenseRadius * _defenseRadius;
+            float bestSq = float.MaxValue;
+            foreach (var m in Goblin.All)
+            {
+                if (m == null || !m.IsNeutral || m.CurrentHp <= 0) continue;
+                float dk = (m.transform.position - keep).sqrMagnitude;
+                bool threat = dk <= keepR2;
+                if (!threat)
+                {
+                    foreach (var g in Goblin.All)   // near any of our units → it's engaging us
+                    {
+                        if (g == null || g.IsNeutral || g.Owner != owner || g.CurrentHp <= 0) continue;
+                        if (g.Kind == "FarmerGoblin") continue;   // ignore harmless workers as the trigger
+                        if ((m.transform.position - g.transform.position).sqrMagnitude <= 36f) { threat = true; break; }
+                    }
+                }
+                if (threat && dk < bestSq) { bestSq = dk; monster = m; }
+            }
+            return monster != null;
         }
 
         // Nearest hostile, living goblin within radius of g (players, monsters, other bots).
@@ -436,6 +496,20 @@ namespace RTSCL.World.Unity
             return false;
         }
 
+        // Count this owner's DISTINCT buildings named `name` (AllOccupied is keyed per-cell, so dedupe by origin).
+        private int CountOwned(ulong owner, string name)
+        {
+            var seen = new HashSet<Vector2Int>();
+            foreach (var kv in _placer.AllOccupied)
+            {
+                if (kv.Value == null || kv.Value.name != name) continue;
+                if (!_placer.TryGetBuildingOwner(kv.Key, out var o) || o != owner) continue;
+                if (!_placer.TryGetBuildingOrigin(kv.Key, out var origin)) origin = kv.Key;
+                seen.Add(origin);
+            }
+            return seen.Count;
+        }
+
         // ---------- Phase 3: vision + scouting ----------
 
         // Mark cells around the bot's units and buildings as explored (the bot's own fog of war).
@@ -484,55 +558,77 @@ namespace RTSCL.World.Unity
             }
         }
 
-        // Send a dedicated scout to WANDER into unexplored territory — the bot does NOT know where the
-        // enemy is; it must stumble onto them. The scout prefers unexplored land it can actually REACH on
-        // foot (its own landmass), heading there in short hops (so each A* path stays within budget). If
-        // its whole landmass is explored without finding an enemy, the bot is boxed in / on an island, so
-        // it falls back to a boat: ferry the scout across water to unexplored land on another landmass.
+        // Scout management. The bot runs a growing team of scouts to find the enemy — it does NOT know
+        // where they are. Each scout WANDERS unexplored land it can REACH on foot (its own landmass), in
+        // short hops. While no enemy is found, an extra scout is added every _scoutEscalateInterval (up to
+        // _maxScouts) so the search widens over time; once the enemy is found, the scouts are released
+        // (handled in RunBot). A dead scout is noticed next tick and replaced with a fresh farmer.
         private void Scout(ulong owner, BotState st, float dt)
         {
             var world = _worldSource != null ? _worldSource.CurrentWorld : null;
             if (world == null) return;
 
-            // (Re)designate a scout when ours is gone — dead, captured, or aboard a boat (inactive).
-            // This is how the bot "notices" its scout died: next tick it picks a fresh farmer and resumes.
-            bool justAssigned = false;
-            if (st.Scout == null || st.Scout.CurrentHp <= 0 || st.Scout.Owner != owner || st.Scout.IsNeutral
-                || !st.Scout.gameObject.activeInHierarchy)
+            // Escalate the desired scout count over time until the enemy is found.
+            st.ScoutEscalateTimer += dt;
+            if (st.ScoutDesired < 1) st.ScoutDesired = 1;
+            if (st.ScoutEscalateTimer >= _scoutEscalateInterval && st.ScoutDesired < _maxScouts)
             {
-                st.Scout = null;
-                Goblin idle = null, any = null;          // prefer an idle farmer; else interrupt any farmer
+                st.ScoutDesired++; st.ScoutEscalateTimer = 0f;
+                Debug.Log($"[Bot {owner}] no enemy yet → escalating to {st.ScoutDesired} scouts.");
+            }
+
+            // Drop scouts that died / were captured / boarded a boat (inactive). This is how the bot
+            // "notices" a scout is gone and frees the slot to be refilled below.
+            st.Scouts.RemoveAll(s => s == null || s.CurrentHp <= 0 || s.Owner != owner || s.IsNeutral
+                                     || !s.gameObject.activeInHierarchy);
+
+            // Top up to the desired count from available farmers (prefer idle; else interrupt any farmer).
+            while (st.Scouts.Count < st.ScoutDesired)
+            {
+                Goblin idle = null, any = null;
                 foreach (var g in Goblin.All)
                 {
                     if (g == null || g.IsNeutral || g.Owner != owner || g.Kind != "FarmerGoblin") continue;
-                    if (!g.gameObject.activeInHierarchy) continue;
+                    if (!g.gameObject.activeInHierarchy || st.Scouts.Contains(g)) continue;
                     any ??= g;
                     if (g.IsIdle) { idle = g; break; }
                 }
-                st.Scout = idle ?? any;
-                if (st.Scout == null) return;
-                justAssigned = true;                     // command it THIS tick (interrupt its current task)
+                var pick = idle ?? any;
+                if (pick == null) break;            // no spare farmers right now
+                st.Scouts.Add(pick);
+                DriveScout(owner, st, dt, pick, st.Scouts.Count == 1);   // command it this tick
             }
-            if (!justAssigned && !st.Scout.IsIdle) return;   // mid-hop → let it travel
 
-            Vector3 from = st.Scout.transform.position;
-            int scoutComp = CompAt(st, from);
+            // Drive idle scouts onward (busy ones are still travelling between hops).
+            for (int i = 0; i < st.Scouts.Count; i++)
+            {
+                var s = st.Scouts[i];
+                if (s.IsIdle) DriveScout(owner, st, dt, s, i == 0);
+            }
+        }
 
-            // 1. Reachable unexplored land on the scout's own landmass → walk there in short hops.
-            if (PickReachableUnexplored(world, st, scoutComp, out var target)
-                || NearestUnexploredOnComponent(world, st, scoutComp, from, out target))
+        // Move one scout toward fresh unexplored land. Reachable land on its own landmass first (short
+        // hops); if boxed in, the PRIMARY scout falls back to a boat to reach another landmass.
+        private void DriveScout(ulong owner, BotState st, float dt, Goblin scout, bool isPrimary)
+        {
+            var world = _worldSource != null ? _worldSource.CurrentWorld : null;
+            if (world == null) return;
+            Vector3 from = scout.transform.position;
+            int comp = CompAt(st, from);
+
+            if (PickReachableUnexplored(world, st, comp, out var target)
+                || NearestUnexploredOnComponent(world, st, comp, from, out target))
             {
                 Vector3 delta = target - from;
                 const float StepDist = 22f;
                 Vector3 step = delta.magnitude <= StepDist ? target : from + delta.normalized * StepDist;
-                st.Scout.SetMoveCommand(step);
+                scout.SetMoveCommand(step);
                 return;
             }
 
-            // 2. Boxed in: own landmass fully explored, enemy still unknown → ferry the scout across water
-            //    to the nearest unexplored land on another landmass.
-            if (NearestUnexploredOtherComponent(world, st, scoutComp, from, out var navTo))
-                RunNaval(owner, st, dt, new List<Goblin> { st.Scout }, navTo);
+            // Boxed in: own landmass fully explored → ferry the primary scout across water to explore elsewhere.
+            if (isPrimary && NearestUnexploredOtherComponent(world, st, comp, from, out var navTo))
+                RunNaval(owner, st, dt, new List<Goblin> { scout }, navTo);
         }
 
         // A random unexplored, walkable land cell ON the given component (reachable on foot). No spawn knowledge.

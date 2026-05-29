@@ -741,9 +741,19 @@ namespace RTSCL.World.Unity
                     {
                         _attackTimer = 0f;
                         var fp = FootprintOf(_buildingTarget);
-                        if (_projectileSprite == null)   // melee lunge toward building center (ranged: no anim)
-                            StartHitAnim(new Vector3Int(Mathf.FloorToInt(_buildingTarget.x + fp.x * 0.5f),
-                                                        Mathf.FloorToInt(_buildingTarget.y + fp.y * 0.5f), 0));
+                        Vector3 center = new(_buildingTarget.x + fp.x * 0.5f, _buildingTarget.y + fp.y * 0.5f, 0f);
+                        if (_projectileSprite != null)
+                        {
+                            // Ranged: face + shoot a visual arrow that flashes the building on impact.
+                            if (_renderer != null) _renderer.flipX = center.x < transform.position.x;
+                            Arrow.SpawnToBuilding(transform.position, _buildingTarget, center, _projectileSprite);
+                        }
+                        else
+                        {
+                            // Melee: lunge toward the building center + immediate hit effect.
+                            StartHitAnim(new Vector3Int(Mathf.FloorToInt(center.x), Mathf.FloorToInt(center.y), 0));
+                            BuildingHitFeedback.Play(_buildingTarget);
+                        }
                         if (IsLocalOwner)
                         {
                             BuildingHP.Damage(_buildingTarget, AttackDamage);

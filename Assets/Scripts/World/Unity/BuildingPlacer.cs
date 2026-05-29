@@ -79,6 +79,10 @@ namespace RTSCL.World.Unity
         public bool TryGetBuildingOrigin(Vector2Int cell, out Vector2Int origin) =>
             _cellToOrigin.TryGetValue(cell, out origin);
 
+        /// <summary>Look up the rendered GameObject for a building by its origin (for hit effects).</summary>
+        public bool TryGetBuildingGo(Vector2Int origin, out GameObject go) =>
+            _originToGo.TryGetValue(origin, out go) && go != null;
+
         /// <summary>Look up the Steam ID of the player who placed the building occupying cell.</summary>
         public bool TryGetBuildingOwner(Vector2Int cell, out ulong owner) =>
             _cellToOwner.TryGetValue(cell, out owner);

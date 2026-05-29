@@ -30,6 +30,10 @@ namespace RTSCL.World.Unity
         private bool _dealsDamage;
         private float _age;
 
+        // Building-target mode: no goblin target; on impact, play the building hit effect at this origin.
+        private bool _buildingMode;
+        private Vector2Int _buildingOrigin;
+
         /// <summary>Spawn an arrow travelling from <paramref name="from"/> toward <paramref name="target"/>.
         /// <paramref name="dealsDamage"/> must be true ONLY on the attacker's owner client.</summary>
         public static void Spawn(Vector3 from, Goblin target, int damage, Goblin attacker, bool dealsDamage, Sprite sprite)
@@ -48,21 +52,40 @@ namespace RTSCL.World.Unity
             a._dealsDamage = dealsDamage;
         }
 
+        /// <summary>Spawn a VISUAL-only arrow flying from <paramref name="from"/> to a building's center.
+        /// It deals no damage (the attacker applies building HP directly) but plays the building hit
+        /// effect on impact. Spawned on every client (the AttackingBuilding swing runs everywhere).</summary>
+        public static void SpawnToBuilding(Vector3 from, Vector2Int origin, Vector3 center, Sprite sprite)
+        {
+            if (sprite == null) return;
+            var go = new GameObject("Arrow");
+            go.transform.position = from;
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite = sprite;
+            sr.sortingOrder = 30;
+            var a = go.AddComponent<Arrow>();
+            a._buildingMode = true;
+            a._buildingOrigin = origin;
+            a._fallbackPos = center;
+        }
+
         private void Update()
         {
             _age += Time.deltaTime;
             if (_age >= MaxLifetime) { Destroy(gameObject); return; }
 
-            // Aim point: live target position while alive, else last-known fallback.
-            Vector3 aim = (_target != null && _target.CurrentHp > 0) ? _target.transform.position : _fallbackPos;
+            // Aim point: building center, live target while alive, else last-known fallback.
+            Vector3 aim = _buildingMode ? _fallbackPos
+                        : (_target != null && _target.CurrentHp > 0) ? _target.transform.position : _fallbackPos;
             Vector3 delta = aim - transform.position;
             float dist = delta.magnitude;
 
             if (dist <= ArrivalEpsilon)
             {
-                // Impact. Owner client applies + broadcasts damage; remotes are visual-only.
-                if (_dealsDamage && _target != null && _target.CurrentHp > 0)
-                    NetCommandIssuer.IssueDamage(_target, _damage, _attacker);
+                if (_buildingMode)
+                    BuildingHitFeedback.Play(_buildingOrigin);          // flash + spritz on the building
+                else if (_dealsDamage && _target != null && _target.CurrentHp > 0)
+                    NetCommandIssuer.IssueDamage(_target, _damage, _attacker);  // owner applies + broadcasts
                 Destroy(gameObject);
                 return;
             }
