@@ -131,6 +131,8 @@ namespace RTSCL.World.Unity
         public bool IsBoat => _waterMode;
         /// <summary>True if a boat still has room for more passengers.</summary>
         public bool BoatHasRoom => _waterMode && _passengers.Count < BoatCapacity;
+        /// <summary>Number of units currently aboard this boat.</summary>
+        public int PassengerCount => _passengers.Count;
 
         private Vector3 _moveTarget;
         private readonly List<Vector3> _path = new();   // A* waypoints in world space

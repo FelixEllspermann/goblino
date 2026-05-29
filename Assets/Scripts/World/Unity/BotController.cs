@@ -28,6 +28,7 @@ namespace RTSCL.World.Unity
         [SerializeField] private string _keepName = "Keep_0";
         [SerializeField] private string _hutName = "Huts_0";
         [SerializeField] private string _barracksName = "Barracks_0";
+        [SerializeField] private string _dockName = "Docks_0";
 
         [Header("Vision / Scouting")]
         [SerializeField] private int _visionRadius = 6;
@@ -61,11 +62,17 @@ namespace RTSCL.World.Unity
             public int PlanTargetSize;          // planned army size; 0 = no plan (downtime)
             public float PlanTimer;             // counts up during downtime; a plan rolls at _attackCooldown
             public readonly float[] PlanWeights = { 80f, 15f, 5f };  // small / medium / large roll weights
+
+            // Naval: land connected-components so the bot knows what it can reach on foot, plus boat/ferry state.
+            public int[,] Comp;                 // per-cell land-component id (−1 = water/oob); recomputed periodically
+            public float CompTimer;             // throttle for component recompute
+            public float BoatTrainTimer = -1f;  // -1 = not training a boat
+            public float BoardTimer;            // boarding window before the boat departs anyway
         }
 
         private readonly Dictionary<ulong, BotState> _states = new();
-        private BuildingDefinition _hutDef, _barracksDef;
-        private GoblinUnitDefinition _farmerDef, _clubDef, _archerDef;
+        private BuildingDefinition _hutDef, _barracksDef, _dockDef;
+        private GoblinUnitDefinition _farmerDef, _clubDef, _archerDef, _boatDef;
         private WorldGeneratorBootstrap _worldSource;
         private float _t;
 
@@ -74,6 +81,10 @@ namespace RTSCL.World.Unity
             _worldSource = UnityEngine.Object.FindFirstObjectByType<WorldGeneratorBootstrap>();
             _hutDef = FindBuilding(_hutName);
             _barracksDef = FindBuilding(_barracksName);
+            _dockDef = FindBuilding(_dockName);
+            // Docks train boats ([0] = Boat) — used for naval scouting / invasion.
+            if (_dockDef != null && _dockDef.TrainsUnits != null && _dockDef.TrainsUnits.Length > 0)
+                _boatDef = _dockDef.TrainsUnits[0];
             var keepDef = FindBuilding(_keepName);
             if (keepDef != null && keepDef.TrainsUnits != null && keepDef.TrainsUnits.Length > 0)
                 _farmerDef = keepDef.TrainsUnits[0];
@@ -121,8 +132,11 @@ namespace RTSCL.World.Unity
             // 1b. Update the bot's own vision (explored map) and discover enemy bases it can see.
             UpdateVision(owner, st);
             ScanForEnemies(owner, st);
-            // 1c. Scout for the enemy until one is found (a dedicated farmer explores other spawns).
-            if (!st.EnemyFound) Scout(owner, st);
+            // 1b'. Keep the land connected-components map fresh (used for reachability / naval decisions).
+            var world = _worldSource != null ? _worldSource.CurrentWorld : null;
+            if (world != null) EnsureComponents(st, world, dt);
+            // 1c. Scout for the enemy until one is found (a dedicated farmer explores; boats cross water).
+            if (!st.EnemyFound) Scout(owner, st, dt);
             else st.Scout = null;   // release the scout back to the economy once the enemy is known
 
             // 2. Census of this bot's units (the scout is excluded from harvest assignment).
@@ -201,11 +215,15 @@ namespace RTSCL.World.Unity
 
             int military = 0;
             var army = new List<Goblin>();
+            Goblin boat = null;
             foreach (var g in Goblin.All)
             {
                 if (g == null || g.IsNeutral || g.Owner != owner) continue;
-                if (g.Kind != "FarmerGoblin") { military++; army.Add(g); }
+                if (g.Kind == "FarmerGoblin") continue;
+                if (g.IsBoat) { boat = g; continue; }   // transport, not a combatant
+                military++; army.Add(g);
             }
+            int aboard = boat != null ? boat.PassengerCount : 0;
 
             // ── Downtime: just grow + scout; only roll a plan once the enemy has been found. ──
             if (st.PlanTargetSize == 0)
@@ -228,22 +246,67 @@ namespace RTSCL.World.Unity
                 if (!st.PlanAttacking) return;
             }
 
-            // ── Attacking until wiped out. ──
-            if (military == 0)
+            // ── Attacking until wiped out (no combatants left AND none still aboard the boat). ──
+            if (military == 0 && aboard == 0)
             {
                 Debug.Log($"[Bot {owner}] attack force destroyed — entering {_attackCooldown:0}s downtime.");
                 st.PlanTargetSize = 0; st.PlanAttacking = false; st.PlanTimer = 0f;
                 return;
             }
+
+            int keepComp = CompAt(st, st.Keep);
+            var ferry = new List<Goblin>();
             foreach (var g in army)
             {
                 var tgt = NearestHostile(g, _engageRadius);
                 if (tgt != null) { g.SetAttackCommand(tgt); continue; }   // engage hostile units in range
-                if (NearestAliveBase(st, g.transform.position, out var bo))
-                    g.SetAttackBuildingCommand(bo);                       // else go raze a known enemy building
-                else if (g.IsIdle && NearestBase(st, g.transform.position, out var bp))
-                    g.SetMoveCommand(bp);                                 // else march toward the base area
+                int gc = CompAt(st, g.transform.position);
+                if (NearestAliveBaseOnComponent(st, g.transform.position, gc, out var bo))
+                    g.SetAttackBuildingCommand(bo);                       // base reachable on foot → raze it
+                else if (gc == keepComp)
+                    ferry.Add(g);                                         // base is across water → ship it over
+                // (units stranded on a third landmass with no reachable base just wait)
             }
+
+            // Naval invasion: ferry home-landmass units to the nearest enemy base on another landmass.
+            if (ferry.Count > 0)
+            {
+                Vector3 home = new(st.Keep.x + 0.5f, st.Keep.y + 0.5f, 0f);
+                if (NearestAliveBaseOtherComponent(st, home, keepComp, out var tb))
+                    RunNaval(owner, st, dt, ferry, new Vector3(tb.x + 0.5f, tb.y + 0.5f, 0f));
+            }
+        }
+
+        // Nearest alive discovered enemy base whose origin sits on land-component 'comp'.
+        private static bool NearestAliveBaseOnComponent(BotState st, Vector3 from, int comp, out Vector2Int origin)
+        {
+            origin = default;
+            if (comp < 0) return false;
+            float bestSq = float.MaxValue; bool found = false;
+            foreach (var b in st.DiscoveredEnemyBases)
+            {
+                if (CompAt(st, b) != comp) continue;
+                if (!BuildingHP.TryGet(b, out int cur, out _) || cur <= 0) continue;
+                float d = (new Vector3(b.x + 0.5f, b.y + 0.5f, 0f) - from).sqrMagnitude;
+                if (d < bestSq) { bestSq = d; origin = b; found = true; }
+            }
+            return found;
+        }
+
+        // Nearest alive discovered enemy base NOT on 'comp' (a different landmass) — the invasion target.
+        private static bool NearestAliveBaseOtherComponent(BotState st, Vector3 from, int comp, out Vector2Int origin)
+        {
+            origin = default;
+            float bestSq = float.MaxValue; bool found = false;
+            foreach (var b in st.DiscoveredEnemyBases)
+            {
+                int c = CompAt(st, b);
+                if (c < 0 || c == comp) continue;
+                if (!BuildingHP.TryGet(b, out int cur, out _) || cur <= 0) continue;
+                float d = (new Vector3(b.x + 0.5f, b.y + 0.5f, 0f) - from).sqrMagnitude;
+                if (d < bestSq) { bestSq = d; origin = b; found = true; }
+            }
+            return found;
         }
 
         // Nearest still-standing discovered enemy building to 'from'.
@@ -422,49 +485,100 @@ namespace RTSCL.World.Unity
         }
 
         // Send a dedicated scout to WANDER into unexplored territory — the bot does NOT know where the
-        // enemy is; it must stumble onto them. Each idle hop the scout heads ~22 cells toward a fresh
-        // random unexplored land cell (short hops keep each A* path within budget). Discovery happens
-        // when the scout's vision reaches an enemy building (ScanForEnemies).
-        private void Scout(ulong owner, BotState st)
+        // enemy is; it must stumble onto them. The scout prefers unexplored land it can actually REACH on
+        // foot (its own landmass), heading there in short hops (so each A* path stays within budget). If
+        // its whole landmass is explored without finding an enemy, the bot is boxed in / on an island, so
+        // it falls back to a boat: ferry the scout across water to unexplored land on another landmass.
+        private void Scout(ulong owner, BotState st, float dt)
         {
             var world = _worldSource != null ? _worldSource.CurrentWorld : null;
             if (world == null) return;
 
-            if (st.Scout == null || st.Scout.CurrentHp <= 0 || st.Scout.Owner != owner || st.Scout.IsNeutral)
+            if (st.Scout == null || st.Scout.CurrentHp <= 0 || st.Scout.Owner != owner || st.Scout.IsNeutral
+                || !st.Scout.gameObject.activeInHierarchy)   // skip while aboard a boat (inactive)
             {
                 st.Scout = null;
                 foreach (var g in Goblin.All)
                 {
                     if (g == null || g.IsNeutral || g.Owner != owner || g.Kind != "FarmerGoblin") continue;
+                    if (!g.gameObject.activeInHierarchy) continue;
                     st.Scout = g; break;
                 }
                 if (st.Scout == null) return;
             }
             if (!st.Scout.IsIdle) return;   // still travelling
 
-            if (!PickRandomUnexploredTarget(world, st, out var target)) return;
             Vector3 from = st.Scout.transform.position;
-            Vector3 delta = target - from;
-            const float StepDist = 22f;
-            Vector3 step = delta.magnitude <= StepDist ? target : from + delta.normalized * StepDist;
-            st.Scout.SetMoveCommand(step);
+            int scoutComp = CompAt(st, from);
+
+            // 1. Reachable unexplored land on the scout's own landmass → walk there in short hops.
+            if (PickReachableUnexplored(world, st, scoutComp, out var target)
+                || NearestUnexploredOnComponent(world, st, scoutComp, from, out target))
+            {
+                Vector3 delta = target - from;
+                const float StepDist = 22f;
+                Vector3 step = delta.magnitude <= StepDist ? target : from + delta.normalized * StepDist;
+                st.Scout.SetMoveCommand(step);
+                return;
+            }
+
+            // 2. Boxed in: own landmass fully explored, enemy still unknown → ferry the scout across water
+            //    to the nearest unexplored land on another landmass.
+            if (NearestUnexploredOtherComponent(world, st, scoutComp, from, out var navTo))
+                RunNaval(owner, st, dt, new List<Goblin> { st.Scout }, navTo);
         }
 
-        // Random unexplored, walkable land cell (sampled) — the scout's wander target. No spawn knowledge.
-        private bool PickRandomUnexploredTarget(WorldData world, BotState st, out Vector3 target)
+        // A random unexplored, walkable land cell ON the given component (reachable on foot). No spawn knowledge.
+        private bool PickReachableUnexplored(WorldData world, BotState st, int comp, out Vector3 target)
         {
-            for (int i = 0; i < 30; i++)
+            target = default;
+            if (comp < 0) return false;
+            for (int i = 0; i < 60; i++)
             {
                 int x = Random.Range(0, world.Width), y = Random.Range(0, world.Height);
                 if (st.Explored != null && st.Explored[x, y]) continue;     // already seen
-                var t = _terrainMap != null ? _terrainMap.GetTile(new Vector3Int(x, y, 0)) : null;
-                if (t == null) continue;
-                if (t.name == "DeepWater" || t.name == "Shore" || t.name == "Cliff") continue; // land only
+                if (CompAt(st, new Vector2Int(x, y)) != comp) continue;     // not reachable on foot
                 target = new Vector3(x + 0.5f, y + 0.5f, 0f);
                 return true;
             }
-            target = default;
             return false;
+        }
+
+        // Deterministic fallback: nearest unexplored land cell on 'comp' (used when random sampling misses).
+        private bool NearestUnexploredOnComponent(WorldData world, BotState st, int comp, Vector3 from, out Vector3 target)
+        {
+            target = default;
+            if (comp < 0 || st.Comp == null) return false;
+            int fx = Mathf.FloorToInt(from.x), fy = Mathf.FloorToInt(from.y);
+            int w = world.Width, h = world.Height, bestSq = int.MaxValue; bool found = false;
+            for (int y = 0; y < h; y++)
+            for (int x = 0; x < w; x++)
+            {
+                if (st.Comp[x, y] != comp) continue;
+                if (st.Explored != null && st.Explored[x, y]) continue;
+                int dx = x - fx, dy = y - fy, sq = dx * dx + dy * dy;
+                if (sq < bestSq) { bestSq = sq; target = new Vector3(x + 0.5f, y + 0.5f, 0f); found = true; }
+            }
+            return found;
+        }
+
+        // Nearest unexplored land cell that is NOT on 'comp' (a different landmass) — a naval-scout target.
+        private bool NearestUnexploredOtherComponent(WorldData world, BotState st, int comp, Vector3 from, out Vector3 target)
+        {
+            target = default;
+            if (st.Comp == null) return false;
+            int fx = Mathf.FloorToInt(from.x), fy = Mathf.FloorToInt(from.y);
+            int w = world.Width, h = world.Height, bestSq = int.MaxValue; bool found = false;
+            for (int y = 0; y < h; y++)
+            for (int x = 0; x < w; x++)
+            {
+                int c = st.Comp[x, y];
+                if (c < 0 || c == comp) continue;                          // water or own landmass
+                if (st.Explored != null && st.Explored[x, y]) continue;
+                int dx = x - fx, dy = y - fy, sq = dx * dx + dy * dy;
+                if (sq < bestSq) { bestSq = sq; target = new Vector3(x + 0.5f, y + 0.5f, 0f); found = true; }
+            }
+            return found;
         }
 
         // Nearest harvestable decoration tile of the given kind (or any kind if kind == null) within radius.
@@ -516,6 +630,207 @@ namespace RTSCL.World.Unity
                 if (d != null && Goblin.IsHarvestable(d.name)) return false;
             }
             return true;
+        }
+
+        // ---------- Naval: land connected-components + dock/boat ferry ----------
+
+        // Drive a boat to ferry 'cargo' (units on the home landmass) to 'targetWorld' on another landmass.
+        // Builds the dock and trains the boat on demand, one step per tick, paid from BotEconomy.
+        private void RunNaval(ulong owner, BotState st, float dt, List<Goblin> cargo, Vector3 targetWorld)
+        {
+            if (_dockDef == null || _boatDef == null) return;
+
+            // 1. Ensure a finished dock on the home-landmass coast.
+            bool dockExists = _placer.TryFindNearestBuildingByName(_dockName, owner, st.Keep, out var dockOrigin);
+            bool dockReady = dockExists && !BuildingConstruction.IsUnderConstruction(dockOrigin);
+            if (!dockReady)
+            {
+                if (!dockExists && CanAfford(owner, _dockDef) && TryFindDockSite(st, out var site))
+                {
+                    BotEconomy.Add(owner, ResourceKind.Wood, -_dockDef.WoodCost);
+                    BotEconomy.Add(owner, ResourceKind.Stone, -_dockDef.StoneCost);
+                    _placer.PlaceForce(_dockDef, site, charge: false, requireConstruction: true, owner: owner);
+                    AssignBuilder(owner, site);
+                    Debug.Log($"[Bot {owner}] building a DOCK at {site} (needs a boat to cross water).");
+                }
+                return;   // wait until the dock is up
+            }
+            if (!DockRegistry.TryGetWaterCell(dockOrigin, out var waterCell)) return;
+            Vector3 dockWater = new(waterCell.x + 0.5f, waterCell.y + 0.5f, 0f);
+
+            // 2. Ensure a boat exists (trained at the dock).
+            Goblin boat = FindBoat(owner);
+            if (boat == null)
+            {
+                if (st.BoatTrainTimer < 0f
+                    && BotEconomy.Get(owner, ResourceKind.Wood) >= _boatDef.WoodCost
+                    && BotEconomy.Get(owner, ResourceKind.Food) >= _boatDef.FoodCost
+                    && BotEconomy.CanAffordPop(owner, _boatDef.PopulationCost))
+                {
+                    BotEconomy.Add(owner, ResourceKind.Wood, -_boatDef.WoodCost);
+                    BotEconomy.Add(owner, ResourceKind.Food, -_boatDef.FoodCost);
+                    BotEconomy.AddUsed(owner, _boatDef.PopulationCost);
+                    st.BoatTrainTimer = Mathf.Max(0.1f, _boatDef.SpawnDuration);
+                }
+                else if (st.BoatTrainTimer >= 0f)
+                {
+                    st.BoatTrainTimer -= dt;
+                    if (st.BoatTrainTimer <= 0f)
+                    {
+                        st.BoatTrainTimer = -1f;
+                        _spawner.SpawnKindAt(_boatDef.SpawnerKindName, dockWater, owner);
+                        Debug.Log($"[Bot {owner}] boat ready at dock {dockOrigin}.");
+                    }
+                }
+                return;   // wait until the boat is built
+            }
+
+            // 3. Ferry. Only act while the boat is idle (otherwise it's mid-sail / unloading).
+            if (!boat.IsIdle) return;
+
+            // Active, alive cargo still waiting on land (boarded units go inactive + drop out of this list).
+            var waiting = cargo.FindAll(c => c != null && c.CurrentHp > 0 && c.gameObject.activeInHierarchy);
+            int aboard = boat.PassengerCount;
+            bool boatHome = (boat.transform.position - dockWater).sqrMagnitude < 16f;   // within ~4 cells
+
+            if (aboard == 0)
+            {
+                if (waiting.Count == 0) return;                            // nothing to ferry right now
+                if (!boatHome) { boat.SetMoveCommand(dockWater); return; } // bring the empty boat back to load
+                BoardSome(waiting, boat);                                  // start loading
+                st.BoardTimer = 8f;
+                return;
+            }
+
+            // Some are aboard: depart when full, the boarding window elapses, or no one's left to load.
+            st.BoardTimer -= dt;
+            bool full = !boat.BoatHasRoom;
+            bool moreToLoad = boatHome && waiting.Count > 0;
+            if (full || st.BoardTimer <= 0f || !moreToLoad)
+                boat.SetUnloadCommand(targetWorld);                       // sail over + drop them on the far shore
+            else
+                BoardSome(waiting, boat);                                 // keep loading idle stragglers
+        }
+
+        // Order idle cargo units to board the boat until it's full.
+        private static void BoardSome(List<Goblin> waiting, Goblin boat)
+        {
+            foreach (var c in waiting)
+            {
+                if (!boat.BoatHasRoom) break;
+                if (c.IsIdle) c.SetBoardCommand(boat);
+            }
+        }
+
+        // Recompute land connected-components (4-connected flood fill) so the bot knows which cells are
+        // reachable on foot from each other. Throttled — terrain doesn't change, so every few seconds is plenty.
+        private void EnsureComponents(BotState st, WorldData world, float dt)
+        {
+            st.CompTimer -= dt;
+            bool sized = st.Comp != null && st.Comp.GetLength(0) == world.Width && st.Comp.GetLength(1) == world.Height;
+            if (sized && st.CompTimer > 0f) return;
+            st.CompTimer = 5f;
+            int w = world.Width, h = world.Height;
+            if (!sized) st.Comp = new int[w, h];
+            for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) st.Comp[x, y] = -1;
+
+            var q = new Queue<Vector2Int>();
+            int id = 0;
+            for (int sy = 0; sy < h; sy++)
+            for (int sx = 0; sx < w; sx++)
+            {
+                if (st.Comp[sx, sy] != -1 || !IsLandCell(sx, sy)) continue;
+                st.Comp[sx, sy] = id; q.Enqueue(new Vector2Int(sx, sy));
+                while (q.Count > 0)
+                {
+                    var c = q.Dequeue();
+                    FloodStep(st, q, c.x + 1, c.y, id, w, h);
+                    FloodStep(st, q, c.x - 1, c.y, id, w, h);
+                    FloodStep(st, q, c.x, c.y + 1, id, w, h);
+                    FloodStep(st, q, c.x, c.y - 1, id, w, h);
+                }
+                id++;
+            }
+        }
+
+        private void FloodStep(BotState st, Queue<Vector2Int> q, int x, int y, int id, int w, int h)
+        {
+            if (x < 0 || y < 0 || x >= w || y >= h) return;
+            if (st.Comp[x, y] != -1 || !IsLandCell(x, y)) return;
+            st.Comp[x, y] = id; q.Enqueue(new Vector2Int(x, y));
+        }
+
+        // A walkable land cell (anything goblins can stand on — not deep water, shore or cliff).
+        private bool IsLandCell(int x, int y)
+        {
+            var t = _terrainMap != null ? _terrainMap.GetTile(new Vector3Int(x, y, 0)) : null;
+            if (t == null) return false;
+            return t.name != "DeepWater" && t.name != "Shore" && t.name != "Cliff";
+        }
+
+        private static int CompAt(BotState st, Vector2Int c)
+        {
+            if (st.Comp == null) return -1;
+            int w = st.Comp.GetLength(0), h = st.Comp.GetLength(1);
+            if (c.x < 0 || c.y < 0 || c.x >= w || c.y >= h) return -1;
+            return st.Comp[c.x, c.y];
+        }
+        private static int CompAt(BotState st, Vector3 world)
+            => CompAt(st, new Vector2Int(Mathf.FloorToInt(world.x), Mathf.FloorToInt(world.y)));
+
+        private static Goblin FindBoat(ulong owner)
+        {
+            foreach (var g in Goblin.All)
+                if (g != null && !g.IsNeutral && g.Owner == owner && g.CurrentHp > 0 && g.IsBoat) return g;
+            return null;
+        }
+
+        // Send the nearest available bot farmer to construct a building at 'site'.
+        private void AssignBuilder(ulong owner, Vector2Int site)
+        {
+            Vector3 sw = new(site.x + 0.5f, site.y + 0.5f, 0f);
+            Goblin best = null; float bestSq = float.MaxValue;
+            foreach (var g in Goblin.All)
+            {
+                if (g == null || g.IsNeutral || g.Owner != owner || g.Kind != "FarmerGoblin") continue;
+                if (!g.gameObject.activeInHierarchy) continue;
+                float d = (g.transform.position - sw).sqrMagnitude;
+                if (d < bestSq) { bestSq = d; best = g; }
+            }
+            best?.SetBuildCommand(site);
+        }
+
+        // Buildable coastal cell on the keep's landmass (adjacent to water so the dock gets its pier).
+        private bool TryFindDockSite(BotState st, out Vector2Int site)
+        {
+            site = default;
+            int keepComp = CompAt(st, st.Keep);
+            var fp = _dockDef.Footprint;
+            for (int ring = 1; ring <= 18; ring++)
+            for (int dy = -ring; dy <= ring; dy++)
+            for (int dx = -ring; dx <= ring; dx++)
+            {
+                if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dy)) != ring) continue;
+                var o = new Vector2Int(st.Keep.x + dx, st.Keep.y + dy);
+                if (CompAt(st, o) != keepComp) continue;       // must be on our landmass
+                if (!IsBuildable(o, fp)) continue;
+                if (!HasAdjacentWater(o, fp)) continue;
+                site = o; return true;
+            }
+            return false;
+        }
+
+        // True if any cell bordering the footprint is water (deep water or shore).
+        private bool HasAdjacentWater(Vector2Int origin, Vector2Int fp)
+        {
+            for (int dy = -1; dy <= fp.y; dy++)
+            for (int dx = -1; dx <= fp.x; dx++)
+            {
+                if (dx >= 0 && dx < fp.x && dy >= 0 && dy < fp.y) continue;  // interior cell
+                var t = _terrainMap != null ? _terrainMap.GetTile(new Vector3Int(origin.x + dx, origin.y + dy, 0)) : null;
+                if (t != null && (t.name == "DeepWater" || t.name == "Shore")) return true;
+            }
+            return false;
         }
     }
 }
