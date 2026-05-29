@@ -8,6 +8,7 @@ namespace RTSCL.World.Unity
         public string DisplayName;
         public Sprite Icon;
         public int WoodCost = 50;
+        public int FoodCost = 0;
         public int PopulationCost = 1;
         public int MaxHp = 20;
         public int AttackDamage = 0;
