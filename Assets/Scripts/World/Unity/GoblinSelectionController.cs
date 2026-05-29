@@ -61,7 +61,7 @@ namespace RTSCL.World.Unity
                 }
             }
 
-            // Right mouse: command selected goblins (harvest if tree, otherwise move)
+            // Right mouse: command selected goblins. Shift held → append to queue; else immediate.
             if (Mouse.current.rightButton.wasPressedThisFrame
                 && _selected.Count > 0 && !IsOverUI())
             {
@@ -69,29 +69,30 @@ namespace RTSCL.World.Unity
                 Vector3 worldTarget = _camera.ScreenToWorldPoint(
                     new Vector3(mp.x, mp.y, -_camera.transform.position.z));
 
+                bool shift = Keyboard.current != null
+                    && (Keyboard.current.leftShiftKey.isPressed || Keyboard.current.rightShiftKey.isPressed);
+
                 if (TryGetHarvestableAt(worldTarget, out var treeCell))
                 {
                     Vector3 treeCenter = _decorationMap.CellToWorld(treeCell) + new Vector3(0.5f, 0.5f, 0f);
                     ClickFeedback.Spawn(treeCenter, new Color(0.4f, 1f, 0.4f, 0.85f));  // green = harvest
-                    CommandHarvest(treeCell);
+                    if (shift) EnqueueHarvest(treeCell); else { ClearQueues(); CommandHarvest(treeCell); }
                 }
                 else if (TryGetConstructionAt(worldTarget, out var buildOrigin))
                 {
                     Vector3 c = new(buildOrigin.x + 0.5f, buildOrigin.y + 0.5f, 0f);
                     ClickFeedback.Spawn(c, new Color(1f, 0.7f, 0.2f, 0.9f));  // orange = build
-                    var workers = new List<Goblin>();
-                    foreach (var g in _selected) if (IsWorker(g)) workers.Add(g);
-                    if (workers.Count > 0) NetCommandIssuer.IssueBuildAssist(workers, buildOrigin);
+                    if (shift) EnqueueBuildAssist(buildOrigin); else { ClearQueues(); CommandBuildAssist(buildOrigin); }
                 }
                 else if (TryGetGoblinAt(worldTarget, out var enemy))
                 {
                     ClickFeedback.Spawn(enemy.transform.position, new Color(1f, 0.3f, 0.3f, 0.9f)); // red = attack
-                    CommandAttack(enemy);
+                    if (shift) EnqueueAttack(enemy); else { ClearQueues(); CommandAttack(enemy); }
                 }
                 else
                 {
                     ClickFeedback.Spawn(worldTarget, new Color(1f, 1f, 1f, 0.85f));    // white = move
-                    CommandFormation(worldTarget);
+                    if (shift) EnqueueMove(worldTarget); else { ClearQueues(); CommandFormation(worldTarget); }
                 }
             }
         }
@@ -216,6 +217,68 @@ namespace RTSCL.World.Unity
             foreach (var g in _selected)
                 if (g != null && g.AttackDamage > 0)
                     NetCommandIssuer.IssueAttack(g, target);
+        }
+
+        private void ClearQueues()
+        {
+            foreach (var g in _selected) if (g != null) g.ClearQueue();
+        }
+
+        private void CommandBuildAssist(Vector2Int buildOrigin)
+        {
+            var workers = new List<Goblin>();
+            foreach (var g in _selected) if (IsWorker(g)) workers.Add(g);
+            if (workers.Count > 0) NetCommandIssuer.IssueBuildAssist(workers, buildOrigin);
+        }
+
+        private void EnqueueMove(Vector3 worldCenter)
+        {
+            // Same square-formation offset IssueMove computes, so queued moves keep formation.
+            int n = _selected.Count;
+            int cols = Mathf.CeilToInt(Mathf.Sqrt(n));
+            int rows = Mathf.CeilToInt((float)n / cols);
+            const float spacing = 1.0f;
+            for (int i = 0; i < n; i++)
+            {
+                var g = _selected[i];
+                if (g == null) continue;
+                int col = i % cols, row = i / cols;
+                Vector3 offset = new(
+                    (col - (cols - 1) * 0.5f) * spacing,
+                    (row - (rows - 1) * 0.5f) * spacing, 0f);
+                g.EnqueueCommand(new Goblin.GoblinCommand
+                {
+                    Type = Goblin.CommandType.Move,
+                    Point = worldCenter + offset,
+                });
+            }
+        }
+
+        private void EnqueueHarvest(Vector3Int cell)
+        {
+            foreach (var g in _selected)
+            {
+                if (!IsWorker(g)) continue;
+                g.EnqueueCommand(new Goblin.GoblinCommand { Type = Goblin.CommandType.Harvest, Cell = cell });
+            }
+        }
+
+        private void EnqueueBuildAssist(Vector2Int origin)
+        {
+            foreach (var g in _selected)
+            {
+                if (!IsWorker(g)) continue;
+                g.EnqueueCommand(new Goblin.GoblinCommand { Type = Goblin.CommandType.BuildAssist, Origin = origin });
+            }
+        }
+
+        private void EnqueueAttack(Goblin target)
+        {
+            foreach (var g in _selected)
+            {
+                if (g == null || g.AttackDamage <= 0) continue;
+                g.EnqueueCommand(new Goblin.GoblinCommand { Type = Goblin.CommandType.Attack, Target = target });
+            }
         }
 
         private static bool IsOverUI()
