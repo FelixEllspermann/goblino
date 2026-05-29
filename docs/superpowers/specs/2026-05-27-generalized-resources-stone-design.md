@@ -191,6 +191,15 @@ Carry slot + ResourceBank are owner-local (unchanged ownership model). Stone beh
   - Carrying wood + right-click rock → deposit wood first, then mine stone (mutual exclusion).
   - Rock destroyed → burst, Farmer finds next or idles.
 
+## Phase 2 Sprite Choices (recorded, not used in Phase 1)
+
+User-chosen ore icons/deposit sprites from `Assets/MiniWorldSprites/Buildings/Wood/Resources.png`:
+- **Gold** = `Resources_0`
+- **Crystal** (gems) = `Resources_2`
+- **Iron** = `Resources_5`
+
+Stone icon stays `Rocks_6` (Phase 1).
+
 ## Risks
 | Risk | Mitigation |
 |---|---|
