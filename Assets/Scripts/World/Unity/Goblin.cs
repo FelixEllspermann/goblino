@@ -118,7 +118,6 @@ namespace RTSCL.World.Unity
 
             BuildSelectionRing();
             GoblinHealthBar.AttachTo(this);
-            GoblinCarryText.AttachTo(this);
         }
 
         public void SetMoveCommand(Vector3 worldTarget)

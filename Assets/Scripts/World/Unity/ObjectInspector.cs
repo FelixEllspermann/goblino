@@ -43,6 +43,8 @@ namespace RTSCL.World.Unity
         private Vector2Int _selOrigin;
         private BuildingDefinition _selDef;
         private BuildingOwner _selBuildingOwner;
+        private string _lastCarryLine = "";
+        private string _lastGoblinDescBase = "";
 
         private struct CardRefs
         {
@@ -88,6 +90,7 @@ namespace RTSCL.World.Unity
 
             // Live progress bar while a production runs for the currently-shown keep/barracks
             if (_selKind == SelKind.Building) UpdateProgressUI();
+            if (_selKind == SelKind.Goblins) UpdateCarryUI();
 
             if (!Mouse.current.leftButton.wasPressedThisFrame) return;
             if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return;
@@ -154,6 +157,8 @@ namespace RTSCL.World.Unity
             string desc = hasFarmer
                 ? "Worker — chops trees, builds buildings"
                 : "Warrior — melee unit";
+            _lastGoblinDescBase = desc;
+            _lastCarryLine = "";
             SetHeader(name, desc);
 
             if (hasFarmer && _farmerBuildables != null && _farmerBuildables.Count > 0)
@@ -407,6 +412,26 @@ namespace RTSCL.World.Unity
             _progressRow.SetActive(true);
             if (_progressFill != null)  _progressFill.fillAmount = slot.Progress;
             if (_progressLabel != null) _progressLabel.text = $"Producing {slot.Def.DisplayName}…";
+        }
+
+        private void UpdateCarryUI()
+        {
+            if (_selectionController == null) return;
+            var sel = _selectionController.Selection;
+            string newCarry = "";
+            if (sel.Count == 1 && sel[0] != null && sel[0].Kind == "FarmerGoblin")
+            {
+                int wood = sel[0].CarriedWood;
+                int food = sel[0].CarriedFood;
+                if (wood > 0) newCarry = $"Carrying: {wood} wood";
+                else if (food > 0) newCarry = $"Carrying: {food} food";
+            }
+            if (newCarry == _lastCarryLine) return;
+            _lastCarryLine = newCarry;
+            string full = string.IsNullOrEmpty(newCarry)
+                ? _lastGoblinDescBase
+                : _lastGoblinDescBase + "\n" + newCarry;
+            if (_descriptionLabel != null) _descriptionLabel.text = full;
         }
 
         // ---------- Click handlers ----------
