@@ -26,11 +26,13 @@ namespace RTSCL.World
 
         // ── Continent shaping ────────────────────────────────────────────────────────
         // Higher FalloffStrength → smaller landmass, more ocean border.
-        public float FalloffStrength = 1.2f;
+        // Tuned low (0.6) for a large connected continent rather than scattered islands.
+        public float FalloffStrength = 0.6f;
 
         // ── Biome thresholds (post-falloff elevation, normalised [0..1]) ────────────
-        public float DeepWaterMax = 0.30f;   // elevation < this → DeepWater
-        public float ShoreMax = 0.40f;       // elevation in [DeepWaterMax, ShoreMax) → Shore
+        // Low water cutoffs → more land, less ocean (favours mainland over islands).
+        public float DeepWaterMax = 0.22f;   // elevation < this → DeepWater
+        public float ShoreMax = 0.32f;       // elevation in [DeepWaterMax, ShoreMax) → Shore
         public float CliffMin = 0.85f;       // elevation > this → Cliff
 
         // ── Biome thresholds (temperature & moisture, both normalised [0..1]) ───────
@@ -41,8 +43,8 @@ namespace RTSCL.World
         public float GrasslandMoistureMin = 0.35f; // moisture in [GrasslandMoistureMin, ForestMoistureMin) → Grassland
 
         // ── Post-processing (island/lake cleanup) ────────────────────────────────────
-        public int MiniIslandRemovalThreshold = 10; // Land components with fewer tiles are erased
-        public int LakeFillThreshold = 5;           // Enclosed water pockets with fewer tiles are filled
+        public int MiniIslandRemovalThreshold = 30; // Land components with fewer tiles are erased (high → few stray islands)
+        public int LakeFillThreshold = 12;          // Enclosed water pockets with fewer tiles are filled (high → fewer inland lakes)
 
         // ── Spawn placement ──────────────────────────────────────────────────────────
         public int SpawnBufferToImpassable = 4;  // Min clear-tile radius required around a spawn candidate

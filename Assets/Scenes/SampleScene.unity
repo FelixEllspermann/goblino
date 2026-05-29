@@ -172735,17 +172735,17 @@ MonoBehaviour:
     ElevationScale: 40
     MoistureScale: 30
     TemperatureScale: 60
-    FalloffStrength: 0.7
-    DeepWaterMax: 0.3
-    ShoreMax: 0.4
+    FalloffStrength: 0.6
+    DeepWaterMax: 0.22
+    ShoreMax: 0.32
     CliffMin: 0.85
     SnowMax: 0.25
     TropicalMin: 0.75
     DesertMoistureMax: 0.3
     ForestMoistureMin: 0.65
     GrasslandMoistureMin: 0.35
-    MiniIslandRemovalThreshold: 10
-    LakeFillThreshold: 5
+    MiniIslandRemovalThreshold: 30
+    LakeFillThreshold: 12
     SpawnBufferToImpassable: 4
     SpawnReservedAreaSize: 5
     CandidatesPerSpawn: 100
