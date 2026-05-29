@@ -69,6 +69,7 @@ namespace RTSCL.World.Unity
             if (_popupRoot != null) _popupRoot.SetActive(false);
             if (_progressRow != null) _progressRow.SetActive(false);
             ResourceBank.OnWoodChanged += _ => Refresh();
+            ResourceBank.OnFoodChanged += _ => Refresh();
             PopulationManager.OnChanged += Refresh;
             GoblinProduction.OnChanged += Refresh;
             if (_selectionController != null)
@@ -393,7 +394,8 @@ namespace RTSCL.World.Unity
             bool busy = _selKind == SelKind.Building && GoblinProduction.IsBusy(_selOrigin);
             foreach (var card in _cards)
             {
-                bool affordable = ResourceBank.Wood >= card.WoodCost;
+                bool affordable = ResourceBank.Wood >= card.WoodCost
+                               && ResourceBank.Food >= card.FoodCost;
                 bool popOk = card.Unit == null || PopulationManager.CanAfford(card.Unit.PopulationCost);
                 bool alreadyOwned = card.Upgrade != null
                     && PlayerUpgrades.IsPurchased(WorldStartContext.LocalPlayer, card.UpgradeKind);
@@ -445,8 +447,10 @@ namespace RTSCL.World.Unity
             if (_selKind != SelKind.Building || _selDef == null) return;
             if (GoblinProduction.IsBusy(_selOrigin)) return;
             if (ResourceBank.Wood < unit.WoodCost) return;
+            if (ResourceBank.Food < unit.FoodCost) return;
             if (!PopulationManager.CanAfford(unit.PopulationCost)) return;
-            ResourceBank.AddWood(-unit.WoodCost);
+            if (unit.WoodCost > 0) ResourceBank.AddWood(-unit.WoodCost);
+            if (unit.FoodCost > 0) ResourceBank.AddFood(-unit.FoodCost);
             ulong owner = WorldStartContext.LocalPlayer;
             NetCommandIssuer.IssueTrainUnit(_selOrigin, unit, owner);
             Refresh();
