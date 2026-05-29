@@ -550,11 +550,28 @@ namespace RTSCL.World.Unity
 
         private void RepathTo(Vector3 worldTarget)
         {
-            _moveTarget = worldTarget;
             _path.Clear();
             _pathIndex = 0;
-            var start = CellOfPos(transform.position);
+
             var goal = CellOfPos(worldTarget);
+            // If the destination cell is impassable (e.g. clicked on water), snap to the
+            // nearest passable cell so we never walk onto water/cliff/resources.
+            if (!IsCellPassable(goal.x, goal.y))
+            {
+                if (TryFindNearestPassable(goal, out var snapped))
+                {
+                    goal = snapped;
+                    worldTarget = new Vector3(snapped.x + 0.5f, snapped.y + 0.5f, 0f);
+                }
+                else
+                {
+                    _moveTarget = transform.position; // nowhere reachable — stay put
+                    return;
+                }
+            }
+
+            _moveTarget = worldTarget;
+            var start = CellOfPos(transform.position);
             var cells = Pathfinder.FindPath(new int2(start.x, start.y), new int2(goal.x, goal.y),
                                             WorldGrid.Width, WorldGrid.Height, IsCellPassable);
             if (cells != null && cells.Count > 0)
@@ -563,15 +580,27 @@ namespace RTSCL.World.Unity
                     _path.Add(new Vector3(cells[i].x + 0.5f, cells[i].y + 0.5f, 0f));
                 _path[_path.Count - 1] = worldTarget; // final waypoint = exact destination
             }
-            else
+            // No path found → leave _path empty; the unit stays put rather than beelining
+            // straight through impassable terrain.
+        }
+
+        private bool TryFindNearestPassable(Vector2Int c, out Vector2Int found)
+        {
+            for (int r = 0; r <= 8; r++)
+            for (int dy = -r; dy <= r; dy++)
+            for (int dx = -r; dx <= r; dx++)
             {
-                _path.Add(worldTarget); // straight-line fallback (no path / out of bounds)
+                if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dy)) != r) continue; // ring only
+                int x = c.x + dx, y = c.y + dy;
+                if (IsCellPassable(x, y)) { found = new Vector2Int(x, y); return true; }
             }
+            found = default;
+            return false;
         }
 
         private bool MoveAlongPath()
         {
-            if (_path.Count == 0) return StepToward(_moveTarget);
+            if (_path.Count == 0) return true; // no path → treat as arrived (no straight-line onto blocked terrain)
             if (_pathIndex >= _path.Count) return true;
             if (StepToward(_path[_pathIndex]))
             {
