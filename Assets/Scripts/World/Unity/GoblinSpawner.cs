@@ -233,6 +233,10 @@ namespace RTSCL.World.Unity
             goblin.SetOwner(owner);
             // Apply any already-purchased upgrades (harvest speed, damage, etc.) to the new unit.
             UpgradeEffects.ApplyExistingTo(goblin);
+            // Hide enemy units under fog: any unit NOT owned by the local player only shows while in active
+            // vision (Visible), not in the explored half-fog. (Monsters already get FogHide from MonsterSpawner.)
+            if (owner != WorldStartContext.LocalPlayer && go.GetComponent<FogHide>() == null)
+                go.AddComponent<FogHide>();
             return goblin;
         }
 
