@@ -136,18 +136,13 @@ namespace RTSCL.World.Unity
             return "";
         }
 
-        // Hover tooltip (built lazily once, reused). Shows what a build/upgrade/train card does.
-        private GameObject _tooltip;
-        private Text _tooltipText;
-        private RectTransform _tooltipRect;
-
-        // Forwards pointer enter/exit on a card to the inspector's tooltip. Added to each card GameObject.
+        // Forwards pointer enter/exit on a card to the shared UITooltip. Added to each card GameObject.
         private sealed class CardHover : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
         {
-            public ObjectInspector Owner;
+            public Font Font;
             public string Tip;
-            public void OnPointerEnter(PointerEventData e) { if (Owner != null) Owner.ShowTooltip(Tip); }
-            public void OnPointerExit(PointerEventData e)  { if (Owner != null) Owner.HideTooltip(); }
+            public void OnPointerEnter(PointerEventData e) => UITooltip.Show(Tip, Font);
+            public void OnPointerExit(PointerEventData e)  => UITooltip.Hide();
         }
 
         private void Start()
@@ -188,7 +183,6 @@ namespace RTSCL.World.Unity
             if (_placer != null && _placer.Selected != null) return;
 
             // Live progress bar while a production runs for the currently-shown keep/barracks
-            if (_tooltip != null && _tooltip.activeSelf) PositionTooltip();
             if (_selKind == SelKind.Building) UpdateProgressUI();
             if (_selKind == SelKind.Goblins) UpdateCarryUI();
             if (_selKind == SelKind.Decoration) UpdateResourceAmount();
@@ -445,66 +439,6 @@ namespace RTSCL.World.Unity
             ClearCards();
         }
 
-        // ---------- Hover tooltip ----------
-
-        /// <summary>Show the tooltip with <paramref name="text"/>, parented to the popup's canvas.</summary>
-        internal void ShowTooltip(string text)
-        {
-            if (string.IsNullOrEmpty(text)) return;
-            EnsureTooltip();
-            if (_tooltip == null) return;
-            _tooltipText.text = text;
-            _tooltip.SetActive(true);
-            _tooltip.transform.SetAsLastSibling();   // draw above everything else on the canvas
-            PositionTooltip();
-        }
-
-        internal void HideTooltip() { if (_tooltip != null) _tooltip.SetActive(false); }
-
-        // Build the tooltip panel once, on the same Canvas as the popup. A dark rounded-ish box with text.
-        private void EnsureTooltip()
-        {
-            if (_tooltip != null) return;
-            var canvas = _popupRoot != null ? _popupRoot.GetComponentInParent<Canvas>() : null;
-            if (canvas == null) return;
-
-            _tooltip = new GameObject("CardTooltip", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-            _tooltip.transform.SetParent(canvas.transform, false);
-            _tooltipRect = (RectTransform)_tooltip.transform;
-            _tooltipRect.pivot = new Vector2(0f, 0f);          // anchor bottom-left near the cursor
-            _tooltipRect.sizeDelta = new Vector2(260f, 70f);
-            var bg = _tooltip.GetComponent<Image>();
-            bg.color = new Color(0.05f, 0.05f, 0.08f, 0.95f);
-            bg.raycastTarget = false;                          // never eat clicks/hover
-
-            var txtGo = new GameObject("Text", typeof(RectTransform), typeof(CanvasRenderer), typeof(Text));
-            txtGo.transform.SetParent(_tooltip.transform, false);
-            var tr = (RectTransform)txtGo.transform;
-            tr.anchorMin = Vector2.zero; tr.anchorMax = Vector2.one;
-            tr.offsetMin = new Vector2(10f, 8f); tr.offsetMax = new Vector2(-10f, -8f);
-            _tooltipText = txtGo.GetComponent<Text>();
-            _tooltipText.font = _cardFont;
-            _tooltipText.fontSize = 14;
-            _tooltipText.color = Color.white;
-            _tooltipText.alignment = TextAnchor.UpperLeft;
-            _tooltipText.horizontalOverflow = HorizontalWrapMode.Wrap;
-            _tooltipText.verticalOverflow = VerticalWrapMode.Overflow;
-            _tooltipText.lineSpacing = LineSpacing;
-            _tooltipText.raycastTarget = false;
-            _tooltip.SetActive(false);
-        }
-
-        // Follow the mouse, offset up-right, clamped roughly inside the screen.
-        private void PositionTooltip()
-        {
-            if (_tooltipRect == null || Mouse.current == null) return;
-            Vector2 m = Mouse.current.position.ReadValue();
-            float w = _tooltipRect.sizeDelta.x, h = _tooltipRect.sizeDelta.y;
-            float x = Mathf.Min(m.x + 16f, Screen.width - w - 4f);
-            float y = Mathf.Min(m.y + 16f, Screen.height - h - 4f);
-            _tooltipRect.position = new Vector3(x, y, 0f);
-        }
-
         // ---------- Cards (built on demand for the current display) ----------
 
         // Destroy all current card GameObjects and hide the container.
@@ -626,7 +560,7 @@ namespace RTSCL.World.Unity
             if (!string.IsNullOrEmpty(tooltip))
             {
                 var hover = card.AddComponent<CardHover>();
-                hover.Owner = this;
+                hover.Font = _cardFont;
                 hover.Tip = tooltip;
             }
 
