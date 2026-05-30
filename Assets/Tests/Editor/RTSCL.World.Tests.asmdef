@@ -3,6 +3,7 @@
     "rootNamespace": "RTSCL.World.Tests",
     "references": [
         "RTSCL.World",
+        "RTSCL.World.Unity",
         "Unity.Mathematics",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"

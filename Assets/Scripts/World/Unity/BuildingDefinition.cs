@@ -48,5 +48,14 @@ namespace RTSCL.World.Unity
         /// Empty = no upgrades available.</summary>
         [Tooltip("Upgrades that this building can purchase (Workshop)")]
         public UpgradeDefinition[] ProvidesUpgrades;
+
+        /// <summary>Build-menu category this building appears under (groups the sidebar tabs).</summary>
+        [Tooltip("Which build-menu category/tab this building appears under.")]
+        public BuildCategory Category = BuildCategory.Economy;
+
+        /// <summary>Buildings that must be owned + finished before this one can be built.
+        /// Empty = always buildable. Drives the build menu's locked/greyed state (tech-tree foundation).</summary>
+        [Tooltip("Prerequisite buildings (must be owned + finished). Empty = always buildable.")]
+        public BuildingDefinition[] Requires;
     }
 }
