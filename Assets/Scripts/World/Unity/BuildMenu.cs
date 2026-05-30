@@ -1,7 +1,12 @@
-// BuildMenu.cs — left-edge build sidebar. Shown only while a Farmer is selected. Vertical category tabs
-// (one per non-empty BuildCategory) beside a scrollable grid of that category's buildings. Each card shows
-// icon + name + cost icons, greys out when locked (BuildRequirements) or unaffordable, and on click starts
-// ghost placement via BuildingPlacer.Select. Built entirely at runtime (no prefab). Uses the shared UITooltip.
+// BuildMenu.cs — left-edge action sidebar. Two modes:
+//   • Build   (a Farmer is selected): category tabs + scrollable grid of buildable buildings → ghost placement.
+//   • Actions (one of the player's own buildings is selected): that building's train cards (Keep→Farmer,
+//             Barracks→Club/Archer, Docks→Boat) and/or upgrade cards (Workshop/Mill), with a production
+//             progress line + queue count. Clicking trains/queues a unit or researches an upgrade.
+// Driven by GoblinSelectionController.OnSelectionChanged (farmer) and ObjectInspector.OnBuildingInspected /
+// OnInspectionCleared (building). The bottom ObjectInspector is info-only now (stats, no action cards).
+// Built entirely at runtime (no prefab). Uses the shared UITooltip.
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -13,7 +18,7 @@ namespace RTSCL.World.Unity
     {
         [SerializeField] private GoblinSelectionController _selectionController;
         [SerializeField] private BuildingPlacer _placer;
-        [Tooltip("All buildings a Farmer can construct (moved here from ObjectInspector).")]
+        [Tooltip("All buildings a Farmer can construct.")]
         [SerializeField] private List<BuildingDefinition> _buildables = new();
         [SerializeField] private Font _font;
         [SerializeField] private Sprite _cardSprite;
@@ -26,54 +31,117 @@ namespace RTSCL.World.Unity
         [SerializeField] private Vector2 _cellSize = new(150f, 64f);
         [SerializeField] private float _tabWidth = 96f;
 
+        private enum Mode { None, Build, Actions }
+        private Mode _mode = Mode.None;
+
         private Canvas _canvas;
         private GameObject _root;
         private RectTransform _tabColumn;
+        private ScrollRect _scroll;
         private RectTransform _gridContent;
+        private GridLayoutGroup _grid;
         private BuildCategory _activeCategory = BuildCategory.Economy;
-        private readonly List<(BuildingDefinition def, GameObject card, CanvasGroup costGroup, Button btn, Image bg)> _cards = new();
         private bool _built;
-        private bool _shown;
+
+        // Build-mode state.
+        private bool _farmerSelected;
+        // Actions-mode state (a selected own building).
+        private bool _buildingActive;
+        private Vector2Int _buildingOrigin;
+        private BuildingDefinition _buildingDef;
+
+        // Build-mode cards (buildings to place).
+        private readonly List<(BuildingDefinition def, CanvasGroup costGroup, Button btn, Image bg)> _buildCards = new();
+        // Actions-mode cards (train a unit / buy an upgrade). Availability via the predicate.
+        private readonly List<ActionCard> _actionCards = new();
+        private Text _progressLabel;
+
+        private sealed class ActionCard
+        {
+            public GoblinUnitDefinition Unit;       // exactly one of Unit / Upgrade set
+            public UpgradeDefinition Upgrade;
+            public Button Btn;
+            public Image Bg;
+            public CanvasGroup CostGroup;
+        }
 
         private static readonly Color BgEnabled  = new(0.18f, 0.18f, 0.22f, 0.95f);
         private static readonly Color BgDisabled = new(0.10f, 0.10f, 0.12f, 0.7f);
 
         private void Start()
         {
-            _canvas = Object.FindFirstObjectByType<Canvas>();
+            _canvas = UnityEngine.Object.FindFirstObjectByType<Canvas>();
             if (_selectionController != null)
                 _selectionController.OnSelectionChanged += OnSelectionChanged;
-            ResourceBank.OnChanged += (_, __) => RefreshAvailability();
-            BuildingConstruction.OnCompleted += _ => RefreshAvailability();
-            SetShown(false);
+            ObjectInspector.OnBuildingInspected += OnBuildingInspected;
+            ObjectInspector.OnInspectionCleared += OnInspectionCleared;
+            ResourceBank.OnChanged += OnResourceChanged;
+            GoblinProduction.OnChanged += RefreshActions;
+            BuildingConstruction.OnCompleted += OnConstructionCompleted;
+            Resolve();
         }
 
         private void OnDestroy()
         {
             if (_selectionController != null)
                 _selectionController.OnSelectionChanged -= OnSelectionChanged;
+            ObjectInspector.OnBuildingInspected -= OnBuildingInspected;
+            ObjectInspector.OnInspectionCleared -= OnInspectionCleared;
+            ResourceBank.OnChanged -= OnResourceChanged;
+            GoblinProduction.OnChanged -= RefreshActions;
+            BuildingConstruction.OnCompleted -= OnConstructionCompleted;
         }
+
+        private void OnResourceChanged(ResourceKind k, int v) { RefreshBuildAvailability(); RefreshActions(); }
+        private void OnConstructionCompleted(Vector2Int o) { RefreshBuildAvailability(); RefreshActions(); }
+
+        // ---------- Mode resolution ----------
 
         private void OnSelectionChanged()
         {
-            bool hasFarmer = false;
+            _farmerSelected = false;
             if (_selectionController != null)
                 foreach (var g in _selectionController.Selection)
-                    if (g != null && g.Kind == "FarmerGoblin") { hasFarmer = true; break; }
-            SetShown(hasFarmer);
+                    if (g != null && g.Kind == "FarmerGoblin") { _farmerSelected = true; break; }
+            // Selecting units supersedes a previously-inspected building.
+            if (_farmerSelected) _buildingActive = false;
+            Resolve();
         }
 
-        private void SetShown(bool show)
+        private void OnBuildingInspected(Vector2Int origin, BuildingDefinition def, bool isLocal)
         {
-            _shown = show;
-            if (show)
-            {
-                EnsureBuilt();
-                BuildTabs();
-                BuildGrid();
-            }
-            if (_root != null) _root.SetActive(show);
+            // Only OWN buildings with something to do (train or upgrade) open the actions panel.
+            bool hasActions = isLocal && def != null &&
+                ((def.TrainsUnits != null && def.TrainsUnits.Length > 0) ||
+                 (def.ProvidesUpgrades != null && def.ProvidesUpgrades.Length > 0));
+            if (!hasActions) { _buildingActive = false; Resolve(); return; }
+            _buildingActive = true;
+            _buildingOrigin = origin;
+            _buildingDef = def;
+            _farmerSelected = false;   // a building click clears the unit selection anyway
+            Resolve();
         }
+
+        private void OnInspectionCleared()
+        {
+            _buildingActive = false;
+            Resolve();
+        }
+
+        // Pick the mode: a selected Farmer (build) wins; else a selected own building (actions); else hide.
+        private void Resolve()
+        {
+            Mode want = _farmerSelected ? Mode.Build : _buildingActive ? Mode.Actions : Mode.None;
+            _mode = want;
+            if (want == Mode.None) { if (_root != null) _root.SetActive(false); return; }
+
+            EnsureBuilt();
+            if (want == Mode.Build) BuildBuildMode();
+            else BuildActionsMode();
+            _root.SetActive(true);
+        }
+
+        // ---------- UI scaffold (built once) ----------
 
         private void EnsureBuilt()
         {
@@ -101,17 +169,14 @@ namespace RTSCL.World.Unity
             tvlg.childForceExpandHeight = false; tvlg.childControlHeight = true;
             tvlg.childForceExpandWidth = true; tvlg.childControlWidth = true;
 
-            // ScrollRect → Viewport (clips) → Content (grid). A dedicated viewport is required, otherwise
-            // the mask/content geometry is wrong and cards spill left under the tab column (the screenshot bug).
             var scrollGo = new GameObject("Grid", typeof(RectTransform), typeof(Image), typeof(ScrollRect));
             scrollGo.transform.SetParent(_root.transform, false);
             var srt = (RectTransform)scrollGo.transform;
             srt.anchorMin = new Vector2(0f, 0f); srt.anchorMax = new Vector2(1f, 1f);
             srt.offsetMin = new Vector2(_tabWidth + 6f, 6f); srt.offsetMax = new Vector2(-6f, -6f);
             scrollGo.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.25f);
-            var scroll = scrollGo.GetComponent<ScrollRect>();
-            scroll.horizontal = false; scroll.vertical = true;
-            scroll.scrollSensitivity = 24f;
+            _scroll = scrollGo.GetComponent<ScrollRect>();
+            _scroll.horizontal = false; _scroll.vertical = true; _scroll.scrollSensitivity = 24f;
 
             var viewportGo = new GameObject("Viewport", typeof(RectTransform), typeof(Image), typeof(RectMask2D));
             viewportGo.transform.SetParent(scrollGo.transform, false);
@@ -119,7 +184,7 @@ namespace RTSCL.World.Unity
             vrt.anchorMin = Vector2.zero; vrt.anchorMax = Vector2.one;
             vrt.offsetMin = Vector2.zero; vrt.offsetMax = Vector2.zero;
             vrt.pivot = new Vector2(0f, 1f);
-            viewportGo.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.01f);  // mask needs a graphic
+            viewportGo.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.01f);
 
             var contentGo = new GameObject("Content", typeof(RectTransform), typeof(GridLayoutGroup), typeof(ContentSizeFitter));
             contentGo.transform.SetParent(viewportGo.transform, false);
@@ -127,50 +192,60 @@ namespace RTSCL.World.Unity
             _gridContent.anchorMin = new Vector2(0f, 1f); _gridContent.anchorMax = new Vector2(1f, 1f);
             _gridContent.pivot = new Vector2(0f, 1f);
             _gridContent.anchoredPosition = Vector2.zero;
-            var grid = contentGo.GetComponent<GridLayoutGroup>();
-            grid.cellSize = _cellSize; grid.spacing = new Vector2(6f, 6f);
-            grid.padding = new RectOffset(6, 6, 6, 6);
-            grid.childAlignment = TextAnchor.UpperLeft;
-            // Fit as many columns as the viewport width allows (≥1), so cards never overflow past the panel.
-            float avail = _panelWidth - _tabWidth - 12f;
-            int cols = Mathf.Max(1, Mathf.FloorToInt((avail - grid.padding.left - grid.padding.right + grid.spacing.x)
-                                                     / (_cellSize.x + grid.spacing.x)));
-            grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
-            grid.constraintCount = cols;
+            _grid = contentGo.GetComponent<GridLayoutGroup>();
+            _grid.spacing = new Vector2(6f, 6f);
+            _grid.padding = new RectOffset(6, 6, 6, 6);
+            _grid.childAlignment = TextAnchor.UpperLeft;
             var fitter = contentGo.GetComponent<ContentSizeFitter>();
             fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-            scroll.viewport = vrt;
-            scroll.content = _gridContent;
+            _scroll.viewport = vrt;
+            _scroll.content = _gridContent;
         }
 
-        private void BuildTabs()
+        private void ClearGrid()
         {
-            if (_tabColumn == null) return;
+            for (int i = _gridContent.childCount - 1; i >= 0; i--) Destroy(_gridContent.GetChild(i).gameObject);
+            _buildCards.Clear();
+            _actionCards.Clear();
+            _progressLabel = null;
+        }
+
+        private void ClearTabs()
+        {
             for (int i = _tabColumn.childCount - 1; i >= 0; i--) Destroy(_tabColumn.GetChild(i).gameObject);
+        }
+
+        // ---------- Build mode (farmer selected) ----------
+
+        private void BuildBuildMode()
+        {
+            ClearTabs();
+            ClearGrid();
+            _tabColumn.gameObject.SetActive(true);
 
             if (BuildablesIn(_activeCategory).Count == 0)
-                foreach (BuildCategory c in System.Enum.GetValues(typeof(BuildCategory)))
+                foreach (BuildCategory c in Enum.GetValues(typeof(BuildCategory)))
                     if (BuildablesIn(c).Count > 0) { _activeCategory = c; break; }
 
-            foreach (BuildCategory cat in System.Enum.GetValues(typeof(BuildCategory)))
+            foreach (BuildCategory cat in Enum.GetValues(typeof(BuildCategory)))
             {
                 if (BuildablesIn(cat).Count == 0) continue;
                 var captured = cat;
-                var tab = MakeButton(_tabColumn, cat.ToString(),
-                                     () => { _activeCategory = captured; BuildGrid(); BuildTabs(); });
+                var tab = MakeTab(cat.ToString(), () => { _activeCategory = captured; BuildBuildMode(); });
                 tab.GetComponent<Image>().color = cat == _activeCategory ? BgEnabled : BgDisabled;
             }
-        }
 
-        private void BuildGrid()
-        {
-            if (_gridContent == null) return;
-            for (int i = _gridContent.childCount - 1; i >= 0; i--) Destroy(_gridContent.GetChild(i).gameObject);
-            _cards.Clear();
+            // Multi-column grid for buildings.
+            _grid.cellSize = _cellSize;
+            float avail = _panelWidth - _tabWidth - 12f;
+            int cols = Mathf.Max(1, Mathf.FloorToInt((avail - _grid.padding.left - _grid.padding.right + _grid.spacing.x)
+                                                     / (_cellSize.x + _grid.spacing.x)));
+            _grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+            _grid.constraintCount = cols;
 
             foreach (var def in BuildablesIn(_activeCategory))
-                _cards.Add(MakeCard(def));
-            RefreshAvailability();
+                _buildCards.Add(MakeBuildCard(def));
+            RefreshBuildAvailability();
         }
 
         private List<BuildingDefinition> BuildablesIn(BuildCategory cat)
@@ -181,39 +256,190 @@ namespace RTSCL.World.Unity
             return list;
         }
 
-        private Button MakeButton(Transform parent, string label, UnityEngine.Events.UnityAction onClick)
+        private (BuildingDefinition, CanvasGroup, Button, Image) MakeBuildCard(BuildingDefinition def)
         {
-            var go = new GameObject($"Tab_{label}", typeof(RectTransform), typeof(Image), typeof(Button), typeof(LayoutElement));
-            go.transform.SetParent(parent, false);
-            go.GetComponent<Image>().color = BgDisabled;
-            go.GetComponent<LayoutElement>().preferredHeight = 40;
-            var t = new GameObject("Label", typeof(RectTransform), typeof(Text));
-            t.transform.SetParent(go.transform, false);
-            var trt = (RectTransform)t.transform; trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one;
-            trt.offsetMin = new Vector2(2f, 0f); trt.offsetMax = new Vector2(-2f, 0f);
-            var txt = t.GetComponent<Text>();
-            txt.text = label; txt.font = _font; txt.color = Color.white;
-            // Best-fit so long labels ("Economy"/"Military") shrink to fit the tab instead of clipping.
-            txt.resizeTextForBestFit = true; txt.resizeTextMinSize = 8; txt.resizeTextMaxSize = 14;
-            txt.horizontalOverflow = HorizontalWrapMode.Wrap;
-            txt.alignment = TextAnchor.MiddleCenter; txt.raycastTarget = false;
-            var btn = go.GetComponent<Button>();
-            btn.onClick.AddListener(onClick);
-            return btn;
+            var (card, bg, btn, costGroup) = MakeCardShell(def.DisplayName, BuildingTooltip(def), () => OnBuildCardClicked(def));
+            AddCost(costGroup.transform, ResourceKind.Wood, def.WoodCost);
+            AddCost(costGroup.transform, ResourceKind.Stone, def.StoneCost);
+            return (def, costGroup, btn, bg);
         }
 
-        private (BuildingDefinition, GameObject, CanvasGroup, Button, Image) MakeCard(BuildingDefinition def)
+        private void OnBuildCardClicked(BuildingDefinition def)
         {
-            var card = new GameObject($"Card_{def.name}", typeof(RectTransform), typeof(Image), typeof(Button));
+            if (_placer == null || def == null) return;
+            ulong owner = WorldStartContext.LocalPlayer;
+            if (!BuildRequirements.IsUnlocked(def, OwnsCompleted(owner))) return;
+            if (ResourceBank.Wood < def.WoodCost) return;
+            if (ResourceBank.Get(ResourceKind.Stone) < def.StoneCost) return;
+            _placer.Select(def);
+        }
+
+        private void RefreshBuildAvailability()
+        {
+            if (_mode != Mode.Build) return;
+            ulong owner = WorldStartContext.LocalPlayer;
+            var owns = OwnsCompleted(owner);
+            foreach (var (def, costGroup, btn, bg) in _buildCards)
+            {
+                bool enabled = BuildRequirements.IsUnlocked(def, owns)
+                               && ResourceBank.Wood >= def.WoodCost
+                               && ResourceBank.Get(ResourceKind.Stone) >= def.StoneCost;
+                btn.interactable = enabled;
+                bg.color = enabled ? BgEnabled : BgDisabled;
+                if (costGroup != null) costGroup.alpha = enabled ? 1f : 0.5f;
+            }
+        }
+
+        // ---------- Actions mode (own building selected) ----------
+
+        private void BuildActionsMode()
+        {
+            ClearTabs();
+            ClearGrid();
+            // Left column shows the building name as a header instead of clickable tabs.
+            _tabColumn.gameObject.SetActive(true);
+            var header = MakeTab(_buildingDef != null ? _buildingDef.DisplayName : "Building", null);
+            header.interactable = false;
+            header.GetComponent<Image>().color = BgEnabled;
+
+            // Single column of action cards spanning the grid width.
+            float avail = _panelWidth - _tabWidth - 12f - _grid.padding.left - _grid.padding.right;
+            _grid.cellSize = new Vector2(Mathf.Max(80f, avail), _cellSize.y);
+            _grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+            _grid.constraintCount = 1;
+
+            // Progress line (first row), shown while training; updated in Update().
+            var pg = new GameObject("Progress", typeof(RectTransform), typeof(LayoutElement), typeof(Text));
+            pg.transform.SetParent(_gridContent, false);
+            pg.GetComponent<LayoutElement>().preferredHeight = 22;
+            _progressLabel = pg.GetComponent<Text>();
+            _progressLabel.font = _font; _progressLabel.fontSize = 13;
+            _progressLabel.color = new Color(0.8f, 0.95f, 0.8f);
+            _progressLabel.alignment = TextAnchor.MiddleLeft;
+            _progressLabel.horizontalOverflow = HorizontalWrapMode.Overflow;
+            _progressLabel.raycastTarget = false;
+
+            if (_buildingDef.TrainsUnits != null)
+                foreach (var u in _buildingDef.TrainsUnits)
+                    if (u != null) _actionCards.Add(MakeUnitCard(u));
+            if (_buildingDef.ProvidesUpgrades != null)
+                foreach (var up in _buildingDef.ProvidesUpgrades)
+                    if (up != null) _actionCards.Add(MakeUpgradeCard(up));
+
+            RefreshActions();
+        }
+
+        private ActionCard MakeUnitCard(GoblinUnitDefinition u)
+        {
+            var (card, bg, btn, costGroup) = MakeCardShell(u.DisplayName, UnitTooltip(u), () => OnTrainClicked(u));
+            AddCost(costGroup.transform, ResourceKind.Wood, u.WoodCost);
+            AddCost(costGroup.transform, ResourceKind.Food, u.FoodCost);
+            return new ActionCard { Unit = u, Btn = btn, Bg = bg, CostGroup = costGroup };
+        }
+
+        private ActionCard MakeUpgradeCard(UpgradeDefinition up)
+        {
+            var (card, bg, btn, costGroup) = MakeCardShell(up.DisplayName, UpgradeTooltip(up), () => OnUpgradeClicked(up));
+            AddCost(costGroup.transform, ResourceKind.Iron, up.IronCost);
+            AddCost(costGroup.transform, ResourceKind.Gold, up.GoldCost);
+            AddCost(costGroup.transform, ResourceKind.Crystal, up.CrystalCost);
+            return new ActionCard { Upgrade = up, Btn = btn, Bg = bg, CostGroup = costGroup };
+        }
+
+        private void OnTrainClicked(GoblinUnitDefinition unit)
+        {
+            if (!_buildingActive || unit == null) return;
+            if (!GoblinProduction.CanQueue(_buildingOrigin)) return;
+            if (ResourceBank.Wood < unit.WoodCost) return;
+            if (ResourceBank.Food < unit.FoodCost) return;
+            if (!PopulationManager.CanAfford(unit.PopulationCost)) return;
+            if (unit.WoodCost > 0) ResourceBank.AddWood(-unit.WoodCost);
+            if (unit.FoodCost > 0) ResourceBank.AddFood(-unit.FoodCost);
+            NetCommandIssuer.IssueTrainUnit(_buildingOrigin, unit, WorldStartContext.LocalPlayer);
+            RefreshActions();
+        }
+
+        private void OnUpgradeClicked(UpgradeDefinition upgrade)
+        {
+            if (upgrade == null) return;
+            ulong owner = WorldStartContext.LocalPlayer;
+            if (PlayerUpgrades.IsPurchased(owner, upgrade.Kind)) return;
+            if (ResourceBank.Get(ResourceKind.Iron) < upgrade.IronCost) return;
+            if (ResourceBank.Get(ResourceKind.Gold) < upgrade.GoldCost) return;
+            if (ResourceBank.Get(ResourceKind.Crystal) < upgrade.CrystalCost) return;
+            if (upgrade.IronCost > 0) ResourceBank.Add(ResourceKind.Iron, -upgrade.IronCost);
+            if (upgrade.GoldCost > 0) ResourceBank.Add(ResourceKind.Gold, -upgrade.GoldCost);
+            if (upgrade.CrystalCost > 0) ResourceBank.Add(ResourceKind.Crystal, -upgrade.CrystalCost);
+            NetCommandIssuer.IssuePurchaseUpgrade(upgrade.Kind, owner);
+            RefreshActions();
+        }
+
+        private void RefreshActions()
+        {
+            if (_mode != Mode.Actions || !_buildingActive) return;
+            ulong owner = WorldStartContext.LocalPlayer;
+            bool queueFull = !GoblinProduction.CanQueue(_buildingOrigin);
+            foreach (var c in _actionCards)
+            {
+                bool enabled;
+                if (c.Unit != null)
+                {
+                    enabled = !queueFull
+                              && ResourceBank.Wood >= c.Unit.WoodCost
+                              && ResourceBank.Food >= c.Unit.FoodCost
+                              && PopulationManager.CanAfford(c.Unit.PopulationCost);
+                }
+                else
+                {
+                    bool owned = PlayerUpgrades.IsPurchased(owner, c.Upgrade.Kind);
+                    enabled = !owned
+                              && ResourceBank.Get(ResourceKind.Iron) >= c.Upgrade.IronCost
+                              && ResourceBank.Get(ResourceKind.Gold) >= c.Upgrade.GoldCost
+                              && ResourceBank.Get(ResourceKind.Crystal) >= c.Upgrade.CrystalCost;
+                }
+                c.Btn.interactable = enabled;
+                c.Bg.color = enabled ? BgEnabled : BgDisabled;
+                if (c.CostGroup != null) c.CostGroup.alpha = enabled ? 1f : 0.5f;
+            }
+            UpdateProgressLabel();
+        }
+
+        private void Update()
+        {
+            if (_mode == Mode.Actions && _buildingActive && _progressLabel != null) UpdateProgressLabel();
+        }
+
+        private void UpdateProgressLabel()
+        {
+            if (_progressLabel == null) return;
+            var slot = GoblinProduction.Get(_buildingOrigin);
+            if (slot == null) { _progressLabel.text = ""; return; }
+            int waiting = GoblinProduction.QueuedBehind(_buildingOrigin);
+            string pct = $"{Mathf.RoundToInt(slot.Progress * 100f)}%";
+            _progressLabel.text = waiting > 0
+                ? $"Producing {slot.Def.DisplayName}… {pct}  (+{waiting} queued)"
+                : $"Producing {slot.Def.DisplayName}… {pct}";
+        }
+
+        // ---------- Shared card/tab building ----------
+
+        // A card shell: bg + button + name label + an (empty) cost row. Returns the cost row's transform
+        // (via its CanvasGroup) so the caller appends cost icons.
+        private (GameObject card, Image bg, Button btn, CanvasGroup costGroup) MakeCardShell(string title, string tooltip, UnityEngine.Events.UnityAction onClick)
+        {
+            var card = new GameObject($"Card_{title}", typeof(RectTransform), typeof(Image), typeof(Button));
             card.transform.SetParent(_gridContent, false);
             var bg = card.GetComponent<Image>();
             bg.sprite = _cardSprite; bg.type = Image.Type.Sliced; bg.color = BgEnabled;
             var btn = card.GetComponent<Button>();
-            btn.onClick.AddListener(() => OnCardClicked(def));
+            btn.onClick.AddListener(onClick);
 
-            var hover = card.AddComponent<CardHover>();
-            hover.Font = _font;
-            hover.Tip = BuildingTooltip(def);
+            if (!string.IsNullOrEmpty(tooltip))
+            {
+                var hover = card.AddComponent<CardHover>();
+                hover.Font = _font;
+                hover.Tip = tooltip;
+            }
 
             var vlg = card.AddComponent<VerticalLayoutGroup>();
             vlg.padding = new RectOffset(8, 8, 6, 6); vlg.spacing = 2;
@@ -224,9 +450,10 @@ namespace RTSCL.World.Unity
             var nameGo = new GameObject("Name", typeof(RectTransform), typeof(Text));
             nameGo.transform.SetParent(card.transform, false);
             var nameTxt = nameGo.GetComponent<Text>();
-            nameTxt.text = def.DisplayName; nameTxt.font = _font; nameTxt.fontSize = 14;
+            nameTxt.text = title; nameTxt.font = _font; nameTxt.fontSize = 14;
             nameTxt.color = Color.white; nameTxt.alignment = TextAnchor.MiddleLeft;
             nameTxt.horizontalOverflow = HorizontalWrapMode.Overflow;
+            nameTxt.raycastTarget = false;
 
             var costGo = new GameObject("Cost", typeof(RectTransform), typeof(CanvasGroup), typeof(HorizontalLayoutGroup));
             costGo.transform.SetParent(card.transform, false);
@@ -234,10 +461,27 @@ namespace RTSCL.World.Unity
             var chlg = costGo.GetComponent<HorizontalLayoutGroup>();
             chlg.spacing = 6; chlg.childForceExpandHeight = false; chlg.childForceExpandWidth = false;
             chlg.childControlHeight = true; chlg.childControlWidth = true;
-            AddCost(costGo.transform, ResourceKind.Wood, def.WoodCost);
-            AddCost(costGo.transform, ResourceKind.Stone, def.StoneCost);
+            return (card, bg, btn, costGroup);
+        }
 
-            return (def, card, costGroup, btn, bg);
+        private Button MakeTab(string label, UnityEngine.Events.UnityAction onClick)
+        {
+            var go = new GameObject($"Tab_{label}", typeof(RectTransform), typeof(Image), typeof(Button), typeof(LayoutElement));
+            go.transform.SetParent(_tabColumn, false);
+            go.GetComponent<Image>().color = BgDisabled;
+            go.GetComponent<LayoutElement>().preferredHeight = 40;
+            var t = new GameObject("Label", typeof(RectTransform), typeof(Text));
+            t.transform.SetParent(go.transform, false);
+            var trt = (RectTransform)t.transform; trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one;
+            trt.offsetMin = new Vector2(2f, 0f); trt.offsetMax = new Vector2(-2f, 0f);
+            var txt = t.GetComponent<Text>();
+            txt.text = label; txt.font = _font; txt.color = Color.white;
+            txt.resizeTextForBestFit = true; txt.resizeTextMinSize = 8; txt.resizeTextMaxSize = 14;
+            txt.horizontalOverflow = HorizontalWrapMode.Wrap;
+            txt.alignment = TextAnchor.MiddleCenter; txt.raycastTarget = false;
+            var btn = go.GetComponent<Button>();
+            if (onClick != null) btn.onClick.AddListener(onClick);
+            return btn;
         }
 
         private void AddCost(Transform parent, ResourceKind kind, int amount)
@@ -248,8 +492,7 @@ namespace RTSCL.World.Unity
             {
                 var ig = new GameObject($"Icon_{kind}", typeof(RectTransform), typeof(Image), typeof(LayoutElement));
                 ig.transform.SetParent(parent, false);
-                ig.GetComponent<Image>().sprite = sprite;
-                ig.GetComponent<Image>().preserveAspect = true;
+                var im = ig.GetComponent<Image>(); im.sprite = sprite; im.preserveAspect = true; im.raycastTarget = false;
                 var le = ig.GetComponent<LayoutElement>(); le.preferredWidth = 18; le.preferredHeight = 18;
             }
             var ng = new GameObject("Amount", typeof(RectTransform), typeof(Text));
@@ -257,7 +500,7 @@ namespace RTSCL.World.Unity
             var t = ng.GetComponent<Text>();
             t.text = sprite != null ? amount.ToString() : $"{amount} {kind}";
             t.font = _font; t.fontSize = 13; t.color = new Color(0.92f, 0.88f, 0.7f);
-            t.alignment = TextAnchor.MiddleLeft; t.horizontalOverflow = HorizontalWrapMode.Overflow;
+            t.alignment = TextAnchor.MiddleLeft; t.horizontalOverflow = HorizontalWrapMode.Overflow; t.raycastTarget = false;
         }
 
         private Sprite IconFor(ResourceKind kind)
@@ -266,34 +509,7 @@ namespace RTSCL.World.Unity
             return null;
         }
 
-        private void OnCardClicked(BuildingDefinition def)
-        {
-            if (_placer == null || def == null) return;
-            ulong owner = WorldStartContext.LocalPlayer;
-            if (!BuildRequirements.IsUnlocked(def, OwnsCompleted(owner))) return;
-            if (ResourceBank.Wood < def.WoodCost) return;
-            if (ResourceBank.Get(ResourceKind.Stone) < def.StoneCost) return;
-            _placer.Select(def);
-        }
-
-        private void RefreshAvailability()
-        {
-            if (!_shown) return;
-            ulong owner = WorldStartContext.LocalPlayer;
-            var owns = OwnsCompleted(owner);
-            foreach (var (def, _, costGroup, btn, bg) in _cards)
-            {
-                bool unlocked = BuildRequirements.IsUnlocked(def, owns);
-                bool affordable = ResourceBank.Wood >= def.WoodCost
-                                  && ResourceBank.Get(ResourceKind.Stone) >= def.StoneCost;
-                bool enabled = unlocked && affordable;
-                btn.interactable = enabled;
-                bg.color = enabled ? BgEnabled : BgDisabled;
-                if (costGroup != null) costGroup.alpha = enabled ? 1f : 0.5f;
-            }
-        }
-
-        private System.Func<BuildingDefinition, bool> OwnsCompleted(ulong owner)
+        private Func<BuildingDefinition, bool> OwnsCompleted(ulong owner)
         {
             return req =>
             {
@@ -308,6 +524,8 @@ namespace RTSCL.World.Unity
                 return false;
             };
         }
+
+        // ---------- Tooltip text ----------
 
         private static string BuildingTooltip(BuildingDefinition b)
         {
@@ -330,6 +548,34 @@ namespace RTSCL.World.Unity
                 if (names.Count > 0) req = "\nRequires: " + string.Join(", ", names);
             }
             return role + pop + req;
+        }
+
+        private static string UnitTooltip(GoblinUnitDefinition u)
+        {
+            if (u == null) return "";
+            string role = u.SpawnerKindName == "FarmerGoblin" ? "Worker: harvests resources and constructs buildings."
+                        : u.WaterUnit ? "Transport boat: carries up to 6 units across water."
+                        : u.ProjectileSprite != null ? "Ranged unit: fires arrows at enemies and buildings."
+                        : u.AttackDamage > 0 ? "Melee fighter: attacks enemies and buildings up close."
+                        : "Unit.";
+            string stats = u.AttackDamage > 0
+                ? $"\nHP {u.MaxHp} · DMG {u.AttackDamage} · RNG {u.AttackRange} · pop {u.PopulationCost}"
+                : $"\nHP {u.MaxHp} · pop {u.PopulationCost}";
+            return role + stats;
+        }
+
+        private static string UpgradeTooltip(UpgradeDefinition u)
+        {
+            if (u == null) return "";
+            string effect = u.Kind switch
+            {
+                UpgradeKind.FarmerHarvestSpeed   => "Workers harvest faster.",
+                UpgradeKind.ClubAttackDamage     => "Club Goblins deal more damage.",
+                UpgradeKind.ClubMaxHp            => "Club Goblins have more HP.",
+                UpgradeKind.MillBountifulHarvest => "Wheat fields you build yield +100% food (1000 instead of 500).",
+                _                                => "Permanent upgrade.",
+            };
+            return effect + "\nOne-time research, applies to all your units.";
         }
 
         private sealed class CardHover : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler

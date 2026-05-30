@@ -1,23 +1,17 @@
 // =============================================================================
 // ObjectInspector.cs  —  RTSCL.World.Unity
 //
-// The bottom info/action panel. Three mutually exclusive display modes:
-//   Building   — selected by left-clicking a placed building. Shows HP, trains-
-//                unit cards (or upgrade cards) for local buildings.
-//   Goblins    — driven by GoblinSelectionController.OnSelectionChanged. Shows
-//                build-option cards for Farmer Goblins.
-//   Decoration — selected by left-clicking a resource tile (tree, ore, wheat).
-//                Shows remaining resource amount, live-updated each frame.
+// The bottom INFO panel (read-only). Display modes:
+//   Building   — left-clicking a placed building: shows name + HP. Actions (train/
+//                upgrade) live in the BuildMenu sidebar; this fires OnBuildingInspected.
+//   Goblins    — own units selected (GoblinSelectionController.OnSelectionChanged):
+//                single = full stat sheet, multi = brief summary.
+//   Decoration — a resource tile: remaining amount, live-updated each frame.
+//   UnitInfo   — an enemy/neutral unit clicked: read-only stat sheet.
 //
-// Cards are rebuilt from scratch each time the display mode changes (ClearCards
-// then BuildXCards). Affordability / pop-cap state is refreshed by Refresh(),
-// which is triggered by ResourceBank.OnChanged, PopulationManager.OnChanged,
-// and GoblinProduction.OnChanged so the UI stays reactive without polling.
-//
-// To add a new card type: add a BuildXCards method and a CardRefs entry with
-// the relevant cost fields; extend Refresh() affordability logic.
-// To add a new resource kind cost: add a field to CardRefs and extend IsValid
-// and the affordability check in Refresh().
+// Building actions moved to BuildMenu: OnBuildingInspected(origin, def, isLocal) tells
+// the sidebar which own building is selected; OnInspectionCleared closes it when the
+// selection switches to units / a resource / nothing.
 // =============================================================================
 using System;
 using System.Collections.Generic;
@@ -47,24 +41,6 @@ namespace RTSCL.World.Unity
         [SerializeField] private Text _progressLabel;
         [SerializeField] private GameObject _progressRow;
 
-        [Header("Cards Style")]
-        [SerializeField] private Sprite _cardSprite;
-        [SerializeField] private Font _cardFont;
-        [SerializeField] private Color _cardEnabledBg = new(0.18f, 0.18f, 0.22f, 0.95f);
-        [SerializeField] private Color _cardDisabledBg = new(0.10f, 0.10f, 0.12f, 0.7f);
-        [SerializeField] private Color _cardTextNormal = Color.white;
-        [SerializeField] private Color _cardTextDisabled = new(0.55f, 0.55f, 0.55f, 1f);
-
-        [Header("Cost Icons")]
-        [Tooltip("Resource icons shown on cost rows (same sprites as the top resource bar).")]
-        [SerializeField] private List<ResourceUI.KindIcon> _resourceIcons = new();
-
-        private Sprite IconFor(ResourceKind kind)
-        {
-            foreach (var ki in _resourceIcons) if (ki != null && ki.Kind == kind) return ki.Icon;
-            return null;
-        }
-
         [Header("Rally")]
         [Tooltip("Flag icon shown at a building's rally point (GUI_33)")]
         [SerializeField] private Sprite _rallyIcon;
@@ -84,42 +60,16 @@ namespace RTSCL.World.Unity
         private string _selDecoBaseDesc = "";     // description without the live resource amount line
         private string _lastAmountLine = "";      // cached amount text to avoid redundant label updates
 
-        /// <summary>Runtime card data: one entry per visible action card. Stores both the UI
-        /// component refs (for tinting/enabling) and the cost values (for Refresh() affordability
-        /// checks without re-querying the definition each frame).</summary>
-        private struct CardRefs
-        {
-            public GameObject Root;
-            public Button Button;
-            public Image Bg;
-            public Image Icon;
-            public Text Name;
-            public CanvasGroup CostGroup;   // the cost row (icons + numbers); dimmed when unaffordable
-            // Exactly one of Unit / Building / Upgrade is non-null, identifying the card's action type.
-            public GoblinUnitDefinition Unit;
-            public BuildingDefinition Building;
-            public int WoodCost;
-            public int FoodCost;
-            public int StoneCost;
-            public int IronCost;
-            public int GoldCost;
-            public int CrystalCost;
-            public UpgradeDefinition Upgrade;
-            public UpgradeKind UpgradeKind;
-        }
-        private readonly List<CardRefs> _cards = new();
-
-        // Extra line spacing applied to all info-panel / card text for a roomier, more readable layout.
+        // Extra line spacing applied to all info-panel text for a roomier, more readable layout.
         private const float LineSpacing = 1.45f;
 
-        // Forwards pointer enter/exit on a card to the shared UITooltip. Added to each card GameObject.
-        private sealed class CardHover : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
-        {
-            public Font Font;
-            public string Tip;
-            public void OnPointerEnter(PointerEventData e) => UITooltip.Show(Tip, Font);
-            public void OnPointerExit(PointerEventData e)  => UITooltip.Hide();
-        }
+        /// <summary>Fired when the player left-clicks a building: (origin, definition, isLocal). The
+        /// BuildMenu sidebar listens and shows that building's train/upgrade actions. The inspector itself
+        /// only shows the building's info (name + HP).</summary>
+        public static event Action<Vector2Int, BuildingDefinition, bool> OnBuildingInspected;
+        /// <summary>Fired when the info panel hides or switches away from a building, so the BuildMenu
+        /// closes its actions panel.</summary>
+        public static event Action OnInspectionCleared;
 
         private void Start()
         {
@@ -127,12 +77,6 @@ namespace RTSCL.World.Unity
             if (_progressRow != null) _progressRow.SetActive(false);
             if (_nameLabel != null) _nameLabel.lineSpacing = LineSpacing;
             if (_descriptionLabel != null) _descriptionLabel.lineSpacing = LineSpacing;
-            if (_progressLabel != null) _progressLabel.lineSpacing = LineSpacing;
-            // Subscribe to resource/population/production changes so cards refresh
-            // affordability without polling. Lambda wraps Refresh to match the delegate signature.
-            ResourceBank.OnChanged += (_, __) => Refresh();
-            PopulationManager.OnChanged += Refresh;
-            GoblinProduction.OnChanged += Refresh;
             if (_selectionController != null)
             {
                 _selectionController.OnSelectionChanged += OnGoblinSelectionChanged;
@@ -142,9 +86,6 @@ namespace RTSCL.World.Unity
 
         private void OnDestroy()
         {
-            // Always unsubscribe static events to prevent lingering delegates after scene reload.
-            PopulationManager.OnChanged -= Refresh;
-            GoblinProduction.OnChanged -= Refresh;
             if (_selectionController != null)
             {
                 _selectionController.OnSelectionChanged -= OnGoblinSelectionChanged;
@@ -158,8 +99,7 @@ namespace RTSCL.World.Unity
             // Don't intercept clicks during placement mode
             if (_placer != null && _placer.Selected != null) return;
 
-            // Live progress bar while a production runs for the currently-shown keep/barracks
-            if (_selKind == SelKind.Building) UpdateProgressUI();
+            // Live stat updates for the currently-shown info panel (production/actions live in BuildMenu now).
             if (_selKind == SelKind.Goblins) UpdateCarryUI();
             if (_selKind == SelKind.Decoration) UpdateResourceAmount();
             if (_selKind == SelKind.UnitInfo) UpdateInspectedUnit();
@@ -250,12 +190,9 @@ namespace RTSCL.World.Unity
             _lastCarryLine = "";
             SetHeader(name, desc);
 
-            // The build menu now lives in the BuildMenu sidebar; the inspector just clears its cards here.
-            ClearCards();
+            OnInspectionCleared?.Invoke();   // selecting units closes the BuildMenu actions panel
 
-            if (_progressRow != null) _progressRow.SetActive(false);
             _popupRoot?.SetActive(true);
-            Refresh();
         }
 
         // Read-only info for an enemy / neutral unit clicked on the map (no action cards, no commands).
@@ -267,10 +204,9 @@ namespace RTSCL.World.Unity
             _inspectedUnit = g;
             RallyVisual.Instance.Hide();
             if (_selBuildingOwner != null) { _selBuildingOwner.SetSelected(false); _selBuildingOwner = null; }
-            ClearCards();
-            if (_progressRow != null) _progressRow.SetActive(false);
             SetHeader(UnitInfoTitle(g), UnitStatsDesc(g));
             _popupRoot?.SetActive(true);
+            OnInspectionCleared?.Invoke();   // inspecting a unit closes the BuildMenu actions panel
         }
 
         // Live-refresh the inspected unit's HP; hide once it dies or is removed (e.g. boards a boat).
@@ -307,13 +243,13 @@ namespace RTSCL.World.Unity
         {
             _selKind = SelKind.Building;
             _selDef = def;
+            _inspectedUnit = null;
 
             // Turn off previous building's ring, then turn on this one's.
             if (_selBuildingOwner != null) _selBuildingOwner.SetSelected(false);
             _selBuildingOwner = FindBuildingOwnerAt(origin);
             if (_selBuildingOwner != null) _selBuildingOwner.SetSelected(true);
 
-            // Determine if this is a local (or solo) building; only local buildings get action cards.
             bool isLocal = true;
             if (_placer != null && _placer.TryGetBuildingOwner(origin, out ulong owner))
                 isLocal = (owner == WorldStartContext.LocalPlayer || owner == 0UL);
@@ -323,17 +259,11 @@ namespace RTSCL.World.Unity
                 desc += $"\nHP: {cur} / {max}";
             SetHeader(def.DisplayName, desc);
 
-            // Priority: unit training > upgrades > no cards. Enemy buildings show no cards.
-            if (isLocal && def.TrainsUnits != null && def.TrainsUnits.Length > 0)
-                BuildUnitCards(def.TrainsUnits);
-            else if (isLocal && def.ProvidesUpgrades != null && def.ProvidesUpgrades.Length > 0)
-                BuildUpgradeCards(def.ProvidesUpgrades);
-            else
-                ClearCards();
-
             _popupRoot?.SetActive(true);
-            Refresh();
             ShowRallyVisual();
+
+            // Actions (train/upgrade) live in the BuildMenu sidebar — tell it which building is selected.
+            OnBuildingInspected?.Invoke(origin, def, isLocal);
         }
 
         // True when the current selection is a local, unit-training building (eligible for a rally point).
@@ -368,9 +298,8 @@ namespace RTSCL.World.Unity
         {
             if (_selBuildingOwner != null) { _selBuildingOwner.SetSelected(false); _selBuildingOwner = null; }
             SetHeader(title, description);
-            ClearCards();
-            if (_progressRow != null) _progressRow.SetActive(false);
             _popupRoot?.SetActive(true);
+            OnInspectionCleared?.Invoke();   // not a building → close the BuildMenu actions panel
         }
 
         // Locate the BuildingOwner MonoBehaviour that sits at the world position corresponding
@@ -407,261 +336,7 @@ namespace RTSCL.World.Unity
             _selKind = SelKind.None;
             _selDef = null;
             _inspectedUnit = null;
-            ClearCards();
-        }
-
-        // ---------- Cards (built on demand for the current display) ----------
-
-        // Destroy all current card GameObjects and hide the container.
-        // Called before rebuilding a new set (mode change) or on Hide().
-        private void ClearCards()
-        {
-            if (_unitCardsContainer == null) return;
-            for (int i = _unitCardsContainer.childCount - 1; i >= 0; i--)
-                Destroy(_unitCardsContainer.GetChild(i).gameObject);
-            _cards.Clear();
-            _unitCardsContainer.gameObject.SetActive(false);
-        }
-
-        // Build one card per unit definition in the building's TrainsUnits list.
-        // Each card stores WoodCost + FoodCost in CardRefs for Refresh() to check.
-        private void BuildUnitCards(GoblinUnitDefinition[] units)
-        {
-            ClearCards();
-            if (_unitCardsContainer == null) return;
-            _unitCardsContainer.gameObject.SetActive(true);
-            foreach (var u in units)
-            {
-                if (u == null) continue;
-                var costs = new List<(ResourceKind, int)>();
-                if (u.WoodCost > 0) costs.Add((ResourceKind.Wood, u.WoodCost));
-                if (u.FoodCost > 0) costs.Add((ResourceKind.Food, u.FoodCost));
-                var c = CreateCard(u.DisplayName, u.Icon, costs, () => OnUnitClicked(u), UnitTooltip(u));
-                c.Unit = u;
-                c.WoodCost = u.WoodCost;
-                c.FoodCost = u.FoodCost;
-                _cards.Add(c);
-            }
-        }
-
-        // Build one card per upgrade in the building's ProvidesUpgrades list.
-        // Already-purchased upgrades are greyed out and non-interactable (checked in Refresh).
-        private void BuildUpgradeCards(UpgradeDefinition[] upgrades)
-        {
-            ClearCards();
-            if (_unitCardsContainer == null) return;
-            _unitCardsContainer.gameObject.SetActive(true);
-            foreach (var u in upgrades)
-            {
-                if (u == null) continue;
-                var costs = new List<(ResourceKind, int)>();
-                if (u.IronCost > 0) costs.Add((ResourceKind.Iron, u.IronCost));
-                if (u.GoldCost > 0) costs.Add((ResourceKind.Gold, u.GoldCost));
-                if (u.CrystalCost > 0) costs.Add((ResourceKind.Crystal, u.CrystalCost));
-                var c = CreateCard(u.DisplayName, u.Icon, costs, () => OnUpgradeClicked(u), UpgradeTooltip(u));
-                c.Upgrade = u;
-                c.UpgradeKind = u.Kind;
-                c.IronCost = u.IronCost;
-                c.GoldCost = u.GoldCost;
-                c.CrystalCost = u.CrystalCost;
-                _cards.Add(c);
-            }
-        }
-
-        // Construct a single action card at runtime using Unity UI components.
-        // Layout: HorizontalLayoutGroup (icon | VerticalLayoutGroup (name label / cost label)).
-        // Returns the CardRefs struct so callers can store cost data alongside the UI refs.
-        private CardRefs CreateCard(string title, Sprite icon, List<(ResourceKind kind, int amount)> costs, Action onClick, string tooltip = null)
-        {
-            var card = new GameObject($"Card_{title}");
-            card.transform.SetParent(_unitCardsContainer, false);
-
-            if (!string.IsNullOrEmpty(tooltip))
-            {
-                var hover = card.AddComponent<CardHover>();
-                hover.Font = _cardFont;
-                hover.Tip = tooltip;
-            }
-
-            var bg = card.AddComponent<Image>();
-            bg.sprite = _cardSprite;
-            bg.type = Image.Type.Sliced;
-            bg.color = _cardEnabledBg;
-
-            var btn = card.AddComponent<Button>();
-            btn.targetGraphic = bg;
-
-            var layout = card.AddComponent<HorizontalLayoutGroup>();
-            layout.padding = new RectOffset(10, 10, 8, 8);
-            layout.spacing = 12;
-            layout.childForceExpandHeight = false;
-            layout.childForceExpandWidth = false;
-            layout.childControlHeight = true;
-            layout.childControlWidth = true;
-            layout.childAlignment = TextAnchor.MiddleLeft;
-
-            var cardLE = card.AddComponent<LayoutElement>();
-            cardLE.preferredHeight = 64;
-            cardLE.flexibleWidth = 1;
-
-            var iconGo = new GameObject("Icon");
-            iconGo.transform.SetParent(card.transform, false);
-            var iconImg = iconGo.AddComponent<Image>();
-            iconImg.sprite = icon;
-            iconImg.preserveAspect = true;
-            var iconLE = iconGo.AddComponent<LayoutElement>();
-            iconLE.preferredWidth = 48;
-            iconLE.preferredHeight = 48;
-            iconLE.flexibleWidth = 0;
-
-            var textGo = new GameObject("Texts");
-            textGo.transform.SetParent(card.transform, false);
-            var tlayout = textGo.AddComponent<VerticalLayoutGroup>();
-            tlayout.spacing = 2;
-            tlayout.childForceExpandHeight = false;
-            tlayout.childForceExpandWidth = true;
-            tlayout.childControlHeight = true;
-            tlayout.childControlWidth = true;
-            tlayout.childAlignment = TextAnchor.MiddleLeft;
-            var textLE = textGo.AddComponent<LayoutElement>();
-            textLE.flexibleWidth = 1;
-
-            var nameGo = new GameObject("Name");
-            nameGo.transform.SetParent(textGo.transform, false);
-            var nameText = nameGo.AddComponent<Text>();
-            nameText.text = title;
-            nameText.font = _cardFont;
-            nameText.fontSize = 16;
-            nameText.color = _cardTextNormal;
-            nameText.alignment = TextAnchor.MiddleLeft;
-            nameText.horizontalOverflow = HorizontalWrapMode.Wrap;
-            nameText.lineSpacing = LineSpacing;
-
-            // Cost row: a horizontal strip of [resource-icon + number] pairs (no resource names → never
-            // overflows). A CanvasGroup lets Refresh() dim the whole row when unaffordable. Skipped entirely
-            // for category / Back cards (costs == null) which carry no price.
-            CanvasGroup costGroup = null;
-            if (costs != null)
-            {
-                var costGo = new GameObject("Cost", typeof(RectTransform));
-                costGo.transform.SetParent(textGo.transform, false);
-                costGroup = costGo.AddComponent<CanvasGroup>();
-                var costRow = costGo.AddComponent<HorizontalLayoutGroup>();
-                costRow.spacing = 8;
-                costRow.childForceExpandHeight = false;
-                costRow.childForceExpandWidth = false;
-                costRow.childControlHeight = true;
-                costRow.childControlWidth = true;
-                costRow.childAlignment = TextAnchor.MiddleLeft;
-                var costLE = costGo.AddComponent<LayoutElement>();
-                costLE.preferredHeight = 22;
-
-                if (costs.Count == 0)
-                    AddCostText(costGo.transform, "Free");
-                else
-                foreach (var (kind, amount) in costs)
-                {
-                    var sprite = IconFor(kind);
-                    if (sprite != null)
-                    {
-                        var ig = new GameObject($"Cost_{kind}", typeof(RectTransform));
-                        ig.transform.SetParent(costGo.transform, false);
-                        var im = ig.AddComponent<Image>();
-                        im.sprite = sprite;
-                        im.preserveAspect = true;
-                        var ile = ig.AddComponent<LayoutElement>();
-                        ile.preferredWidth = 20; ile.preferredHeight = 20; ile.flexibleWidth = 0;
-                    }
-                    // Number (falls back to "20 Wood"-style text when no icon is wired for this kind).
-                    AddCostText(costGo.transform, sprite != null ? amount.ToString() : $"{amount} {kind}");
-                }
-            }
-
-            btn.onClick.AddListener(() => onClick?.Invoke());
-
-            return new CardRefs
-            {
-                Root = card,
-                Button = btn,
-                Bg = bg,
-                Icon = iconImg,
-                Name = nameText,
-                CostGroup = costGroup,
-            };
-        }
-
-        // One number/label chip inside the cost row.
-        private void AddCostText(Transform parent, string text)
-        {
-            var go = new GameObject("Amount", typeof(RectTransform));
-            go.transform.SetParent(parent, false);
-            var t = go.AddComponent<Text>();
-            t.text = text;
-            t.font = _cardFont;
-            t.fontSize = 14;
-            t.color = new Color(0.92f, 0.88f, 0.7f);
-            t.alignment = TextAnchor.MiddleLeft;
-            t.horizontalOverflow = HorizontalWrapMode.Overflow;
-            t.verticalOverflow = VerticalWrapMode.Overflow;
-            var le = go.AddComponent<LayoutElement>();
-            le.preferredHeight = 20; le.flexibleWidth = 0;
-        }
-
-        // ---------- Refresh enabled/affordable state ----------
-
-        // Re-evaluate enabled state for every visible card.
-        // Upgrade cards also check PlayerUpgrades.IsPurchased to grey out bought upgrades.
-        // A building that is busy producing blocks all unit cards (only one queue slot).
-        private void Refresh()
-        {
-            if (_cards.Count == 0) return;
-
-            // A unit can be trained as long as the building's production QUEUE isn't full (it no longer
-            // has to be idle — extra orders queue up). Build/upgrade cards ignore this.
-            bool queueFull = _selKind == SelKind.Building && !GoblinProduction.CanQueue(_selOrigin);
-            foreach (var card in _cards)
-            {
-                bool affordable = card.Upgrade != null
-                    ? ResourceBank.Get(ResourceKind.Iron) >= card.IronCost
-                      && ResourceBank.Get(ResourceKind.Gold) >= card.GoldCost
-                      && ResourceBank.Get(ResourceKind.Crystal) >= card.CrystalCost
-                    : ResourceBank.Wood >= card.WoodCost
-                      && ResourceBank.Food >= card.FoodCost
-                      && ResourceBank.Get(ResourceKind.Stone) >= card.StoneCost;
-                bool popOk = card.Unit == null || PopulationManager.CanAfford(card.Unit.PopulationCost);
-                bool alreadyOwned = card.Upgrade != null
-                    && PlayerUpgrades.IsPurchased(WorldStartContext.LocalPlayer, card.UpgradeKind);
-                bool blockedByQueue = card.Unit != null && queueFull;   // only train cards care about the queue
-                bool enabled = affordable && popOk && !blockedByQueue && !alreadyOwned;
-                card.Button.interactable = enabled;
-                if (card.Bg != null)   card.Bg.color = enabled ? _cardEnabledBg : _cardDisabledBg;
-                if (card.Name != null) card.Name.color = enabled ? _cardTextNormal : _cardTextDisabled;
-                if (card.CostGroup != null) card.CostGroup.alpha = enabled ? 1f : 0.5f;
-                if (card.Icon != null) card.Icon.color = enabled ? Color.white : new Color(0.7f, 0.7f, 0.7f, 0.7f);
-            }
-            UpdateProgressUI();
-        }
-
-        // Update the production progress bar for the currently-selected building.
-        // Bar is driven by scaling (pivot.x=0, scaleX = progress 0..1) rather than a
-        // filled sprite, so any sprite (or null) works without a special import setting.
-        private void UpdateProgressUI()
-        {
-            if (_progressRow == null) return;
-            if (_selKind != SelKind.Building) { _progressRow.SetActive(false); return; }
-            var slot = GoblinProduction.Get(_selOrigin);
-            if (slot == null) { _progressRow.SetActive(false); return; }
-            _progressRow.SetActive(true);
-            // Drive the bar via horizontal scale (pivot.x = 0) so it works without a Filled sprite.
-            if (_progressFill != null)
-                _progressFill.rectTransform.localScale = new Vector3(Mathf.Clamp01(slot.Progress), 1f, 1f);
-            if (_progressLabel != null)
-            {
-                int waiting = GoblinProduction.QueuedBehind(_selOrigin);
-                _progressLabel.text = waiting > 0
-                    ? $"Producing {slot.Def.DisplayName}…  (+{waiting} queued)"
-                    : $"Producing {slot.Def.DisplayName}…";
-            }
+            OnInspectionCleared?.Invoke();
         }
 
         // Poll the selected farmer's carry slot each frame and append a carry line to the
@@ -692,73 +367,6 @@ namespace RTSCL.World.Unity
             _lastAmountLine = newAmount;
             if (_descriptionLabel != null)
                 _descriptionLabel.text = _selDecoBaseDesc + "\n" + newAmount;
-        }
-
-        // ---------- Tooltip text builders (what each card does) ----------
-
-        private static string UnitTooltip(GoblinUnitDefinition u)
-        {
-            if (u == null) return "";
-            string role = u.SpawnerKindName == "FarmerGoblin" ? "Worker: harvests resources and constructs buildings."
-                        : u.WaterUnit ? "Transport boat: carries up to 6 units across water."
-                        : u.ProjectileSprite != null ? "Ranged unit: fires arrows at enemies and buildings."
-                        : u.AttackDamage > 0 ? "Melee fighter: attacks enemies and buildings up close."
-                        : "Unit.";
-            string stats = u.AttackDamage > 0
-                ? $"\nHP {u.MaxHp} · DMG {u.AttackDamage} · RNG {u.AttackRange} · pop {u.PopulationCost}"
-                : $"\nHP {u.MaxHp} · pop {u.PopulationCost}";
-            return role + stats;
-        }
-
-        private static string UpgradeTooltip(UpgradeDefinition u)
-        {
-            if (u == null) return "";
-            string effect = u.Kind switch
-            {
-                UpgradeKind.FarmerHarvestSpeed   => "Workers harvest faster.",
-                UpgradeKind.ClubAttackDamage     => "Club Goblins deal more damage.",
-                UpgradeKind.ClubMaxHp            => "Club Goblins have more HP.",
-                UpgradeKind.MillBountifulHarvest => "Wheat fields you build yield +100% food (1000 instead of 500).",
-                _                                => "Permanent upgrade.",
-            };
-            return effect + "\nOne-time research, applies to all your units.";
-        }
-
-        // ---------- Click handlers ----------
-
-        // Train a unit: guard checks are duplicated here (button may be stale from a
-        // brief window between Refresh() calls) before deducting resources and issuing
-        // the net command. IssueTrainUnit handles actual spawning on all clients.
-        private void OnUnitClicked(GoblinUnitDefinition unit)
-        {
-            if (_selKind != SelKind.Building || _selDef == null) return;
-            if (!GoblinProduction.CanQueue(_selOrigin)) return;   // queue full
-            if (ResourceBank.Wood < unit.WoodCost) return;
-            if (ResourceBank.Food < unit.FoodCost) return;
-            if (!PopulationManager.CanAfford(unit.PopulationCost)) return;
-            if (unit.WoodCost > 0) ResourceBank.AddWood(-unit.WoodCost);
-            if (unit.FoodCost > 0) ResourceBank.AddFood(-unit.FoodCost);
-            ulong owner = WorldStartContext.LocalPlayer;
-            NetCommandIssuer.IssueTrainUnit(_selOrigin, unit, owner);
-            Refresh();
-        }
-
-        // Purchase an upgrade: deduct resources locally then issue the net command so all
-        // clients call UpgradeEffects.ApplyExistingTo on their local goblins.
-        private void OnUpgradeClicked(UpgradeDefinition upgrade)
-        {
-            if (upgrade == null) return;
-            ulong owner = WorldStartContext.LocalPlayer;
-            if (PlayerUpgrades.IsPurchased(owner, upgrade.Kind)) return;
-            if (ResourceBank.Get(ResourceKind.Iron) < upgrade.IronCost) return;
-            if (ResourceBank.Get(ResourceKind.Gold) < upgrade.GoldCost) return;
-            if (ResourceBank.Get(ResourceKind.Crystal) < upgrade.CrystalCost) return;
-
-            if (upgrade.IronCost > 0) ResourceBank.Add(ResourceKind.Iron, -upgrade.IronCost);
-            if (upgrade.GoldCost > 0) ResourceBank.Add(ResourceKind.Gold, -upgrade.GoldCost);
-            if (upgrade.CrystalCost > 0) ResourceBank.Add(ResourceKind.Crystal, -upgrade.CrystalCost);
-            NetCommandIssuer.IssuePurchaseUpgrade(upgrade.Kind, owner);
-            Refresh();
         }
 
         // ---------- Helpers ----------
