@@ -55,6 +55,8 @@ namespace RTSCL.World.Unity
         // Actions-mode cards (train a unit / buy an upgrade). Availability via the predicate.
         private readonly List<ActionCard> _actionCards = new();
         private Text _progressLabel;
+        private GameObject _progressRow;     // the whole progress widget (bar + label); hidden when idle
+        private RectTransform _progressFill;  // scaled horizontally 0..1 by production progress
 
         private sealed class ActionCard
         {
@@ -308,13 +310,30 @@ namespace RTSCL.World.Unity
             _grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
             _grid.constraintCount = 1;
 
-            // Progress line (first row), shown while training; updated in Update().
-            var pg = new GameObject("Progress", typeof(RectTransform), typeof(LayoutElement), typeof(Text));
-            pg.transform.SetParent(_gridContent, false);
-            pg.GetComponent<LayoutElement>().preferredHeight = 22;
-            _progressLabel = pg.GetComponent<Text>();
-            _progressLabel.font = _font; _progressLabel.fontSize = 13;
-            _progressLabel.color = new Color(0.8f, 0.95f, 0.8f);
+            // Progress widget (first row): a dark track with a green fill bar + a label on top. Shown only
+            // while the building is producing; the fill is scaled 0..1 each frame in UpdateProgressLabel().
+            _progressRow = new GameObject("ProgressRow", typeof(RectTransform), typeof(LayoutElement), typeof(Image));
+            _progressRow.transform.SetParent(_gridContent, false);
+            _progressRow.GetComponent<LayoutElement>().preferredHeight = 24;
+            _progressRow.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.4f);   // track
+
+            var fillGo = new GameObject("Fill", typeof(RectTransform), typeof(Image));
+            fillGo.transform.SetParent(_progressRow.transform, false);
+            _progressFill = (RectTransform)fillGo.transform;
+            _progressFill.anchorMin = new Vector2(0f, 0f); _progressFill.anchorMax = new Vector2(1f, 1f);
+            _progressFill.offsetMin = Vector2.zero; _progressFill.offsetMax = Vector2.zero;
+            _progressFill.pivot = new Vector2(0f, 0.5f);   // scale from the left edge
+            fillGo.GetComponent<Image>().color = new Color(0.3f, 0.75f, 0.35f, 0.9f);
+            fillGo.GetComponent<Image>().raycastTarget = false;
+
+            var lblGo = new GameObject("Label", typeof(RectTransform), typeof(Text));
+            lblGo.transform.SetParent(_progressRow.transform, false);
+            var lrt = (RectTransform)lblGo.transform;
+            lrt.anchorMin = Vector2.zero; lrt.anchorMax = Vector2.one;
+            lrt.offsetMin = new Vector2(6f, 0f); lrt.offsetMax = new Vector2(-6f, 0f);
+            _progressLabel = lblGo.GetComponent<Text>();
+            _progressLabel.font = _font; _progressLabel.fontSize = 12;
+            _progressLabel.color = Color.white;
             _progressLabel.alignment = TextAnchor.MiddleLeft;
             _progressLabel.horizontalOverflow = HorizontalWrapMode.Overflow;
             _progressLabel.raycastTarget = false;
@@ -411,14 +430,18 @@ namespace RTSCL.World.Unity
 
         private void UpdateProgressLabel()
         {
-            if (_progressLabel == null) return;
+            if (_progressRow == null) return;
             var slot = GoblinProduction.Get(_buildingOrigin);
-            if (slot == null) { _progressLabel.text = ""; return; }
+            if (slot == null) { _progressRow.SetActive(false); return; }   // idle → hide the whole widget
+            _progressRow.SetActive(true);
+            // Scale the fill bar horizontally from the left (pivot.x = 0) to the production fraction.
+            if (_progressFill != null)
+                _progressFill.localScale = new Vector3(Mathf.Clamp01(slot.Progress), 1f, 1f);
             int waiting = GoblinProduction.QueuedBehind(_buildingOrigin);
             string pct = $"{Mathf.RoundToInt(slot.Progress * 100f)}%";
             _progressLabel.text = waiting > 0
-                ? $"Producing {slot.Def.DisplayName}… {pct}  (+{waiting} queued)"
-                : $"Producing {slot.Def.DisplayName}… {pct}";
+                ? $"{slot.Def.DisplayName}  {pct}  (+{waiting})"
+                : $"{slot.Def.DisplayName}  {pct}";
         }
 
         // ---------- Shared card/tab building ----------
