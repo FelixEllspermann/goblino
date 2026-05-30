@@ -116,6 +116,26 @@ namespace RTSCL.World.Unity
         // Extra line spacing applied to all info-panel / card text for a roomier, more readable layout.
         private const float LineSpacing = 1.45f;
 
+        // Build menu categories: the farmer build list is grouped so 6+ buildings aren't crammed in one row.
+        // Top level shows category buttons; clicking one shows that category's buildings + a Back card.
+        private static readonly (string label, string[] names)[] BuildCategories =
+        {
+            ("Economy",  new[] { "Huts", "Wheatfield", "Mill", "Workshop" }),
+            ("Military", new[] { "Barracks" }),
+            ("Naval",    new[] { "Docks" }),
+        };
+        private string _buildCategory;          // null = showing category buttons; else the open category label
+
+        // Which category a building belongs to (by asset-name prefix). "" if none matched.
+        private static string CategoryOf(BuildingDefinition b)
+        {
+            if (b == null) return "";
+            foreach (var (label, names) in BuildCategories)
+                foreach (var n in names)
+                    if (b.name.StartsWith(n)) return label;
+            return "";
+        }
+
         // Hover tooltip (built lazily once, reused). Shows what a build/upgrade/train card does.
         private GameObject _tooltip;
         private Text _tooltipText;
@@ -261,7 +281,10 @@ namespace RTSCL.World.Unity
             SetHeader(name, desc);
 
             if (hasFarmer && _farmerBuildables != null && _farmerBuildables.Count > 0)
-                BuildBuildingCards(_farmerBuildables);
+            {
+                _buildCategory = null;        // always reopen at the top-level category list
+                BuildCategoryMenu();
+            }
             else
                 ClearCards();
 
@@ -516,16 +539,47 @@ namespace RTSCL.World.Unity
             }
         }
 
-        // Build one card per buildable in the Farmer Goblin's _farmerBuildables list.
-        // Clicking enters BuildingPlacer ghost-placement mode (does NOT place immediately).
-        private void BuildBuildingCards(List<BuildingDefinition> defs)
+        // Top level of the build menu: one card per non-empty category. Clicking opens that category.
+        private void BuildCategoryMenu()
         {
             ClearCards();
             if (_unitCardsContainer == null) return;
             _unitCardsContainer.gameObject.SetActive(true);
-            foreach (var b in defs)
+            foreach (var (label, _) in BuildCategories)
             {
-                if (b == null) continue;
+                if (BuildablesIn(label).Count == 0) continue;   // hide empty categories
+                // Use the first building's sprite as the category icon.
+                var first = BuildablesIn(label)[0];
+                string lbl = label;   // capture
+                var c = CreateCard(label, first != null ? first.Sprite : null, null,
+                                   () => { _buildCategory = lbl; BuildBuildingCards(); }, $"{label} buildings");
+                _cards.Add(c);
+            }
+        }
+
+        // The buildings in _farmerBuildables that belong to the given category, in list order.
+        private List<BuildingDefinition> BuildablesIn(string category)
+        {
+            var outList = new List<BuildingDefinition>();
+            if (_farmerBuildables == null) return outList;
+            foreach (var b in _farmerBuildables)
+                if (b != null && CategoryOf(b) == category) outList.Add(b);
+            return outList;
+        }
+
+        // Inside a category: a Back card + one card per building. Clicking a building enters ghost placement.
+        private void BuildBuildingCards()
+        {
+            ClearCards();
+            if (_unitCardsContainer == null) return;
+            _unitCardsContainer.gameObject.SetActive(true);
+
+            // Back card returns to the category list.
+            var back = CreateCard("← Back", null, null, () => { _buildCategory = null; BuildCategoryMenu(); }, "Back to categories");
+            _cards.Add(back);
+
+            foreach (var b in BuildablesIn(_buildCategory))
+            {
                 var costs = new List<(ResourceKind, int)>();
                 if (b.WoodCost > 0) costs.Add((ResourceKind.Wood, b.WoodCost));
                 if (b.StoneCost > 0) costs.Add((ResourceKind.Stone, b.StoneCost));
@@ -631,23 +685,27 @@ namespace RTSCL.World.Unity
             nameText.lineSpacing = LineSpacing;
 
             // Cost row: a horizontal strip of [resource-icon + number] pairs (no resource names → never
-            // overflows). A CanvasGroup lets Refresh() dim the whole row when unaffordable.
-            var costGo = new GameObject("Cost", typeof(RectTransform));
-            costGo.transform.SetParent(textGo.transform, false);
-            var costGroup = costGo.AddComponent<CanvasGroup>();
-            var costRow = costGo.AddComponent<HorizontalLayoutGroup>();
-            costRow.spacing = 8;
-            costRow.childForceExpandHeight = false;
-            costRow.childForceExpandWidth = false;
-            costRow.childControlHeight = true;
-            costRow.childControlWidth = true;
-            costRow.childAlignment = TextAnchor.MiddleLeft;
-            var costLE = costGo.AddComponent<LayoutElement>();
-            costLE.preferredHeight = 22;
+            // overflows). A CanvasGroup lets Refresh() dim the whole row when unaffordable. Skipped entirely
+            // for category / Back cards (costs == null) which carry no price.
+            CanvasGroup costGroup = null;
+            if (costs != null)
+            {
+                var costGo = new GameObject("Cost", typeof(RectTransform));
+                costGo.transform.SetParent(textGo.transform, false);
+                costGroup = costGo.AddComponent<CanvasGroup>();
+                var costRow = costGo.AddComponent<HorizontalLayoutGroup>();
+                costRow.spacing = 8;
+                costRow.childForceExpandHeight = false;
+                costRow.childForceExpandWidth = false;
+                costRow.childControlHeight = true;
+                costRow.childControlWidth = true;
+                costRow.childAlignment = TextAnchor.MiddleLeft;
+                var costLE = costGo.AddComponent<LayoutElement>();
+                costLE.preferredHeight = 22;
 
-            if (costs == null || costs.Count == 0)
-                AddCostText(costGo.transform, "Free");
-            else
+                if (costs.Count == 0)
+                    AddCostText(costGo.transform, "Free");
+                else
                 foreach (var (kind, amount) in costs)
                 {
                     var sprite = IconFor(kind);
@@ -664,6 +722,7 @@ namespace RTSCL.World.Unity
                     // Number (falls back to "20 Wood"-style text when no icon is wired for this kind).
                     AddCostText(costGo.transform, sprite != null ? amount.ToString() : $"{amount} {kind}");
                 }
+            }
 
             btn.onClick.AddListener(() => onClick?.Invoke());
 
