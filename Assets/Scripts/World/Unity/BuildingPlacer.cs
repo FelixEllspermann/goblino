@@ -228,11 +228,22 @@ namespace RTSCL.World.Unity
         // A Dock is a coastal building: its body sits on land but it needs an adjacent water cell.
         private static bool IsDock(BuildingDefinition def) => def != null && def.name.StartsWith("Docks");
 
-        // First orthogonally-adjacent water cell (DeepWater/Shore) of a land cell, for the pier + boat spawn.
+        // Nearest water cell (DeepWater/Shore) of a land cell, for the pier + boat spawn. Prefers an
+        // ORTHOGONAL neighbour (boat sails straight out); falls back to a DIAGONAL one so a dock built at an
+        // inner/concave coastline corner — where water only touches a corner — still gets a pier + boat
+        // spawn cell. Without the diagonal fallback such docks drew no pier and couldn't spawn boats.
         private bool TryFindAdjacentWater(Vector2Int landCell, out Vector2Int waterCell)
         {
-            Vector2Int[] dirs = { new(1, 0), new(-1, 0), new(0, 1), new(0, -1) };
-            foreach (var d in dirs)
+            Vector2Int[] ortho = { new(1, 0), new(-1, 0), new(0, 1), new(0, -1) };
+            foreach (var d in ortho)
+            {
+                var c = new Vector3Int(landCell.x + d.x, landCell.y + d.y, 0);
+                var t = _terrainMap.GetTile(c);
+                if (t != null && (t.name == "DeepWater" || t.name == "Shore"))
+                { waterCell = new Vector2Int(c.x, c.y); return true; }
+            }
+            Vector2Int[] diag = { new(1, 1), new(1, -1), new(-1, 1), new(-1, -1) };
+            foreach (var d in diag)
             {
                 var c = new Vector3Int(landCell.x + d.x, landCell.y + d.y, 0);
                 var t = _terrainMap.GetTile(c);
