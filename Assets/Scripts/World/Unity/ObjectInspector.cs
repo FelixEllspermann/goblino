@@ -116,6 +116,20 @@ namespace RTSCL.World.Unity
         // Extra line spacing applied to all info-panel / card text for a roomier, more readable layout.
         private const float LineSpacing = 1.45f;
 
+        // Hover tooltip (built lazily once, reused). Shows what a build/upgrade/train card does.
+        private GameObject _tooltip;
+        private Text _tooltipText;
+        private RectTransform _tooltipRect;
+
+        // Forwards pointer enter/exit on a card to the inspector's tooltip. Added to each card GameObject.
+        private sealed class CardHover : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
+        {
+            public ObjectInspector Owner;
+            public string Tip;
+            public void OnPointerEnter(PointerEventData e) { if (Owner != null) Owner.ShowTooltip(Tip); }
+            public void OnPointerExit(PointerEventData e)  { if (Owner != null) Owner.HideTooltip(); }
+        }
+
         private void Start()
         {
             if (_popupRoot != null) _popupRoot.SetActive(false);
@@ -154,6 +168,7 @@ namespace RTSCL.World.Unity
             if (_placer != null && _placer.Selected != null) return;
 
             // Live progress bar while a production runs for the currently-shown keep/barracks
+            if (_tooltip != null && _tooltip.activeSelf) PositionTooltip();
             if (_selKind == SelKind.Building) UpdateProgressUI();
             if (_selKind == SelKind.Goblins) UpdateCarryUI();
             if (_selKind == SelKind.Decoration) UpdateResourceAmount();
@@ -407,6 +422,66 @@ namespace RTSCL.World.Unity
             ClearCards();
         }
 
+        // ---------- Hover tooltip ----------
+
+        /// <summary>Show the tooltip with <paramref name="text"/>, parented to the popup's canvas.</summary>
+        internal void ShowTooltip(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return;
+            EnsureTooltip();
+            if (_tooltip == null) return;
+            _tooltipText.text = text;
+            _tooltip.SetActive(true);
+            _tooltip.transform.SetAsLastSibling();   // draw above everything else on the canvas
+            PositionTooltip();
+        }
+
+        internal void HideTooltip() { if (_tooltip != null) _tooltip.SetActive(false); }
+
+        // Build the tooltip panel once, on the same Canvas as the popup. A dark rounded-ish box with text.
+        private void EnsureTooltip()
+        {
+            if (_tooltip != null) return;
+            var canvas = _popupRoot != null ? _popupRoot.GetComponentInParent<Canvas>() : null;
+            if (canvas == null) return;
+
+            _tooltip = new GameObject("CardTooltip", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            _tooltip.transform.SetParent(canvas.transform, false);
+            _tooltipRect = (RectTransform)_tooltip.transform;
+            _tooltipRect.pivot = new Vector2(0f, 0f);          // anchor bottom-left near the cursor
+            _tooltipRect.sizeDelta = new Vector2(260f, 70f);
+            var bg = _tooltip.GetComponent<Image>();
+            bg.color = new Color(0.05f, 0.05f, 0.08f, 0.95f);
+            bg.raycastTarget = false;                          // never eat clicks/hover
+
+            var txtGo = new GameObject("Text", typeof(RectTransform), typeof(CanvasRenderer), typeof(Text));
+            txtGo.transform.SetParent(_tooltip.transform, false);
+            var tr = (RectTransform)txtGo.transform;
+            tr.anchorMin = Vector2.zero; tr.anchorMax = Vector2.one;
+            tr.offsetMin = new Vector2(10f, 8f); tr.offsetMax = new Vector2(-10f, -8f);
+            _tooltipText = txtGo.GetComponent<Text>();
+            _tooltipText.font = _cardFont;
+            _tooltipText.fontSize = 14;
+            _tooltipText.color = Color.white;
+            _tooltipText.alignment = TextAnchor.UpperLeft;
+            _tooltipText.horizontalOverflow = HorizontalWrapMode.Wrap;
+            _tooltipText.verticalOverflow = VerticalWrapMode.Overflow;
+            _tooltipText.lineSpacing = LineSpacing;
+            _tooltipText.raycastTarget = false;
+            _tooltip.SetActive(false);
+        }
+
+        // Follow the mouse, offset up-right, clamped roughly inside the screen.
+        private void PositionTooltip()
+        {
+            if (_tooltipRect == null || Mouse.current == null) return;
+            Vector2 m = Mouse.current.position.ReadValue();
+            float w = _tooltipRect.sizeDelta.x, h = _tooltipRect.sizeDelta.y;
+            float x = Mathf.Min(m.x + 16f, Screen.width - w - 4f);
+            float y = Mathf.Min(m.y + 16f, Screen.height - h - 4f);
+            _tooltipRect.position = new Vector3(x, y, 0f);
+        }
+
         // ---------- Cards (built on demand for the current display) ----------
 
         // Destroy all current card GameObjects and hide the container.
@@ -433,7 +508,7 @@ namespace RTSCL.World.Unity
                 var costs = new List<(ResourceKind, int)>();
                 if (u.WoodCost > 0) costs.Add((ResourceKind.Wood, u.WoodCost));
                 if (u.FoodCost > 0) costs.Add((ResourceKind.Food, u.FoodCost));
-                var c = CreateCard(u.DisplayName, u.Icon, costs, () => OnUnitClicked(u));
+                var c = CreateCard(u.DisplayName, u.Icon, costs, () => OnUnitClicked(u), UnitTooltip(u));
                 c.Unit = u;
                 c.WoodCost = u.WoodCost;
                 c.FoodCost = u.FoodCost;
@@ -454,7 +529,7 @@ namespace RTSCL.World.Unity
                 var costs = new List<(ResourceKind, int)>();
                 if (b.WoodCost > 0) costs.Add((ResourceKind.Wood, b.WoodCost));
                 if (b.StoneCost > 0) costs.Add((ResourceKind.Stone, b.StoneCost));
-                var c = CreateCard(b.DisplayName, b.Sprite, costs, () => OnBuildingClicked(b));
+                var c = CreateCard(b.DisplayName, b.Sprite, costs, () => OnBuildingClicked(b), BuildingTooltip(b));
                 c.Building = b;
                 c.WoodCost = b.WoodCost;
                 c.StoneCost = b.StoneCost;
@@ -476,7 +551,7 @@ namespace RTSCL.World.Unity
                 if (u.IronCost > 0) costs.Add((ResourceKind.Iron, u.IronCost));
                 if (u.GoldCost > 0) costs.Add((ResourceKind.Gold, u.GoldCost));
                 if (u.CrystalCost > 0) costs.Add((ResourceKind.Crystal, u.CrystalCost));
-                var c = CreateCard(u.DisplayName, u.Icon, costs, () => OnUpgradeClicked(u));
+                var c = CreateCard(u.DisplayName, u.Icon, costs, () => OnUpgradeClicked(u), UpgradeTooltip(u));
                 c.Upgrade = u;
                 c.UpgradeKind = u.Kind;
                 c.IronCost = u.IronCost;
@@ -489,10 +564,17 @@ namespace RTSCL.World.Unity
         // Construct a single action card at runtime using Unity UI components.
         // Layout: HorizontalLayoutGroup (icon | VerticalLayoutGroup (name label / cost label)).
         // Returns the CardRefs struct so callers can store cost data alongside the UI refs.
-        private CardRefs CreateCard(string title, Sprite icon, List<(ResourceKind kind, int amount)> costs, Action onClick)
+        private CardRefs CreateCard(string title, Sprite icon, List<(ResourceKind kind, int amount)> costs, Action onClick, string tooltip = null)
         {
             var card = new GameObject($"Card_{title}");
             card.transform.SetParent(_unitCardsContainer, false);
+
+            if (!string.IsNullOrEmpty(tooltip))
+            {
+                var hover = card.AddComponent<CardHover>();
+                hover.Owner = this;
+                hover.Tip = tooltip;
+            }
 
             var bg = card.AddComponent<Image>();
             bg.sprite = _cardSprite;
@@ -689,6 +771,52 @@ namespace RTSCL.World.Unity
             _lastAmountLine = newAmount;
             if (_descriptionLabel != null)
                 _descriptionLabel.text = _selDecoBaseDesc + "\n" + newAmount;
+        }
+
+        // ---------- Tooltip text builders (what each card does) ----------
+
+        private static string UnitTooltip(GoblinUnitDefinition u)
+        {
+            if (u == null) return "";
+            string role = u.SpawnerKindName == "FarmerGoblin" ? "Worker: harvests resources and constructs buildings."
+                        : u.WaterUnit ? "Transport boat: carries up to 6 units across water."
+                        : u.ProjectileSprite != null ? "Ranged unit: fires arrows at enemies and buildings."
+                        : u.AttackDamage > 0 ? "Melee fighter: attacks enemies and buildings up close."
+                        : "Unit.";
+            string stats = u.AttackDamage > 0
+                ? $"\nHP {u.MaxHp} · DMG {u.AttackDamage} · RNG {u.AttackRange} · pop {u.PopulationCost}"
+                : $"\nHP {u.MaxHp} · pop {u.PopulationCost}";
+            return role + stats;
+        }
+
+        private string BuildingTooltip(BuildingDefinition b)
+        {
+            if (b == null) return "";
+            string name = b.name;
+            string role =
+                name.StartsWith("Hut")        ? "Raises your population cap so you can field more units." :
+                name.StartsWith("Barracks")   ? "Trains military units (Club + Archer)." :
+                name.StartsWith("Docks")      ? "Coastal building. Trains transport boats to cross water." :
+                name.StartsWith("Workshop")   ? "Researches permanent upgrades (paid in ore)." :
+                name.StartsWith("Wheatfield") ? "Once built, becomes a harvestable wheat field (food)." :
+                name == "Mill"                ? "Extra resource drop-off point — workers deliver to the nearest Keep or Mill." :
+                name.StartsWith("Keep")       ? "Your main base. Trains workers and accepts resource deliveries." :
+                "Building.";
+            string pop = b.PopulationProvided > 0 ? $"\n+{b.PopulationProvided} population cap" : "";
+            return role + pop;
+        }
+
+        private static string UpgradeTooltip(UpgradeDefinition u)
+        {
+            if (u == null) return "";
+            string effect = u.Kind switch
+            {
+                UpgradeKind.FarmerHarvestSpeed => "Workers harvest faster.",
+                UpgradeKind.ClubAttackDamage   => "Club Goblins deal more damage.",
+                UpgradeKind.ClubMaxHp          => "Club Goblins have more HP.",
+                _                              => "Permanent upgrade.",
+            };
+            return effect + "\nOne-time research, applies to all your units.";
         }
 
         // ---------- Click handlers ----------

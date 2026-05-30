@@ -87,6 +87,29 @@ namespace RTSCL.World.Unity
         public bool TryGetBuildingOwner(Vector2Int cell, out ulong owner) =>
             _cellToOwner.TryGetValue(cell, out owner);
 
+        /// <summary>Building asset names that accept resource drop-off. Farmers deliver to whichever is
+        /// nearest. Keep is always a drop point; the Mill is an extra one players/bots can build.</summary>
+        public static readonly string[] DepositNames = { "Keep_0", "Mill" };
+
+        /// <summary>Find the nearest resource drop-off building (Keep or Mill) owned by <paramref name="owner"/>,
+        /// returning its origin + footprint. Used by harvesters to deliver to the closest deposit point.</summary>
+        public bool TryFindNearestDepositPoint(ulong owner, Vector2Int from, out Vector2Int origin, out Vector2Int footprint)
+        {
+            origin = default; footprint = Vector2Int.one;
+            int bestDistSq = int.MaxValue; bool found = false;
+            foreach (var kvp in _cellOwners)
+            {
+                var def = kvp.Value;
+                if (def == null) continue;
+                if (System.Array.IndexOf(DepositNames, def.name) < 0) continue;
+                if (!_cellToOwner.TryGetValue(kvp.Key, out ulong cellOwner) || cellOwner != owner) continue;
+                if (!_cellToOrigin.TryGetValue(kvp.Key, out var thisOrigin)) continue;
+                int dx = thisOrigin.x - from.x, dy = thisOrigin.y - from.y, d = dx * dx + dy * dy;
+                if (d < bestDistSq) { bestDistSq = d; origin = thisOrigin; footprint = def.Footprint; found = true; }
+            }
+            return found;
+        }
+
         /// <summary>Find the nearest building whose underlying BuildingDefinition asset is named `name`
         /// AND that is owned by `owner`. Returns false if none exists.</summary>
         public bool TryFindNearestBuildingByName(string name, ulong owner, Vector2Int from, out Vector2Int origin)

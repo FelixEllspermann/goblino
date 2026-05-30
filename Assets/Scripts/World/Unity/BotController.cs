@@ -100,7 +100,7 @@ namespace RTSCL.World.Unity
         }
 
         private readonly Dictionary<ulong, BotState> _states = new();
-        private BuildingDefinition _hutDef, _barracksDef, _dockDef, _workshopDef, _wheatDef;
+        private BuildingDefinition _hutDef, _barracksDef, _dockDef, _workshopDef, _wheatDef, _millDef;
         private GoblinUnitDefinition _farmerDef, _clubDef, _archerDef, _boatDef;
         private WorldGeneratorBootstrap _worldSource;
         private float _t;
@@ -113,6 +113,7 @@ namespace RTSCL.World.Unity
             _dockDef = FindBuilding(_dockName);
             _workshopDef = FindBuilding(_workshopName);
             _wheatDef = FindBuilding(_wheatName);
+            _millDef = FindBuilding("Mill");
             // Docks train boats ([0] = Boat) — used for naval scouting / invasion.
             if (_dockDef != null && _dockDef.TrainsUnits != null && _dockDef.TrainsUnits.Length > 0)
                 _boatDef = _dockDef.TrainsUnits[0];
@@ -270,6 +271,9 @@ namespace RTSCL.World.Unity
                 else if (hasBarracks && _workshopDef != null && !OwnsBuilding(owner, _workshopName)
                          && farmers >= 8 && CanAfford(owner, _workshopDef))
                     TryBuild(owner, st, _workshopDef);                          // workshop → unlock upgrades
+                else if (hasBarracks && _millDef != null && !OwnsBuilding(owner, "Mill")
+                         && farmers >= 8 && CanAfford(owner, _millDef))
+                    TryBuild(owner, st, _millDef);                             // mill → closer resource drop-off
                 else if (hasBarracks && CountOwned(owner, _barracksName) < 2 && farmers >= 10
                          && CanAfford(owner, _barracksDef))
                     TryBuild(owner, st, _barracksDef);                            // expand: a 2nd barracks

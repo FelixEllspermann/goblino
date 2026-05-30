@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d4876abf20970884f8ec4d7fb315398a, type: 3}
+  m_Name: Mill
+  m_EditorClassIdentifier: RTSCL.World.Unity::RTSCL.World.Unity.BuildingDefinition
+  DisplayName: Mill
+  Sprite: {fileID: -1519500359, guid: 684b114cbb93cab4a9c846580e6081a4, type: 3}
+  WaterSprite: {fileID: 0}
+  Footprint: {x: 1, y: 1}
+  WoodCost: 100
+  StoneCost: 0
+  PopulationProvided: 0
+  TrainsUnits: []
+  ProvidesUpgrades: []

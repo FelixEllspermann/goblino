@@ -166473,6 +166473,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 8b4d8ffcd3f3b5c43b9df92dcfc41434, type: 2}
   - {fileID: 11400000, guid: 77132853792871f498f0a6f55c91e322, type: 2}
   - {fileID: 11400000, guid: 87aaa3d4c4830484dbb3a7bd9502d961, type: 2}
+  - {fileID: 11400000, guid: 4fd7a35917f30d247b098323352012df, type: 2}
   _resourceIcons:
   - Kind: 0
     Icon: {fileID: -8911251428918342384, guid: 0965b3772d6ef87478985d1a0ba49132, type: 3}

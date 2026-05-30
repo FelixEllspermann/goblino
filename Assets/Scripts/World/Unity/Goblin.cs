@@ -942,17 +942,16 @@ namespace RTSCL.World.Unity
                 return;
             }
             var here = new Vector2Int(Mathf.FloorToInt(transform.position.x), Mathf.FloorToInt(transform.position.y));
-            if (!NetCommandApplier.Placer.TryFindNearestBuildingByName("Keep_0", Owner, here, out var keepOrigin))
+            // Deliver to the NEAREST drop-off point (Keep or Mill), not always the keep.
+            if (!NetCommandApplier.Placer.TryFindNearestDepositPoint(Owner, here, out var depotOrigin, out var fp))
             {
                 _state = State.Idle;
                 return;
             }
 
-            // Deliver to the CENTER of the keep (2×2; origin = SW corner). The center cell is occupied by
-            // the building, so RepathTo snaps to the nearest passable cell — the unit walks up to the keep
-            // from whichever side it approached, rather than always to a fixed SW corner.
-            Vector2Int fp = NetCommandApplier.Placer.TryGetFootprint(keepOrigin, out var f) ? f : new Vector2Int(2, 2);
-            Vector3 target = new Vector3(keepOrigin.x + fp.x * 0.5f, keepOrigin.y + fp.y * 0.5f, 0f);
+            // Deliver to the CENTER of the deposit building. The center cell is occupied by the building,
+            // so RepathTo snaps to the nearest passable cell — the unit walks up from its approach side.
+            Vector3 target = new Vector3(depotOrigin.x + fp.x * 0.5f, depotOrigin.y + fp.y * 0.5f, 0f);
 
             ResetHitAnim();
             RepathTo(target);
