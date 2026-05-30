@@ -29,6 +29,10 @@ namespace RTSCL.World.Unity
         [SerializeField] private string _hutName = "Huts_0";
         [SerializeField] private string _barracksName = "Barracks_0";
         [SerializeField] private string _dockName = "Docks_0";
+        [SerializeField] private string _workshopName = "Workshop";
+        [SerializeField] private string _wheatName = "Wheatfield";
+        [Tooltip("How many wheat fields the bot will build for a steady food supply.")]
+        [SerializeField] private int _wheatTarget = 2;
 
         [Header("Vision / Scouting")]
         [SerializeField] private int _visionRadius = 6;
@@ -56,8 +60,10 @@ namespace RTSCL.World.Unity
             public bool KeepKnown;
             public float TrainTimer = -1f;   // -1 = not training
             public Vector2Int BuildSite;
+            public BuildingDefinition BuildDef;   // def of the in-progress build (for completion bookkeeping)
             public bool Building;
             public float BuildElapsed;       // seconds since current build started (watchdog)
+            public int WheatBuilt;           // completed wheat fields (they convert to decorations, so CountOwned can't track them)
             public int AssignCycle;
             public float StatusLogTimer;     // throttle for the periodic status log
 
@@ -94,7 +100,7 @@ namespace RTSCL.World.Unity
         }
 
         private readonly Dictionary<ulong, BotState> _states = new();
-        private BuildingDefinition _hutDef, _barracksDef, _dockDef;
+        private BuildingDefinition _hutDef, _barracksDef, _dockDef, _workshopDef, _wheatDef;
         private GoblinUnitDefinition _farmerDef, _clubDef, _archerDef, _boatDef;
         private WorldGeneratorBootstrap _worldSource;
         private float _t;
@@ -105,6 +111,8 @@ namespace RTSCL.World.Unity
             _hutDef = FindBuilding(_hutName);
             _barracksDef = FindBuilding(_barracksName);
             _dockDef = FindBuilding(_dockName);
+            _workshopDef = FindBuilding(_workshopName);
+            _wheatDef = FindBuilding(_wheatName);
             // Docks train boats ([0] = Boat) — used for naval scouting / invasion.
             if (_dockDef != null && _dockDef.TrainsUnits != null && _dockDef.TrainsUnits.Length > 0)
                 _boatDef = _dockDef.TrainsUnits[0];
@@ -182,14 +190,19 @@ namespace RTSCL.World.Unity
             // Don't assign current scouts to harvest.
             idleFarmers.RemoveAll(f => st.Scouts.Contains(f));
 
-            // 3. Assign idle farmers to harvest (round-robin Wood/Food/Stone for a balanced economy).
+            // 3. Assign idle farmers to harvest. Round-robin over ALL six resource kinds (wood/food/stone
+            // weighted heavier since they're the staples, plus gold/iron/crystal ores for upgrades). Falls
+            // back to any nearby node if the rolled kind isn't reachable.
             foreach (var f in idleFarmers)
             {
-                ResourceKind kind = (st.AssignCycle++ % 3) switch
+                ResourceKind kind = (st.AssignCycle++ % 8) switch
                 {
-                    0 => ResourceKind.Wood,
-                    1 => ResourceKind.Food,
-                    _ => ResourceKind.Stone,
+                    0 or 1 => ResourceKind.Wood,
+                    2 or 3 => ResourceKind.Food,
+                    4      => ResourceKind.Stone,
+                    5      => ResourceKind.Gold,
+                    6      => ResourceKind.Iron,
+                    _      => ResourceKind.Crystal,
                 };
                 if (TryFindNode(keepWorld, kind, out var cell) || TryFindNode(keepWorld, null, out cell))
                     f.SetHarvestCommand(cell);
@@ -222,7 +235,8 @@ namespace RTSCL.World.Unity
             {
                 if (!BuildingConstruction.IsUnderConstruction(st.BuildSite))
                 {
-                    LogBot(owner, $"finished building at {st.BuildSite}.");
+                    LogBot(owner, $"finished building {(st.BuildDef != null ? st.BuildDef.name : "?")} at {st.BuildSite}.");
+                    if (st.BuildDef == _wheatDef) st.WheatBuilt++;   // completed wheat field (now a harvestable decoration)
                     st.Building = false; st.BuildElapsed = 0f;
                 }
                 else
@@ -240,8 +254,8 @@ namespace RTSCL.World.Unity
 
             if (!st.Building)
             {
-                // Actively expand: build huts EARLY (well before the cap) to keep growing pop room, get a
-                // barracks quickly, then a 2nd, so the base keeps spreading instead of stalling.
+                // Actively expand: pop room (huts) → barracks → wheat farms (food) → workshop (upgrades)
+                // → a 2nd barracks. Each gated on affordability so the bot never stalls on one item.
                 int popUsed = BotEconomy.PopUsed(owner), popCap = BotEconomy.PopCap(owner);
                 bool nearCap = popUsed >= popCap - 3;
                 bool wantRoom = popCap < 90 && popUsed >= popCap * 0.6f;   // grow before hitting the wall
@@ -250,10 +264,19 @@ namespace RTSCL.World.Unity
                     TryBuild(owner, st, _hutDef);                                  // more huts → more pop
                 else if (!hasBarracks && farmers >= 4 && CanAfford(owner, _barracksDef))
                     TryBuild(owner, st, _barracksDef);                            // first barracks (early)
-                else if (hasBarracks && CountOwned(owner, _barracksName) < 2 && farmers >= 8
+                else if (hasBarracks && _wheatDef != null && st.WheatBuilt < _wheatTarget
+                         && farmers >= 6 && CanAfford(owner, _wheatDef))
+                    TryBuild(owner, st, _wheatDef);                              // wheat farms → steady food
+                else if (hasBarracks && _workshopDef != null && !OwnsBuilding(owner, _workshopName)
+                         && farmers >= 8 && CanAfford(owner, _workshopDef))
+                    TryBuild(owner, st, _workshopDef);                          // workshop → unlock upgrades
+                else if (hasBarracks && CountOwned(owner, _barracksName) < 2 && farmers >= 10
                          && CanAfford(owner, _barracksDef))
                     TryBuild(owner, st, _barracksDef);                            // expand: a 2nd barracks
             }
+
+            // 5b. Buy workshop upgrades whenever affordable (ore is harvested in step 3).
+            TryBuyUpgrades(owner, st);
 
             // 6. Military: train an army from the Barracks, then attack discovered enemies.
             RunMilitary(owner, st, dt);
@@ -271,9 +294,11 @@ namespace RTSCL.World.Unity
                 foreach (var g in Goblin.All)
                     if (g != null && !g.IsNeutral && g.Owner == owner && g.Kind != "FarmerGoblin" && !g.IsBoat) military++;
                 LogBot(owner, $"status — farmers {farmers} (scouts {st.Scouts.Count}), military {military}, " +
-                              $"W/F/S {BotEconomy.Get(owner, ResourceKind.Wood)}/{BotEconomy.Get(owner, ResourceKind.Food)}/{BotEconomy.Get(owner, ResourceKind.Stone)}, " +
+                              $"W/F/S {BotEconomy.Get(owner, ResourceKind.Wood)}/{BotEconomy.Get(owner, ResourceKind.Food)}/{BotEconomy.Get(owner, ResourceKind.Stone)} " +
+                              $"ore G/I/C {BotEconomy.Get(owner, ResourceKind.Gold)}/{BotEconomy.Get(owner, ResourceKind.Iron)}/{BotEconomy.Get(owner, ResourceKind.Crystal)}, " +
                               $"pop {BotEconomy.PopUsed(owner)}/{BotEconomy.PopCap(owner)}, " +
                               $"barracks {CountOwned(owner, _barracksName)}, huts {CountOwned(owner, _hutName)}, " +
+                              $"farms {CountOwned(owner, _wheatName)}, workshop {(OwnsBuilding(owner, _workshopName) ? 1 : 0)}, " +
                               $"enemyFound {st.EnemyFound}, plan {(st.PlanTargetSize == 0 ? "downtime" : st.PlanTargetSize + (st.PlanAttacking ? " ATTACKING" : " building"))}");
             }
         }
@@ -588,6 +613,32 @@ namespace RTSCL.World.Unity
             && BotEconomy.Get(owner, ResourceKind.Wood) >= def.WoodCost
             && BotEconomy.Get(owner, ResourceKind.Stone) >= def.StoneCost;
 
+        // Buy any workshop upgrade the bot can afford and hasn't bought yet (paid in iron/gold/crystal
+        // from its own economy). Mirrors the player's ObjectInspector.OnUpgradeClicked path so the effect
+        // applies to all of this bot's units. Requires a completed Workshop.
+        private void TryBuyUpgrades(ulong owner, BotState st)
+        {
+            if (_workshopDef == null || _workshopDef.ProvidesUpgrades == null) return;
+            // The workshop must exist AND be finished (not still under construction) to research.
+            if (!_placer.TryFindNearestBuildingByName(_workshopName, owner, st.Keep, out var ws)) return;
+            if (BuildingConstruction.IsUnderConstruction(ws)) return;
+
+            foreach (var up in _workshopDef.ProvidesUpgrades)
+            {
+                if (up == null || PlayerUpgrades.IsPurchased(owner, up.Kind)) continue;
+                if (BotEconomy.Get(owner, ResourceKind.Iron) < up.IronCost) continue;
+                if (BotEconomy.Get(owner, ResourceKind.Gold) < up.GoldCost) continue;
+                if (BotEconomy.Get(owner, ResourceKind.Crystal) < up.CrystalCost) continue;
+
+                if (up.IronCost > 0) BotEconomy.Add(owner, ResourceKind.Iron, -up.IronCost);
+                if (up.GoldCost > 0) BotEconomy.Add(owner, ResourceKind.Gold, -up.GoldCost);
+                if (up.CrystalCost > 0) BotEconomy.Add(owner, ResourceKind.Crystal, -up.CrystalCost);
+                PlayerUpgrades.MarkPurchased(owner, up.Kind);
+                UpgradeEffects.ApplyToOwnedUnits(owner, up.Kind);
+                LogBot(owner, $"researched upgrade {up.Kind}.");
+            }
+        }
+
         private void TryBuild(ulong owner, BotState st, BuildingDefinition def)
         {
             if (!TryFindBuildSite(st.Keep, def.Footprint, out var site))
@@ -598,7 +649,7 @@ namespace RTSCL.World.Unity
             BotEconomy.Add(owner, ResourceKind.Wood, -def.WoodCost);
             BotEconomy.Add(owner, ResourceKind.Stone, -def.StoneCost);
             _placer.PlaceForce(def, site, charge: false, requireConstruction: true, owner: owner);
-            st.BuildSite = site; st.Building = true; st.BuildElapsed = 0f;
+            st.BuildSite = site; st.BuildDef = def; st.Building = true; st.BuildElapsed = 0f;
             LogBot(owner, $"building {def.name} at {site} (cost {def.WoodCost}w/{def.StoneCost}s).");
             EnsureBuilder(owner, site);
         }
