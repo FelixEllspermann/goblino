@@ -21,3 +21,5 @@ MonoBehaviour:
   PopulationProvided: 0
   TrainsUnits: []
   ProvidesUpgrades: []
+  Category: 0
+  Requires: []

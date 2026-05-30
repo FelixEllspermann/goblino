@@ -166189,6 +166189,78 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1431878291}
   m_CullTransparentMesh: 1
+--- !u!1 &1465342866
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1465342868}
+  - component: {fileID: 1465342867}
+  m_Layer: 0
+  m_Name: BuildMenu
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1465342867
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1465342866}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9ca7e82c17db38a49ba6a4edacedcec8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: RTSCL.World.Unity::RTSCL.World.Unity.BuildMenu
+  _selectionController: {fileID: 445876833}
+  _placer: {fileID: 1966971705}
+  _buildables:
+  - {fileID: 11400000, guid: 617f10b7a32d7824cafd0b5a1fd4a3ac, type: 2}
+  - {fileID: 11400000, guid: f0a3ae8163462354c908b2fea93341ab, type: 2}
+  - {fileID: 11400000, guid: 8b4d8ffcd3f3b5c43b9df92dcfc41434, type: 2}
+  - {fileID: 11400000, guid: 77132853792871f498f0a6f55c91e322, type: 2}
+  - {fileID: 11400000, guid: 87aaa3d4c4830484dbb3a7bd9502d961, type: 2}
+  - {fileID: 11400000, guid: 4fd7a35917f30d247b098323352012df, type: 2}
+  _font: {fileID: 12800000, guid: 9e2df1d63f1cf514aa45d7730f0b04cb, type: 3}
+  _cardSprite: {fileID: 0}
+  _resourceIcons:
+  - Kind: 0
+    Icon: {fileID: -8911251428918342384, guid: 0965b3772d6ef87478985d1a0ba49132, type: 3}
+  - Kind: 1
+    Icon: {fileID: -9158380238242527104, guid: 115e00acaffee7d4cb0f11d35340aa41, type: 3}
+  - Kind: 2
+    Icon: {fileID: 1887494081247492234, guid: 269e7f27a92d2e54c844b48ddc51cd37, type: 3}
+  - Kind: 3
+    Icon: {fileID: -6400913422314380486, guid: 684b114cbb93cab4a9c846580e6081a4, type: 3}
+  - Kind: 4
+    Icon: {fileID: 429713409, guid: 684b114cbb93cab4a9c846580e6081a4, type: 3}
+  - Kind: 5
+    Icon: {fileID: 2110156539, guid: 684b114cbb93cab4a9c846580e6081a4, type: 3}
+  _panelWidth: 360
+  _panelHeight: 520
+  _cellSize: {x: 150, y: 64}
+  _tabWidth: 96
+--- !u!4 &1465342868
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1465342866}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1575379042
 GameObject:
   m_ObjectHideFlags: 0
@@ -166470,13 +166542,6 @@ MonoBehaviour:
   _cardDisabledBg: {r: 0.1, g: 0.1, b: 0.12, a: 0.7}
   _cardTextNormal: {r: 1, g: 1, b: 1, a: 1}
   _cardTextDisabled: {r: 0.55, g: 0.55, b: 0.55, a: 1}
-  _farmerBuildables:
-  - {fileID: 11400000, guid: 617f10b7a32d7824cafd0b5a1fd4a3ac, type: 2}
-  - {fileID: 11400000, guid: f0a3ae8163462354c908b2fea93341ab, type: 2}
-  - {fileID: 11400000, guid: 8b4d8ffcd3f3b5c43b9df92dcfc41434, type: 2}
-  - {fileID: 11400000, guid: 77132853792871f498f0a6f55c91e322, type: 2}
-  - {fileID: 11400000, guid: 87aaa3d4c4830484dbb3a7bd9502d961, type: 2}
-  - {fileID: 11400000, guid: 4fd7a35917f30d247b098323352012df, type: 2}
   _resourceIcons:
   - Kind: 0
     Icon: {fileID: -8911251428918342384, guid: 0965b3772d6ef87478985d1a0ba49132, type: 3}
@@ -173127,3 +173192,4 @@ SceneRoots:
   - {fileID: 445876834}
   - {fileID: 626648821}
   - {fileID: 2042593385}
+  - {fileID: 1465342868}

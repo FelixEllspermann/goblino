@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: RTSCL.World.Unity::RTSCL.World.Unity.BuildingDefinition
   DisplayName: Barracks
   Sprite: {fileID: 5002096206624228670, guid: 7be36373a77df1b4fbc434d0ebf1768b, type: 3}
+  WaterSprite: {fileID: 0}
   Footprint: {x: 1, y: 1}
   WoodCost: 120
   StoneCost: 60
@@ -22,3 +23,5 @@ MonoBehaviour:
   - {fileID: 11400000, guid: b8d35062be9a7d5fc41bf0e7d6e4f5fc, type: 2}
   - {fileID: 11400000, guid: dc8b4dc2262419b46a96002106fc9feb, type: 2}
   ProvidesUpgrades: []
+  Category: 1
+  Requires: []

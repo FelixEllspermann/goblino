@@ -22,3 +22,5 @@ MonoBehaviour:
   TrainsUnits:
   - {fileID: 11400000, guid: 1c639a79eb1b8144a8daf206e2ffe877, type: 2}
   ProvidesUpgrades: []
+  Category: 3
+  Requires: []

@@ -14,9 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: RTSCL.World.Unity::RTSCL.World.Unity.BuildingDefinition
   DisplayName: Hut
   Sprite: {fileID: 8441677442705102425, guid: 6570d8dc9e44fb24ababf43d74f4c8c3, type: 3}
+  WaterSprite: {fileID: 0}
   Footprint: {x: 1, y: 1}
   WoodCost: 60
   StoneCost: 20
   PopulationProvided: 5
   TrainsUnits: []
   ProvidesUpgrades: []
+  Category: 0
+  Requires: []
