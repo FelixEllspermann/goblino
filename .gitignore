@@ -46,3 +46,10 @@ steam_appid.txt
 
 # Raw Steamworks SDK sibling folder (large, redownload as needed)
 sdk/
+
+# Claude Code local config / skills / memory (kept local)
+.claude/
+
+# Debug screenshots (scratch, overwritten during dev)
+/Assets/error.png
+/Assets/error.png.meta
