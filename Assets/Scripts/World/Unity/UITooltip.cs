@@ -71,6 +71,7 @@ namespace RTSCL.World.Unity
             _text.fontSize = 14;
             _text.color = Color.white;
             _text.alignment = TextAnchor.UpperLeft;
+            _text.lineSpacing = 1.35f;   // breathing room between lines (was cramped/overlapping)
             _text.verticalOverflow = VerticalWrapMode.Overflow;
             _text.raycastTarget = false;
 
