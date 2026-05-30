@@ -150,13 +150,14 @@ namespace RTSCL.World.Unity
             return null;
         }
 
-        /// <summary>Spawn a single goblin of the named kind at a world position (used by MonsterSpawner).
-        /// Returns null if the kind isn't configured.</summary>
-        public Goblin SpawnKindAt(string kindName, Vector3 worldPos, ulong owner)
+        /// <summary>Spawn a single goblin of the named kind at a world position (used by MonsterSpawner,
+        /// boat spawns, and centered keep/barracks production). <paramref name="reservedIndex"/> pre-reserves
+        /// the NetId so trained units match across clients. Returns null if the kind isn't configured.</summary>
+        public Goblin SpawnKindAt(string kindName, Vector3 worldPos, ulong owner, ushort? reservedIndex = null)
         {
             var kind = FindKind(kindName);
             if (kind == null) { Debug.LogWarning($"[GoblinSpawner] Kind '{kindName}' not configured"); return null; }
-            return SpawnAt(worldPos, kind, owner);
+            return SpawnAt(worldPos, kind, owner, reservedIndex);
         }
 
         // Linear search by Name string. Called at spawn time (infrequent), not per-frame.

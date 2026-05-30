@@ -948,8 +948,11 @@ namespace RTSCL.World.Unity
                 return;
             }
 
-            // Stand one cell to the SW of the keep origin (Keep is 2x2; origin is the SW corner).
-            Vector3 target = new Vector3(keepOrigin.x - 0.5f, keepOrigin.y + 0.5f, 0f);
+            // Deliver to the CENTER of the keep (2×2; origin = SW corner). The center cell is occupied by
+            // the building, so RepathTo snaps to the nearest passable cell — the unit walks up to the keep
+            // from whichever side it approached, rather than always to a fixed SW corner.
+            Vector2Int fp = NetCommandApplier.Placer.TryGetFootprint(keepOrigin, out var f) ? f : new Vector2Int(2, 2);
+            Vector3 target = new Vector3(keepOrigin.x + fp.x * 0.5f, keepOrigin.y + fp.y * 0.5f, 0f);
 
             ResetHitAnim();
             RepathTo(target);
