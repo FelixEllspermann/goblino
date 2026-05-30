@@ -344,6 +344,11 @@ namespace RTSCL.World.Unity
             return bestSq != int.MaxValue;
         }
 
+        /// <summary>True if this unit is currently walking to or constructing the building at origin.
+        /// Used by the bot AI to avoid double-assigning builders.</summary>
+        public bool IsBuildingAt(Vector2Int origin) =>
+            (_state == State.MovingToBuild || _state == State.Building) && _buildOrigin == origin;
+
         /// <summary>Command this unit to walk to a building under construction and hammer on it.
         /// Releases any harvest reservation. Called by NetCommandApplier.ApplyBuildAssist.</summary>
         public void SetBuildCommand(Vector2Int buildingOrigin)
