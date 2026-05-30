@@ -62,8 +62,9 @@ Multiplayer state:
 - **Singleton managers** auto-bootstrap via `[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]` + `DontDestroyOnLoad`, idempotent `_instance != null` guard. See `SteamManager`, `LobbyManager`, `NetworkManager`, `GameStartLoader`.
 - **Static events** for cross-cutting state. `ResourceBank.OnWoodChanged`, `PopulationManager.OnChanged`, `BuildingConstruction.OnCompleted`, `GoblinProduction.OnChanged`, `LobbyManager.OnLobbyEntered/Left/...`, `NetworkManager.OnConnected/Disconnected/Error`, `NetworkSession.OnGameStartReceived`. UI subscribes; no service-locator lookups.
 - **Per-cell / per-owner game state** lives in static classes: `TreeHP`, `BuildingHP`, `BuildingConstruction`, `BuildingPlacer._cellOwners` (keyed by `Vector2Int`); `RallyPoints`, `DockRegistry`, `HarvestReservations` (a GLOBAL set of reserved standing cells so harvesters never share a cell, even across adjacent nodes); `BotEconomy` (keyed by owner `ulong`). World reset routes through `MainBaseSetup.OnNewWorld`, which clears all of them.
-- **Asset-driven definitions**: `BuildingDefinition` (ScriptableObject) carries sprite/footprint/cost/trains-units/pop-provided + `WaterSprite` (dock pier). `GoblinUnitDefinition` carries icon/wood-cost/food-cost/pop-cost/spawn-duration/HP/damage/attack-interval/range + `ProjectileSprite` (set → ranged, fires an `Arrow`), `WorldScale` (monsters scale up), `WaterUnit` (boat: water-only movement). `BuildingCatalog.asset` lists reachable buildings (incl. Docks); unit assets live under `Assets/Generated/Units/`.
+- **Asset-driven definitions**: `BuildingDefinition` (ScriptableObject) carries sprite/footprint/cost/trains-units/pop-provided + `WaterSprite` (dock pier) + `Category` (`BuildCategory` enum → build-menu tab) + `Requires` (prereq buildings; empty = always buildable). `GoblinUnitDefinition` carries icon/wood-cost/food-cost/pop-cost/spawn-duration/HP/damage/attack-interval/range + `ProjectileSprite` (set → ranged, fires an `Arrow`), `WorldScale` (monsters scale up), `WaterUnit` (boat: water-only movement). `BuildingCatalog.asset` lists reachable buildings (incl. Docks); unit assets live under `Assets/Generated/Units/`.
 - **Click-selection** uses each unit's padded sprite **`SelectionBounds`** (not a fixed radius), so large/offset sprites (boats, monsters) are pickable across their hull. Enemy/neutral units are click-inspectable (read-only) but never enter the commandable selection.
+- **Build UI**: the left **`BuildMenu`** sidebar (shown while a Farmer is selected) groups buildables by `Category` into vertical tabs + a scrollable grid, greying out locked ones via `BuildRequirements.IsUnlocked(def, ownsCompleted)` (tech-tree foundation; prereqs currently empty). New building = just an asset (set Category, optionally Requires). The bottom **`ObjectInspector`** only inspects + shows train/upgrade cards now. Hover tooltips across both use the shared, auto-sized **`UITooltip`** singleton.
 
 ## Steam integration
 
@@ -101,7 +102,7 @@ The Unity MCP server (`mcp__unity-mcp__*` tools) is the preferred way to drive t
 
 ## Testing
 
-- Pure-logic tests under `Assets/Tests/Editor/` cover the world generator (+ `GoblinNetId`). 42 tests, all passing. Run via the Test Runner window or via Unity MCP's `TestRunnerApi`.
+- Pure-logic tests under `Assets/Tests/Editor/` cover the world generator (+ `GoblinNetId`, `BuildRequirements`). 46 tests, all passing. The `RTSCL.World.Tests` asmdef references `RTSCL.World` **and** `RTSCL.World.Unity`. Run via the Test Runner window or via Unity MCP's `TestRunnerApi`.
 - Unity-bound code (`RTSCL.World.Unity` and `Assembly-CSharp`) is not automatically tested. Verification is per-task via MCP compile checks + manual play-mode validation (see `docs/superpowers/plans/`).
 - Multiplayer flows (lobby join, P2P, GameStart sync) need two real Steam clients to verify end-to-end. Host-alone smoke tests cover the single-client path.
 
