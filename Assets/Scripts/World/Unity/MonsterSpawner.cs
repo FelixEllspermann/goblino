@@ -26,19 +26,30 @@ namespace RTSCL.World.Unity
         [SerializeField] private List<MonsterType> _types = new();
         [Tooltip("Minimum distance (cells) a monster must keep from every player spawn point.")]
         [SerializeField] private int _minDistanceFromSpawns = 22;
+        [Tooltip("Each MonsterType.Count is tuned for a map of this edge length; counts scale with map area " +
+                 "relative to this (256 = the default 'Groß'). Smaller maps spawn fewer, bigger maps spawn more.")]
+        [SerializeField] private int _referenceMapEdge = 256;
+        [Tooltip("Clamp the area scale so tiny maps still get some monsters and huge maps aren't overrun.")]
+        [SerializeField] private float _minScale = 0.2f;
+        [SerializeField] private float _maxScale = 3f;
 
-        /// <summary>Spawn all configured monster types for the given world + seed.</summary>
+        /// <summary>Spawn all configured monster types for the given world + seed. Per-type counts scale
+        /// with the map's area relative to <see cref="_referenceMapEdge"/>².</summary>
         public void SpawnAll(WorldData world, uint seed)
         {
             if (_spawner == null || world == null) return;
             ulong owner = WorldStartContext.PendingSlots != null ? WorldStartContext.HostPlayer : 0UL;
             var rng = new Random(seed == 0u ? 99u : seed * 2654435761u + 1u);
 
+            float refArea = Mathf.Max(1f, _referenceMapEdge * (float)_referenceMapEdge);
+            float scale = Mathf.Clamp(world.Width * (float)world.Height / refArea, _minScale, _maxScale);
+
             foreach (var t in _types)
             {
                 if (t == null || string.IsNullOrEmpty(t.KindName) || t.Biomes == null || t.Biomes.Length == 0) continue;
-                int placed = 0, attempts = 0, maxAttempts = Mathf.Max(1, t.Count) * 200;
-                while (placed < t.Count && attempts < maxAttempts)
+                int target = Mathf.Max(1, Mathf.RoundToInt(t.Count * scale));   // scale count by map area
+                int placed = 0, attempts = 0, maxAttempts = target * 200;
+                while (placed < target && attempts < maxAttempts)
                 {
                     attempts++;
                     int x = rng.NextInt(0, world.Width);

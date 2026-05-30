@@ -74,6 +74,13 @@ namespace RTSCL.World.Unity
             public TileBase CrystalOreTile;
             public int CrystalDeposits = 3;
 
+            [Header("Map-size scaling")]
+            [Tooltip("Forest/stone/ore/berry counts are tuned for a map of this edge length, then scaled by " +
+                     "actual map area / this² (256 = the default 'Groß'). Smaller maps get fewer, bigger get more.")]
+            public int ReferenceMapEdge = 256;
+            public float MinScale = 0.2f;
+            public float MaxScale = 3f;
+
             [Header("Spawn")]
             /// <summary>Cells cleared around each spawn point so the keep can be placed without overlap.</summary>
             public int SpawnReservedRadius = 2;
@@ -108,19 +115,26 @@ namespace RTSCL.World.Unity
             var rng = new Random(seed == 0 ? 1u : seed);
             var reserved = BuildReservedMask(world);
 
+            // Scale all map-wide counts by the map's area relative to the reference (Groß = 256²), so a
+            // small map isn't as crowded and a gigantic one isn't sparse. Clamped to sane bounds.
+            float refArea = Mathf.Max(1f, _cfg.ReferenceMapEdge * (float)_cfg.ReferenceMapEdge);
+            float scale = Mathf.Clamp(world.Width * (float)world.Height / refArea, _cfg.MinScale, _cfg.MaxScale);
+            int Scaled(int n) => Mathf.Max(1, Mathf.RoundToInt(n * scale));
+
             // Fixed pass order (deterministic for a given seed → MP-consistent).
-            PlaceForests(world, reserved, ref rng);
+            PlaceForests(world, reserved, ref rng, Scaled(_cfg.ForestCount));
             ScatteredTrees(world, reserved, ref rng);
 
-            for (int i = 0; i < _cfg.StoneClusterCount; i++)
+            int stoneClusters = Scaled(_cfg.StoneClusterCount);
+            for (int i = 0; i < stoneClusters; i++)
                 PlaceStoneCluster(world, reserved, ref rng);
 
-            PlaceOre(world, _cfg.GoldOreTile, _cfg.GoldDeposits, reserved, ref rng);
-            PlaceOre(world, _cfg.IronOreTile, _cfg.IronDeposits, reserved, ref rng);
-            PlaceOre(world, _cfg.CrystalOreTile, _cfg.CrystalDeposits, reserved, ref rng);
+            PlaceOre(world, _cfg.GoldOreTile, Scaled(_cfg.GoldDeposits), reserved, ref rng);
+            PlaceOre(world, _cfg.IronOreTile, Scaled(_cfg.IronDeposits), reserved, ref rng);
+            PlaceOre(world, _cfg.CrystalOreTile, Scaled(_cfg.CrystalDeposits), reserved, ref rng);
 
             // Wild berry bushes scattered randomly across the map (single-tile food nodes).
-            PlaceOre(world, _cfg.BerryTile, _cfg.BerryScatterCount, reserved, ref rng);
+            PlaceOre(world, _cfg.BerryTile, Scaled(_cfg.BerryScatterCount), reserved, ref rng);
 
             if (world.Spawns != null)
                 foreach (var s in world.Spawns)
@@ -160,13 +174,13 @@ namespace RTSCL.World.Unity
 
         // ---------- Forests ----------
 
-        /// <summary>Places up to ForestCount forest clusters, each grown via GrowCluster.
+        /// <summary>Places up to <paramref name="forestCount"/> forest clusters, each grown via GrowCluster.
         /// Each cluster picks a random start cell, determines species from that cell's biome,
         /// then only grows into neighboring cells with the same species mapping (single-species forest).</summary>
-        private void PlaceForests(WorldData world, bool[,] reserved, ref Random rng)
+        private void PlaceForests(WorldData world, bool[,] reserved, ref Random rng, int forestCount)
         {
-            int placed = 0, attempts = 0, maxAttempts = Mathf.Max(1, _cfg.ForestCount) * 30;
-            while (placed < _cfg.ForestCount && attempts < maxAttempts)
+            int placed = 0, attempts = 0, maxAttempts = Mathf.Max(1, forestCount) * 30;
+            while (placed < forestCount && attempts < maxAttempts)
             {
                 attempts++;
                 int cx = rng.NextInt(0, world.Width);

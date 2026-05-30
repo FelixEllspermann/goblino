@@ -922,6 +922,9 @@ MonoBehaviour:
     Count: 2
     RequireAdjacentWater: 0
   _minDistanceFromSpawns: 22
+  _referenceMapEdge: 256
+  _minScale: 0.2
+  _maxScale: 3
 --- !u!114 &626648823
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -172867,6 +172870,9 @@ MonoBehaviour:
     IronDeposits: 6
     CrystalOreTile: {fileID: 11400000, guid: 0528d4ba334e58848a11bf07c50ae419, type: 2}
     CrystalDeposits: 3
+    ReferenceMapEdge: 256
+    MinScale: 0.2
+    MaxScale: 3
     SpawnReservedRadius: 2
     SafeSpawnRadius: 12
     SafeSpawnWheat: 5
