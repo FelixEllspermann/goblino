@@ -54,20 +54,23 @@ namespace RTSCL.World.Unity
             _rect.pivot = new Vector2(0f, 0f);
 
             var bg = gameObject.AddComponent<Image>();
-            bg.color = new Color(0.05f, 0.05f, 0.08f, 0.95f);
+            bg.color = new Color(0.05f, 0.05f, 0.08f, 1f);   // fully opaque (was 0.95 → text bled through)
             bg.raycastTarget = false;
 
             var txtGo = new GameObject("Text", typeof(RectTransform));
             txtGo.transform.SetParent(transform, false);
             var tr = (RectTransform)txtGo.transform;
-            tr.anchorMin = Vector2.zero; tr.anchorMax = Vector2.one;
-            tr.offsetMin = new Vector2(PadX, PadY); tr.offsetMax = new Vector2(-PadX, -PadY);
+            // Anchor the text to the panel's top-left corner (NOT stretched) so we can size it to its
+            // content and then wrap the panel around it. (Stretch-anchoring made preferredWidth circular,
+            // leaving the panel too small for the text — the bug in the screenshot.)
+            tr.anchorMin = new Vector2(0f, 1f); tr.anchorMax = new Vector2(0f, 1f);
+            tr.pivot = new Vector2(0f, 1f);
+            tr.anchoredPosition = new Vector2(PadX, -PadY);
             _text = txtGo.AddComponent<Text>();
             _text.font = _font;
             _text.fontSize = 14;
             _text.color = Color.white;
             _text.alignment = TextAnchor.UpperLeft;
-            _text.horizontalOverflow = HorizontalWrapMode.Wrap;
             _text.verticalOverflow = VerticalWrapMode.Overflow;
             _text.raycastTarget = false;
 
@@ -77,12 +80,15 @@ namespace RTSCL.World.Unity
         private void ShowImpl(string text)
         {
             _text.text = text;
-            // Size to content: measure unconstrained preferred width, clamp to MaxWidth, then measure
-            // wrapped preferred height at that width.
-            float prefW = _text.preferredWidth;
-            float w = Mathf.Min(prefW, MaxWidth - 2f * PadX);
-            _text.rectTransform.sizeDelta = new Vector2(w, _text.rectTransform.sizeDelta.y);
+            // Measure natural (no-wrap) width; only wrap if it would exceed MaxWidth. Width/height come from
+            // the Text's own preferred size (independent of the panel rect), then the panel wraps around it.
+            float maxInner = MaxWidth - 2f * PadX;
+            _text.horizontalOverflow = HorizontalWrapMode.Overflow;
+            float w = _text.preferredWidth;
+            if (w > maxInner) { _text.horizontalOverflow = HorizontalWrapMode.Wrap; w = maxInner; }
+            _text.rectTransform.sizeDelta = new Vector2(w, 0f);   // fix width so preferredHeight wraps correctly
             float h = _text.preferredHeight;
+            _text.rectTransform.sizeDelta = new Vector2(w, h);
             _rect.sizeDelta = new Vector2(w + 2f * PadX, h + 2f * PadY);
             gameObject.SetActive(true);
             _visible = true;

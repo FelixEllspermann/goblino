@@ -101,7 +101,9 @@ namespace RTSCL.World.Unity
             tvlg.childForceExpandHeight = false; tvlg.childControlHeight = true;
             tvlg.childForceExpandWidth = true; tvlg.childControlWidth = true;
 
-            var scrollGo = new GameObject("Grid", typeof(RectTransform), typeof(Image), typeof(ScrollRect), typeof(RectMask2D));
+            // ScrollRect → Viewport (clips) → Content (grid). A dedicated viewport is required, otherwise
+            // the mask/content geometry is wrong and cards spill left under the tab column (the screenshot bug).
+            var scrollGo = new GameObject("Grid", typeof(RectTransform), typeof(Image), typeof(ScrollRect));
             scrollGo.transform.SetParent(_root.transform, false);
             var srt = (RectTransform)scrollGo.transform;
             srt.anchorMin = new Vector2(0f, 0f); srt.anchorMax = new Vector2(1f, 1f);
@@ -109,17 +111,35 @@ namespace RTSCL.World.Unity
             scrollGo.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.25f);
             var scroll = scrollGo.GetComponent<ScrollRect>();
             scroll.horizontal = false; scroll.vertical = true;
+            scroll.scrollSensitivity = 24f;
+
+            var viewportGo = new GameObject("Viewport", typeof(RectTransform), typeof(Image), typeof(RectMask2D));
+            viewportGo.transform.SetParent(scrollGo.transform, false);
+            var vrt = (RectTransform)viewportGo.transform;
+            vrt.anchorMin = Vector2.zero; vrt.anchorMax = Vector2.one;
+            vrt.offsetMin = Vector2.zero; vrt.offsetMax = Vector2.zero;
+            vrt.pivot = new Vector2(0f, 1f);
+            viewportGo.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.01f);  // mask needs a graphic
 
             var contentGo = new GameObject("Content", typeof(RectTransform), typeof(GridLayoutGroup), typeof(ContentSizeFitter));
-            contentGo.transform.SetParent(scrollGo.transform, false);
+            contentGo.transform.SetParent(viewportGo.transform, false);
             _gridContent = (RectTransform)contentGo.transform;
             _gridContent.anchorMin = new Vector2(0f, 1f); _gridContent.anchorMax = new Vector2(1f, 1f);
-            _gridContent.pivot = new Vector2(0.5f, 1f);
+            _gridContent.pivot = new Vector2(0f, 1f);
+            _gridContent.anchoredPosition = Vector2.zero;
             var grid = contentGo.GetComponent<GridLayoutGroup>();
             grid.cellSize = _cellSize; grid.spacing = new Vector2(6f, 6f);
             grid.padding = new RectOffset(6, 6, 6, 6);
+            grid.childAlignment = TextAnchor.UpperLeft;
+            // Fit as many columns as the viewport width allows (≥1), so cards never overflow past the panel.
+            float avail = _panelWidth - _tabWidth - 12f;
+            int cols = Mathf.Max(1, Mathf.FloorToInt((avail - grid.padding.left - grid.padding.right + grid.spacing.x)
+                                                     / (_cellSize.x + grid.spacing.x)));
+            grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+            grid.constraintCount = cols;
             var fitter = contentGo.GetComponent<ContentSizeFitter>();
             fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+            scroll.viewport = vrt;
             scroll.content = _gridContent;
         }
 
@@ -170,9 +190,12 @@ namespace RTSCL.World.Unity
             var t = new GameObject("Label", typeof(RectTransform), typeof(Text));
             t.transform.SetParent(go.transform, false);
             var trt = (RectTransform)t.transform; trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one;
-            trt.offsetMin = Vector2.zero; trt.offsetMax = Vector2.zero;
+            trt.offsetMin = new Vector2(2f, 0f); trt.offsetMax = new Vector2(-2f, 0f);
             var txt = t.GetComponent<Text>();
-            txt.text = label; txt.font = _font; txt.fontSize = 14; txt.color = Color.white;
+            txt.text = label; txt.font = _font; txt.color = Color.white;
+            // Best-fit so long labels ("Economy"/"Military") shrink to fit the tab instead of clipping.
+            txt.resizeTextForBestFit = true; txt.resizeTextMinSize = 8; txt.resizeTextMaxSize = 14;
+            txt.horizontalOverflow = HorizontalWrapMode.Wrap;
             txt.alignment = TextAnchor.MiddleCenter; txt.raycastTarget = false;
             var btn = go.GetComponent<Button>();
             btn.onClick.AddListener(onClick);
