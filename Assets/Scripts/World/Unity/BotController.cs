@@ -24,7 +24,7 @@ namespace RTSCL.World.Unity
 
         [Header("Targets")]
         [SerializeField] private int _farmerTarget = 14;
-        [SerializeField] private int _searchRadius = 32;
+        [SerializeField] private int _searchRadius = 18;   // cells from keep a bot will harvest within (was 32 → farmers trekked across the map)
         [SerializeField] private string _keepName = "Keep_0";
         [SerializeField] private string _hutName = "Huts_0";
         [SerializeField] private string _barracksName = "Barracks_0";
@@ -86,6 +86,11 @@ namespace RTSCL.World.Unity
             public float CompTimer;             // throttle for component recompute
             public float BoatTrainTimer = -1f;  // -1 = not training a boat
             public float BoardTimer;            // boarding window before the boat departs anyway
+            // Persistent naval mission so the boat keeps sailing AFTER its cargo boards (boarded units go
+            // inactive and stop driving the ferry — without this the boat sits at the dock forever).
+            public bool NavalActive;            // a ferry mission is in progress
+            public bool NavalInvade;            // true = ferry military to attack; false = ferry one scout to explore
+            public Vector3 NavalTarget;         // far-shore world point to unload at
         }
 
         private readonly Dictionary<ulong, BotState> _states = new();
@@ -253,6 +258,10 @@ namespace RTSCL.World.Unity
             // 6. Military: train an army from the Barracks, then attack discovered enemies.
             RunMilitary(owner, st, dt);
 
+            // 6b. Drive any active naval ferry mission EVERY tick — independent of cargo. (Boarded units go
+            // inactive and can't drive the boat themselves, so the mission must be ticked from here.)
+            if (st.NavalActive) DriveNaval(owner, st, dt);
+
             // 7. Periodic status log so the bot's "thoughts" are visible in the console.
             st.StatusLogTimer += dt;
             if (st.StatusLogTimer >= 15f)
@@ -366,12 +375,26 @@ namespace RTSCL.World.Unity
                 // (units stranded on a third landmass with no reachable base just wait)
             }
 
-            // Naval invasion: ferry home-landmass units to the nearest enemy base on another landmass.
+            // Naval invasion: if any home-landmass units can't reach a base on foot, start/refresh a ferry
+            // mission to the nearest enemy base on another landmass (DriveNaval, ticked from RunBot, runs it).
             if (ferry.Count > 0)
             {
                 Vector3 home = new(st.Keep.x + 0.5f, st.Keep.y + 0.5f, 0f);
                 if (NearestAliveBaseOtherComponent(st, home, keepComp, out var tb))
-                    RunNaval(owner, st, dt, ferry, new Vector3(tb.x + 0.5f, tb.y + 0.5f, 0f));
+                    StartNaval(owner, st, new Vector3(tb.x + 0.5f, tb.y + 0.5f, 0f), invade: true);
+            }
+        }
+
+        // Begin (or refresh the target of) a naval ferry mission. The actual sailing is driven each tick by
+        // DriveNaval so it continues after the cargo boards (boarded units go inactive).
+        private void StartNaval(ulong owner, BotState st, Vector3 target, bool invade)
+        {
+            st.NavalTarget = target;
+            st.NavalInvade = invade;
+            if (!st.NavalActive)
+            {
+                st.NavalActive = true;
+                LogBot(owner, $"starting naval {(invade ? "invasion" : "scouting")} ferry → {target}.");
             }
         }
 
@@ -756,7 +779,7 @@ namespace RTSCL.World.Unity
 
             // Boxed in: own landmass fully explored → ferry the primary scout across water to explore elsewhere.
             if (isPrimary && NearestUnexploredOtherComponent(world, st, comp, from, out var navTo))
-                RunNaval(owner, st, dt, new List<Goblin> { scout }, navTo);
+                StartNaval(owner, st, navTo, invade: false);
         }
 
         // Nearest spawn point that is NOT the bot's own (own = the spawn nearest its keep), restricted to
@@ -892,11 +915,13 @@ namespace RTSCL.World.Unity
 
         // ---------- Naval: land connected-components + dock/boat ferry ----------
 
-        // Drive a boat to ferry 'cargo' (units on the home landmass) to 'targetWorld' on another landmass.
-        // Builds the dock and trains the boat on demand, one step per tick, paid from BotEconomy.
-        private void RunNaval(ulong owner, BotState st, float dt, List<Goblin> cargo, Vector3 targetWorld)
+        // Drive the persistent naval ferry mission (st.NavalActive). Builds the dock + trains the boat on
+        // demand, gathers its own cargo each tick (so it keeps working after units board and go inactive),
+        // sails to st.NavalTarget, unloads on the far shore, returns for more, and ends when there is
+        // nothing left to ferry and the boat is home.
+        private void DriveNaval(ulong owner, BotState st, float dt)
         {
-            if (_dockDef == null || _boatDef == null) return;
+            if (_dockDef == null || _boatDef == null) { st.NavalActive = false; return; }
 
             // 1. Ensure a finished dock on the home-landmass coast.
             bool dockExists = _placer.TryFindNearestBuildingByName(_dockName, owner, st.Keep, out var dockOrigin);
@@ -908,8 +933,8 @@ namespace RTSCL.World.Unity
                     BotEconomy.Add(owner, ResourceKind.Wood, -_dockDef.WoodCost);
                     BotEconomy.Add(owner, ResourceKind.Stone, -_dockDef.StoneCost);
                     _placer.PlaceForce(_dockDef, site, charge: false, requireConstruction: true, owner: owner);
-                    AssignBuilder(owner, site);
-                    Debug.Log($"[Bot {owner}] building a DOCK at {site} (needs a boat to cross water).");
+                    EnsureBuilder(owner, site);
+                    LogBot(owner, $"building a DOCK at {site} (needs a boat to cross water).");
                 }
                 return;   // wait until the dock is up
             }
@@ -937,7 +962,7 @@ namespace RTSCL.World.Unity
                     {
                         st.BoatTrainTimer = -1f;
                         _spawner.SpawnKindAt(_boatDef.SpawnerKindName, dockWater, owner);
-                        Debug.Log($"[Bot {owner}] boat ready at dock {dockOrigin}.");
+                        LogBot(owner, $"boat ready at dock {dockOrigin}.");
                     }
                 }
                 return;   // wait until the boat is built
@@ -946,17 +971,21 @@ namespace RTSCL.World.Unity
             // 3. Ferry. Only act while the boat is idle (otherwise it's mid-sail / unloading).
             if (!boat.IsIdle) return;
 
-            // Active, alive cargo still waiting on land (boarded units go inactive + drop out of this list).
-            var waiting = cargo.FindAll(c => c != null && c.CurrentHp > 0 && c.gameObject.activeInHierarchy);
+            var waiting = NavalCandidates(owner, st);     // re-gathered each tick (boarded units excluded)
             int aboard = boat.PassengerCount;
             bool boatHome = (boat.transform.position - dockWater).sqrMagnitude < 16f;   // within ~4 cells
 
             if (aboard == 0)
             {
-                if (waiting.Count == 0) return;                            // nothing to ferry right now
-                if (!boatHome) { boat.SetMoveCommand(dockWater); return; } // bring the empty boat back to load
-                BoardSome(waiting, boat);                                  // start loading
-                st.BoardTimer = 8f;
+                if (waiting.Count == 0)
+                {
+                    if (!boatHome) { boat.SetMoveCommand(dockWater); return; }  // park empty boat at home
+                    st.NavalActive = false;                                     // delivered everything → done
+                    LogBot(owner, "naval ferry complete.");
+                    return;
+                }
+                if (!boatHome) { boat.SetMoveCommand(dockWater); return; }      // fetch the boat to load
+                BoardSome(waiting, boat); st.BoardTimer = 8f;                   // start loading
                 return;
             }
 
@@ -965,9 +994,31 @@ namespace RTSCL.World.Unity
             bool full = !boat.BoatHasRoom;
             bool moreToLoad = boatHome && waiting.Count > 0;
             if (full || st.BoardTimer <= 0f || !moreToLoad)
-                boat.SetUnloadCommand(targetWorld);                       // sail over + drop them on the far shore
+                boat.SetUnloadCommand(st.NavalTarget);                          // sail over + drop on far shore
             else
-                BoardSome(waiting, boat);                                 // keep loading idle stragglers
+                BoardSome(waiting, boat);                                       // keep loading idle stragglers
+        }
+
+        // Active home-landmass units eligible to be ferried this tick. Invasion → military with no base
+        // reachable on foot; scouting → the current scouts. Boarded (inactive) units are naturally excluded.
+        private List<Goblin> NavalCandidates(ulong owner, BotState st)
+        {
+            var list = new List<Goblin>();
+            int keepComp = CompAt(st, st.Keep);
+            foreach (var g in Goblin.All)
+            {
+                if (g == null || g.IsNeutral || g.Owner != owner || g.CurrentHp <= 0) continue;
+                if (!g.gameObject.activeInHierarchy || g.IsBoat) continue;
+                if (CompAt(st, g.transform.position) != keepComp) continue;     // only units on our landmass
+                if (st.NavalInvade)
+                {
+                    if (g.Kind == "FarmerGoblin") continue;                     // military only
+                    if (NearestAliveBaseOnComponent(st, g.transform.position, keepComp, out _)) continue; // can walk
+                }
+                else if (!st.Scouts.Contains(g)) continue;                      // scouting → only scouts
+                list.Add(g);
+            }
+            return list;
         }
 
         // Order idle cargo units to board the boat until it's full.
@@ -1044,19 +1095,6 @@ namespace RTSCL.World.Unity
         }
 
         // Send the nearest available bot farmer to construct a building at 'site'.
-        private void AssignBuilder(ulong owner, Vector2Int site)
-        {
-            Vector3 sw = new(site.x + 0.5f, site.y + 0.5f, 0f);
-            Goblin best = null; float bestSq = float.MaxValue;
-            foreach (var g in Goblin.All)
-            {
-                if (g == null || g.IsNeutral || g.Owner != owner || g.Kind != "FarmerGoblin") continue;
-                if (!g.gameObject.activeInHierarchy) continue;
-                float d = (g.transform.position - sw).sqrMagnitude;
-                if (d < bestSq) { bestSq = d; best = g; }
-            }
-            best?.SetBuildCommand(site);
-        }
 
         // Buildable coastal cell on the keep's landmass (adjacent to water so the dock gets its pier).
         private bool TryFindDockSite(BotState st, out Vector2Int site)

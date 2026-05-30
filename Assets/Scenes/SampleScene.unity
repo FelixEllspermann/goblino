@@ -941,7 +941,7 @@ MonoBehaviour:
   _decorationMap: {fileID: 1706478009}
   _tickInterval: 1
   _farmerTarget: 14
-  _searchRadius: 32
+  _searchRadius: 18
   _keepName: Keep_0
   _hutName: Huts_0
   _barracksName: Barracks_0

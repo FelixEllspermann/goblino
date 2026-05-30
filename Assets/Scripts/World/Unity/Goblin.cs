@@ -850,6 +850,7 @@ namespace RTSCL.World.Unity
             foreach (var o in All)
             {
                 if (o == null || o == this) continue;
+                if (!o.IsStationaryForSeparation()) continue;   // only stationary units push each other
                 Vector3 d = transform.position - o.transform.position;
                 float sq = d.sqrMagnitude;
                 if (sq >= SepRadius * SepRadius) continue;
