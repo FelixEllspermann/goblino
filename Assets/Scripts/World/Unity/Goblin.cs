@@ -915,7 +915,7 @@ namespace RTSCL.World.Unity
             var sprite = tile != null ? tile.sprite : null;
             string tileName = tile != null ? tile.name : "";
 
-            int remaining = TreeHP.Hit(cell, 1, MaxHpFor(tileName));
+            int remaining = TreeHP.Hit(cell, 1, MaxHpForCell(cell, tileName));
             CarriedKind = KindOf(tileName);
             CarriedAmount = Mathf.Min(MaxCarried, CarriedAmount + 1);
 
@@ -1266,11 +1266,19 @@ namespace RTSCL.World.Unity
 
         public static int MaxHpFor(string tileName)
         {
-            if (IsWheatfieldTile(tileName)) return 500;   // built field → bigger food yield
+            if (IsWheatfieldTile(tileName)) return WheatYield.BaseYield;   // built field → bigger food yield
             if (IsBerryTile(tileName)) return 100;        // wild berry bush → 100 food
             if (IsRockTile(tileName)) return 100;
             if (IsOreTile(tileName)) return 200;
             return TreeHP.MaxHP; // trees = 50
+        }
+
+        /// <summary>Cell-aware yield: wheat fields built with the Mill's Bountiful Harvest upgrade yield
+        /// double (per-cell, baked at construction). All other tiles fall back to MaxHpFor(tileName).</summary>
+        public static int MaxHpForCell(Vector3Int cell, string tileName)
+        {
+            int baseMax = MaxHpFor(tileName);
+            return IsWheatfieldTile(tileName) ? WheatYield.MaxFor(cell, baseMax) : baseMax;
         }
 
         private static Vector3 CellCenter(Vector3Int cell) =>

@@ -820,10 +820,11 @@ namespace RTSCL.World.Unity
             if (u == null) return "";
             string effect = u.Kind switch
             {
-                UpgradeKind.FarmerHarvestSpeed => "Workers harvest faster.",
-                UpgradeKind.ClubAttackDamage   => "Club Goblins deal more damage.",
-                UpgradeKind.ClubMaxHp          => "Club Goblins have more HP.",
-                _                              => "Permanent upgrade.",
+                UpgradeKind.FarmerHarvestSpeed   => "Workers harvest faster.",
+                UpgradeKind.ClubAttackDamage     => "Club Goblins deal more damage.",
+                UpgradeKind.ClubMaxHp            => "Club Goblins have more HP.",
+                UpgradeKind.MillBountifulHarvest => "Wheat fields you build yield +100% food (1000 instead of 500).",
+                _                                => "Permanent upgrade.",
             };
             return effect + "\nOne-time research, applies to all your units.";
         }
@@ -916,7 +917,7 @@ namespace RTSCL.World.Unity
         // per-tile hit-point state (shared across all clients on the owner's authority).
         private string AmountLine(Vector3Int cell, string tileName)
         {
-            int max = Goblin.MaxHpFor(tileName);
+            int max = Goblin.MaxHpForCell(cell, tileName);   // boosted wheat fields show 1000, not 500
             int cur = TreeHP.GetHP(cell, max);
             var kind = Goblin.KindOf(tileName);
             return $"{kind}: {cur} / {max}";

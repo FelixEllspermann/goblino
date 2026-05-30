@@ -10,5 +10,6 @@ namespace RTSCL.World.Unity
         FarmerHarvestSpeed = 0, // Farmer goblins harvest 25 % faster
         ClubAttackDamage   = 1, // Club goblins deal 25 % more damage per hit
         ClubMaxHp          = 2, // Club goblins gain 50 % more max HP
+        MillBountifulHarvest = 3, // Wheat fields YOU build yield +100 % food (1000 instead of 500)
     }
 }

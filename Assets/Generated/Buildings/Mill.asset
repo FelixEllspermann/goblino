@@ -20,4 +20,5 @@ MonoBehaviour:
   StoneCost: 0
   PopulationProvided: 0
   TrainsUnits: []
-  ProvidesUpgrades: []
+  ProvidesUpgrades:
+  - {fileID: 11400000, guid: 5f68ed58744cfd4448526271420d022e, type: 2}

@@ -62,10 +62,16 @@ namespace RTSCL.World.Unity
             if (_buildingPlacer == null) return;
             if (!_buildingPlacer.TryGetBuildingAt(origin, out var def) || def == null) return;
             if (def.name != _wheatBuildingName) return;
+            // Bake the Mill's Bountiful Harvest bonus into THIS field based on its builder's upgrades, so
+            // the +100 % food is per-player (the cell yields 1000 instead of 500 only if its owner has it).
+            ulong owner = _buildingPlacer.TryGetBuildingOwner(origin, out var o) ? o : 0UL;
+            var cell = new Vector3Int(origin.x, origin.y, 0);
+            if (PlayerUpgrades.IsPurchased(owner, UpgradeKind.MillBountifulHarvest))
+                WheatYield.MarkBoosted(cell);
             // Replace the built field shell with a harvestable wheat-field decoration on its cell.
             _buildingPlacer.RemoveBuilding(origin);
             if (_decorationMap != null && _wheatTile != null)
-                _decorationMap.SetTile(new Vector3Int(origin.x, origin.y, 0), _wheatTile);
+                _decorationMap.SetTile(cell, _wheatTile);
         }
 
         private void Update()
@@ -101,6 +107,7 @@ namespace RTSCL.World.Unity
             RallyPoints.Clear();
             BotEconomy.Reset();
             DockRegistry.Clear();
+            WheatYield.Clear();
             Time.timeScale = 1f;   // un-pause in case we returned from a game-over overlay
             // Solo: give bot factions visible colors (player stays white via IsLocalOwner path).
             if (WorldStartContext.IsSolo)
