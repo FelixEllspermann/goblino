@@ -55,10 +55,6 @@ namespace RTSCL.World.Unity
         [SerializeField] private Color _cardTextNormal = Color.white;
         [SerializeField] private Color _cardTextDisabled = new(0.55f, 0.55f, 0.55f, 1f);
 
-        [Header("Worker Build Options")]
-        [Tooltip("Buildings a Farmer Goblin can construct when selected")]
-        [SerializeField] private List<BuildingDefinition> _farmerBuildables = new();
-
         [Header("Cost Icons")]
         [Tooltip("Resource icons shown on cost rows (same sprites as the top resource bar).")]
         [SerializeField] private List<ResourceUI.KindIcon> _resourceIcons = new();
@@ -115,26 +111,6 @@ namespace RTSCL.World.Unity
 
         // Extra line spacing applied to all info-panel / card text for a roomier, more readable layout.
         private const float LineSpacing = 1.45f;
-
-        // Build menu categories: the farmer build list is grouped so 6+ buildings aren't crammed in one row.
-        // Top level shows category buttons; clicking one shows that category's buildings + a Back card.
-        private static readonly (string label, string[] names)[] BuildCategories =
-        {
-            ("Economy",  new[] { "Huts", "Wheatfield", "Mill", "Workshop" }),
-            ("Military", new[] { "Barracks" }),
-            ("Naval",    new[] { "Docks" }),
-        };
-        private string _buildCategory;          // null = showing category buttons; else the open category label
-
-        // Which category a building belongs to (by asset-name prefix). "" if none matched.
-        private static string CategoryOf(BuildingDefinition b)
-        {
-            if (b == null) return "";
-            foreach (var (label, names) in BuildCategories)
-                foreach (var n in names)
-                    if (b.name.StartsWith(n)) return label;
-            return "";
-        }
 
         // Forwards pointer enter/exit on a card to the shared UITooltip. Added to each card GameObject.
         private sealed class CardHover : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
@@ -274,13 +250,8 @@ namespace RTSCL.World.Unity
             _lastCarryLine = "";
             SetHeader(name, desc);
 
-            if (hasFarmer && _farmerBuildables != null && _farmerBuildables.Count > 0)
-            {
-                _buildCategory = null;        // always reopen at the top-level category list
-                BuildCategoryMenu();
-            }
-            else
-                ClearCards();
+            // The build menu now lives in the BuildMenu sidebar; the inspector just clears its cards here.
+            ClearCards();
 
             if (_progressRow != null) _progressRow.SetActive(false);
             _popupRoot?.SetActive(true);
@@ -469,58 +440,6 @@ namespace RTSCL.World.Unity
                 c.Unit = u;
                 c.WoodCost = u.WoodCost;
                 c.FoodCost = u.FoodCost;
-                _cards.Add(c);
-            }
-        }
-
-        // Top level of the build menu: one card per non-empty category. Clicking opens that category.
-        private void BuildCategoryMenu()
-        {
-            ClearCards();
-            if (_unitCardsContainer == null) return;
-            _unitCardsContainer.gameObject.SetActive(true);
-            foreach (var (label, _) in BuildCategories)
-            {
-                if (BuildablesIn(label).Count == 0) continue;   // hide empty categories
-                // Use the first building's sprite as the category icon.
-                var first = BuildablesIn(label)[0];
-                string lbl = label;   // capture
-                var c = CreateCard(label, first != null ? first.Sprite : null, null,
-                                   () => { _buildCategory = lbl; BuildBuildingCards(); }, $"{label} buildings");
-                _cards.Add(c);
-            }
-        }
-
-        // The buildings in _farmerBuildables that belong to the given category, in list order.
-        private List<BuildingDefinition> BuildablesIn(string category)
-        {
-            var outList = new List<BuildingDefinition>();
-            if (_farmerBuildables == null) return outList;
-            foreach (var b in _farmerBuildables)
-                if (b != null && CategoryOf(b) == category) outList.Add(b);
-            return outList;
-        }
-
-        // Inside a category: a Back card + one card per building. Clicking a building enters ghost placement.
-        private void BuildBuildingCards()
-        {
-            ClearCards();
-            if (_unitCardsContainer == null) return;
-            _unitCardsContainer.gameObject.SetActive(true);
-
-            // Back card returns to the category list.
-            var back = CreateCard("← Back", null, null, () => { _buildCategory = null; BuildCategoryMenu(); }, "Back to categories");
-            _cards.Add(back);
-
-            foreach (var b in BuildablesIn(_buildCategory))
-            {
-                var costs = new List<(ResourceKind, int)>();
-                if (b.WoodCost > 0) costs.Add((ResourceKind.Wood, b.WoodCost));
-                if (b.StoneCost > 0) costs.Add((ResourceKind.Stone, b.StoneCost));
-                var c = CreateCard(b.DisplayName, b.Sprite, costs, () => OnBuildingClicked(b), BuildingTooltip(b));
-                c.Building = b;
-                c.WoodCost = b.WoodCost;
-                c.StoneCost = b.StoneCost;
                 _cards.Add(c);
             }
         }
@@ -791,23 +710,6 @@ namespace RTSCL.World.Unity
             return role + stats;
         }
 
-        private string BuildingTooltip(BuildingDefinition b)
-        {
-            if (b == null) return "";
-            string name = b.name;
-            string role =
-                name.StartsWith("Hut")        ? "Raises your population cap so you can field more units." :
-                name.StartsWith("Barracks")   ? "Trains military units (Club + Archer)." :
-                name.StartsWith("Docks")      ? "Coastal building. Trains transport boats to cross water." :
-                name.StartsWith("Workshop")   ? "Researches permanent upgrades (paid in ore)." :
-                name.StartsWith("Wheatfield") ? "Once built, becomes a harvestable wheat field (food)." :
-                name == "Mill"                ? "Extra resource drop-off point — workers deliver to the nearest Keep or Mill." :
-                name.StartsWith("Keep")       ? "Your main base. Trains workers and accepts resource deliveries." :
-                "Building.";
-            string pop = b.PopulationProvided > 0 ? $"\n+{b.PopulationProvided} population cap" : "";
-            return role + pop;
-        }
-
         private static string UpgradeTooltip(UpgradeDefinition u)
         {
             if (u == null) return "";
@@ -839,17 +741,6 @@ namespace RTSCL.World.Unity
             ulong owner = WorldStartContext.LocalPlayer;
             NetCommandIssuer.IssueTrainUnit(_selOrigin, unit, owner);
             Refresh();
-        }
-
-        // Enter ghost-placement mode for the selected building definition.
-        // The card affordability guard is a convenience check; IsValid inside BuildingPlacer
-        // is the authoritative gatekeeper at actual placement time.
-        private void OnBuildingClicked(BuildingDefinition def)
-        {
-            if (_placer == null || def == null) return;
-            if (ResourceBank.Wood < def.WoodCost) return;
-            if (ResourceBank.Get(ResourceKind.Stone) < def.StoneCost) return;
-            _placer.Select(def);
         }
 
         // Purchase an upgrade: deduct resources locally then issue the net command so all
