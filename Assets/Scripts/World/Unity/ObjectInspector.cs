@@ -704,7 +704,9 @@ namespace RTSCL.World.Unity
         {
             if (_cards.Count == 0) return;
 
-            bool busy = _selKind == SelKind.Building && GoblinProduction.IsBusy(_selOrigin);
+            // A unit can be trained as long as the building's production QUEUE isn't full (it no longer
+            // has to be idle — extra orders queue up). Build/upgrade cards ignore this.
+            bool queueFull = _selKind == SelKind.Building && !GoblinProduction.CanQueue(_selOrigin);
             foreach (var card in _cards)
             {
                 bool affordable = card.Upgrade != null
@@ -717,7 +719,8 @@ namespace RTSCL.World.Unity
                 bool popOk = card.Unit == null || PopulationManager.CanAfford(card.Unit.PopulationCost);
                 bool alreadyOwned = card.Upgrade != null
                     && PlayerUpgrades.IsPurchased(WorldStartContext.LocalPlayer, card.UpgradeKind);
-                bool enabled = affordable && popOk && !busy && !alreadyOwned;
+                bool blockedByQueue = card.Unit != null && queueFull;   // only train cards care about the queue
+                bool enabled = affordable && popOk && !blockedByQueue && !alreadyOwned;
                 card.Button.interactable = enabled;
                 if (card.Bg != null)   card.Bg.color = enabled ? _cardEnabledBg : _cardDisabledBg;
                 if (card.Name != null) card.Name.color = enabled ? _cardTextNormal : _cardTextDisabled;
@@ -740,7 +743,13 @@ namespace RTSCL.World.Unity
             // Drive the bar via horizontal scale (pivot.x = 0) so it works without a Filled sprite.
             if (_progressFill != null)
                 _progressFill.rectTransform.localScale = new Vector3(Mathf.Clamp01(slot.Progress), 1f, 1f);
-            if (_progressLabel != null) _progressLabel.text = $"Producing {slot.Def.DisplayName}…";
+            if (_progressLabel != null)
+            {
+                int waiting = GoblinProduction.QueuedBehind(_selOrigin);
+                _progressLabel.text = waiting > 0
+                    ? $"Producing {slot.Def.DisplayName}…  (+{waiting} queued)"
+                    : $"Producing {slot.Def.DisplayName}…";
+            }
         }
 
         // Poll the selected farmer's carry slot each frame and append a carry line to the
@@ -827,7 +836,7 @@ namespace RTSCL.World.Unity
         private void OnUnitClicked(GoblinUnitDefinition unit)
         {
             if (_selKind != SelKind.Building || _selDef == null) return;
-            if (GoblinProduction.IsBusy(_selOrigin)) return;
+            if (!GoblinProduction.CanQueue(_selOrigin)) return;   // queue full
             if (ResourceBank.Wood < unit.WoodCost) return;
             if (ResourceBank.Food < unit.FoodCost) return;
             if (!PopulationManager.CanAfford(unit.PopulationCost)) return;

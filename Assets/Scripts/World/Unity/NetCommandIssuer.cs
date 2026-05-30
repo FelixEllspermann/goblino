@@ -115,10 +115,10 @@ namespace RTSCL.World.Unity
                 Debug.LogWarning($"[Net] Cannot issue train: {def.name} missing from NetworkCatalog");
                 return;
             }
-            // Reserve the index BEFORE the local TryStart so the counter is bumped identically on all clients.
+            // Reserve the index BEFORE the local enqueue so the counter is bumped identically on all clients.
             ushort reserved = GoblinNetRegistry.NextLocalIndex(owner);
-            // Local-immediate: start production with the reserved index.
-            GoblinProduction.TryStart(buildingOrigin, def, reserved);
+            // Local-immediate: enqueue production with the reserved index (starts now or waits in line).
+            GoblinProduction.TryEnqueue(buildingOrigin, def, reserved);
             NetCommandBridge.Send(NetWireFormat.PackCmdTrainUnit(buildingOrigin.x, buildingOrigin.y, idx, owner, reserved));
         }
 

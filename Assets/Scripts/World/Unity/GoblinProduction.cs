@@ -1,9 +1,10 @@
-// GoblinProduction.cs — static store of active unit-training jobs, one slot per building origin cell.
-// Flow: TryStart() reserves population + begins the timer → GoblinProductionRunner.Update() calls Tick()
-// each frame → Tick() returns finished jobs → Runner hands them to GoblinSpawner.
-// Population cost is reserved at TryStart so the cap is honest during training (not just on spawn).
-// OnChanged fires so BuildingPaletteUI can repaint the progress bar without polling.
-// Reset on new world via MainBaseSetup.OnNewWorld → Clear() (also releases reserved pop).
+// GoblinProduction.cs — static store of unit-training jobs, with a QUEUE per building origin cell.
+// Flow: TryEnqueue() reserves population + NetId index and either starts immediately (idle building) or
+// appends to that building's queue → GoblinProductionRunner.Update() calls Tick() each frame → Tick()
+// advances the ACTIVE job, returns finished jobs, and promotes the next queued job into the active slot.
+// Population cost is reserved per queued job at enqueue time (so the cap stays honest), and the spawned
+// unit keeps it on completion. OnChanged fires so the UI repaints the progress bar + queue count.
+// Reset on new world via MainBaseSetup.OnNewWorld → Clear() (releases all reserved pop, active + queued).
 // Key: origin cell of the producing building (Keep, Barracks, etc.).
 using System;
 using System.Collections.Generic;
@@ -11,9 +12,12 @@ using UnityEngine;
 
 namespace RTSCL.World.Unity
 {
-    /// <summary>Per-building unit production state. One active training job allowed per building at a time.</summary>
+    /// <summary>Per-building unit production with a queue. One job trains at a time; the rest wait in line.</summary>
     public static class GoblinProduction
     {
+        /// <summary>Max jobs (active + queued) a single building may hold.</summary>
+        public const int MaxQueue = 6;
+
         /// <summary>Mutable training-job state for a single building. Reference type so Tick() can mutate Elapsed in-place.</summary>
         public sealed class Slot
         {
@@ -29,73 +33,89 @@ namespace RTSCL.World.Unity
                 : Mathf.Clamp01(Elapsed / Def.SpawnDuration);
         }
 
-        // Key = origin cell of the producing building.
-        private static readonly Dictionary<Vector2Int, Slot> _slots = new();
+        // Per building origin: the active job (head) followed by queued jobs. A non-empty queue's [0] is
+        // the one currently training; [1..] are waiting.
+        private sealed class Line { public readonly List<Slot> Jobs = new(); }
+        private static readonly Dictionary<Vector2Int, Line> _lines = new();
 
-        /// <summary>Fires whenever a job starts, finishes, or is cleared. Subscribe in BuildingPaletteUI for progress bar updates.</summary>
+        /// <summary>Fires whenever a job starts, finishes, is queued, or is cleared. UI subscribes for repaints.</summary>
         public static event Action OnChanged;
 
-        /// <summary>True while the building at <paramref name="origin"/> has an active training job.</summary>
-        public static bool IsBusy(Vector2Int origin) => _slots.ContainsKey(origin);
+        /// <summary>True while the building at <paramref name="origin"/> has any active or queued job.</summary>
+        public static bool IsBusy(Vector2Int origin) =>
+            _lines.TryGetValue(origin, out var l) && l.Jobs.Count > 0;
 
-        /// <summary>Returns the active Slot for the building at <paramref name="origin"/>, or null if idle.</summary>
+        /// <summary>The active (currently-training) Slot for the building, or null if idle.</summary>
         public static Slot Get(Vector2Int origin) =>
-            _slots.TryGetValue(origin, out var s) ? s : null;
+            _lines.TryGetValue(origin, out var l) && l.Jobs.Count > 0 ? l.Jobs[0] : null;
+
+        /// <summary>Total jobs at this building (active + queued). 0 = idle.</summary>
+        public static int Count(Vector2Int origin) =>
+            _lines.TryGetValue(origin, out var l) ? l.Jobs.Count : 0;
+
+        /// <summary>Number of jobs WAITING behind the active one (Count - 1, clamped to ≥0).</summary>
+        public static int QueuedBehind(Vector2Int origin) => Mathf.Max(0, Count(origin) - 1);
+
+        /// <summary>True if the building can accept one more job (queue not full).</summary>
+        public static bool CanQueue(Vector2Int origin) => Count(origin) < MaxQueue;
 
         /// <summary>
-        /// Attempt to start training <paramref name="def"/> at the building at <paramref name="origin"/>.
-        /// Fails if the building is already busy or population cap is exceeded.
-        /// Reserves population immediately on success.
+        /// Enqueue a job to train <paramref name="def"/> at the building at <paramref name="origin"/>.
+        /// Starts immediately if the building is idle, otherwise waits in line. Fails if the queue is full
+        /// or population cap is exceeded. Reserves population immediately on success.
         /// </summary>
         /// <param name="reservedIndex">Pre-allocated GoblinNetId.LocalIndex for deterministic MP identity.</param>
-        public static bool TryStart(Vector2Int origin, GoblinUnitDefinition def, ushort reservedIndex = 0)
+        public static bool TryEnqueue(Vector2Int origin, GoblinUnitDefinition def, ushort reservedIndex = 0)
         {
             if (def == null) return false;
-            if (_slots.ContainsKey(origin)) return false;         // already training
+            if (!_lines.TryGetValue(origin, out var line)) { line = new Line(); _lines[origin] = line; }
+            if (line.Jobs.Count >= MaxQueue) return false;        // queue full
             if (!PopulationManager.CanAfford(def.PopulationCost)) return false;
-            // Reserve population now so the cap accounting is honest while producing.
+            // Reserve population now so the cap accounting is honest while producing/queued.
             PopulationManager.AddUsed(def.PopulationCost);
-            _slots[origin] = new Slot { Def = def, Elapsed = 0f, ReservedIndex = reservedIndex };
+            line.Jobs.Add(new Slot { Def = def, Elapsed = 0f, ReservedIndex = reservedIndex });
             OnChanged?.Invoke();
             return true;
         }
 
         /// <summary>
-        /// Advance all production timers by <paramref name="dt"/> seconds.
-        /// Returns a list of completed jobs this frame (origin, def, reservedIndex), or null if none finished.
-        /// Completed jobs are removed from _slots before returning.
+        /// Advance the ACTIVE job at each building by <paramref name="dt"/> seconds. Returns completed jobs
+        /// this frame (origin, def, reservedIndex), or null if none finished. On completion the job is
+        /// removed and the next queued job at that building becomes active (Elapsed reset to 0).
         /// </summary>
         public static List<(Vector2Int origin, GoblinUnitDefinition def, ushort reservedIndex)> Tick(float dt)
         {
             List<(Vector2Int, GoblinUnitDefinition, ushort)> done = null;
-            foreach (var kvp in _slots)
+            bool changed = false;
+            foreach (var kvp in _lines)
             {
-                kvp.Value.Elapsed += dt;
-                if (kvp.Value.Elapsed >= kvp.Value.Def.SpawnDuration)
+                var jobs = kvp.Value.Jobs;
+                if (jobs.Count == 0) continue;
+                var active = jobs[0];
+                active.Elapsed += dt;
+                if (active.Elapsed >= active.Def.SpawnDuration)
                 {
-                    // Null-coalescing assignment: allocate list only on the first completion this frame.
                     done ??= new List<(Vector2Int, GoblinUnitDefinition, ushort)>();
-                    done.Add((kvp.Key, kvp.Value.Def, kvp.Value.ReservedIndex));
+                    done.Add((kvp.Key, active.Def, active.ReservedIndex));
+                    jobs.RemoveAt(0);          // finished → drop it; next job (if any) is now active
+                    if (jobs.Count > 0) jobs[0].Elapsed = 0f;
+                    changed = true;
                 }
             }
-            if (done != null)
-            {
-                // Population cost stays reserved — the spawned unit keeps it until death.
-                foreach (var (origin, _, _) in done) _slots.Remove(origin);
-                OnChanged?.Invoke();
-                return done;
-            }
-            return null;
+            if (changed) OnChanged?.Invoke();
+            // Population cost stays reserved — the spawned unit keeps it until death.
+            return done;
         }
 
-        /// <summary>Cancel all in-progress jobs and release their reserved population. Called when a new world is generated.</summary>
+        /// <summary>Cancel every job (active + queued) at all buildings and release their reserved
+        /// population. Called when a new world is generated.</summary>
         public static void Clear()
         {
-            if (_slots.Count == 0) return;
-            // Release any reserved population from in-progress productions.
-            foreach (var s in _slots.Values)
-                if (s.Def != null) PopulationManager.RemoveUsed(s.Def.PopulationCost);
-            _slots.Clear();
+            if (_lines.Count == 0) return;
+            foreach (var line in _lines.Values)
+                foreach (var s in line.Jobs)
+                    if (s.Def != null) PopulationManager.RemoveUsed(s.Def.PopulationCost);
+            _lines.Clear();
             OnChanged?.Invoke();
         }
     }

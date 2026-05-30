@@ -111,7 +111,7 @@ namespace RTSCL.World.Unity
         public static void ApplyTrainUnit(Vector2Int buildingOrigin, GoblinUnitDefinition def, ulong owner, ushort reservedLocalIndex)
         {
             if (def == null) return;
-            GoblinProduction.TryStart(buildingOrigin, def, reservedLocalIndex);
+            GoblinProduction.TryEnqueue(buildingOrigin, def, reservedLocalIndex);
         }
 
         /// <summary>Applies an attack command on a remote client: routes attacker to target.
