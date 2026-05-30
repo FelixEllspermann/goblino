@@ -946,6 +946,9 @@ MonoBehaviour:
   _hutName: Huts_0
   _barracksName: Barracks_0
   _dockName: Docks_0
+  _workshopName: Workshop
+  _wheatName: Wheatfield
+  _wheatTarget: 2
   _visionRadius: 6
   _keepVisionRadius: 10
   _scoutEscalateInterval: 180
@@ -166470,6 +166473,19 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 8b4d8ffcd3f3b5c43b9df92dcfc41434, type: 2}
   - {fileID: 11400000, guid: 77132853792871f498f0a6f55c91e322, type: 2}
   - {fileID: 11400000, guid: 87aaa3d4c4830484dbb3a7bd9502d961, type: 2}
+  _resourceIcons:
+  - Kind: 0
+    Icon: {fileID: -8911251428918342384, guid: 0965b3772d6ef87478985d1a0ba49132, type: 3}
+  - Kind: 1
+    Icon: {fileID: -9158380238242527104, guid: 115e00acaffee7d4cb0f11d35340aa41, type: 3}
+  - Kind: 2
+    Icon: {fileID: 1887494081247492234, guid: 269e7f27a92d2e54c844b48ddc51cd37, type: 3}
+  - Kind: 3
+    Icon: {fileID: -6400913422314380486, guid: 684b114cbb93cab4a9c846580e6081a4, type: 3}
+  - Kind: 4
+    Icon: {fileID: 429713409, guid: 684b114cbb93cab4a9c846580e6081a4, type: 3}
+  - Kind: 5
+    Icon: {fileID: 2110156539, guid: 684b114cbb93cab4a9c846580e6081a4, type: 3}
   _rallyIcon: {fileID: 9000459946942271136, guid: a6a41ceea81c16246af0a410a4470f6c, type: 3}
 --- !u!114 &1575836962
 MonoBehaviour:

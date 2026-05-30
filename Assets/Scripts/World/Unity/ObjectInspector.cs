@@ -59,6 +59,16 @@ namespace RTSCL.World.Unity
         [Tooltip("Buildings a Farmer Goblin can construct when selected")]
         [SerializeField] private List<BuildingDefinition> _farmerBuildables = new();
 
+        [Header("Cost Icons")]
+        [Tooltip("Resource icons shown on cost rows (same sprites as the top resource bar).")]
+        [SerializeField] private List<ResourceUI.KindIcon> _resourceIcons = new();
+
+        private Sprite IconFor(ResourceKind kind)
+        {
+            foreach (var ki in _resourceIcons) if (ki != null && ki.Kind == kind) return ki.Icon;
+            return null;
+        }
+
         [Header("Rally")]
         [Tooltip("Flag icon shown at a building's rally point (GUI_33)")]
         [SerializeField] private Sprite _rallyIcon;
@@ -88,7 +98,7 @@ namespace RTSCL.World.Unity
             public Image Bg;
             public Image Icon;
             public Text Name;
-            public Text Cost;
+            public CanvasGroup CostGroup;   // the cost row (icons + numbers); dimmed when unaffordable
             // Exactly one of Unit / Building / Upgrade is non-null, identifying the card's action type.
             public GoblinUnitDefinition Unit;
             public BuildingDefinition Building;
@@ -420,7 +430,10 @@ namespace RTSCL.World.Unity
             foreach (var u in units)
             {
                 if (u == null) continue;
-                var c = CreateCard(u.DisplayName, u.Icon, FormatUnitCost(u.WoodCost, u.FoodCost), () => OnUnitClicked(u));
+                var costs = new List<(ResourceKind, int)>();
+                if (u.WoodCost > 0) costs.Add((ResourceKind.Wood, u.WoodCost));
+                if (u.FoodCost > 0) costs.Add((ResourceKind.Food, u.FoodCost));
+                var c = CreateCard(u.DisplayName, u.Icon, costs, () => OnUnitClicked(u));
                 c.Unit = u;
                 c.WoodCost = u.WoodCost;
                 c.FoodCost = u.FoodCost;
@@ -438,7 +451,10 @@ namespace RTSCL.World.Unity
             foreach (var b in defs)
             {
                 if (b == null) continue;
-                var c = CreateCard(b.DisplayName, b.Sprite, FormatBuildingCost(b.WoodCost, b.StoneCost), () => OnBuildingClicked(b));
+                var costs = new List<(ResourceKind, int)>();
+                if (b.WoodCost > 0) costs.Add((ResourceKind.Wood, b.WoodCost));
+                if (b.StoneCost > 0) costs.Add((ResourceKind.Stone, b.StoneCost));
+                var c = CreateCard(b.DisplayName, b.Sprite, costs, () => OnBuildingClicked(b));
                 c.Building = b;
                 c.WoodCost = b.WoodCost;
                 c.StoneCost = b.StoneCost;
@@ -456,7 +472,11 @@ namespace RTSCL.World.Unity
             foreach (var u in upgrades)
             {
                 if (u == null) continue;
-                var c = CreateCard(u.DisplayName, u.Icon, FormatUpgradeCost(u.IronCost, u.GoldCost, u.CrystalCost), () => OnUpgradeClicked(u));
+                var costs = new List<(ResourceKind, int)>();
+                if (u.IronCost > 0) costs.Add((ResourceKind.Iron, u.IronCost));
+                if (u.GoldCost > 0) costs.Add((ResourceKind.Gold, u.GoldCost));
+                if (u.CrystalCost > 0) costs.Add((ResourceKind.Crystal, u.CrystalCost));
+                var c = CreateCard(u.DisplayName, u.Icon, costs, () => OnUpgradeClicked(u));
                 c.Upgrade = u;
                 c.UpgradeKind = u.Kind;
                 c.IronCost = u.IronCost;
@@ -469,7 +489,7 @@ namespace RTSCL.World.Unity
         // Construct a single action card at runtime using Unity UI components.
         // Layout: HorizontalLayoutGroup (icon | VerticalLayoutGroup (name label / cost label)).
         // Returns the CardRefs struct so callers can store cost data alongside the UI refs.
-        private CardRefs CreateCard(string title, Sprite icon, string costText, Action onClick)
+        private CardRefs CreateCard(string title, Sprite icon, List<(ResourceKind kind, int amount)> costs, Action onClick)
         {
             var card = new GameObject($"Card_{title}");
             card.transform.SetParent(_unitCardsContainer, false);
@@ -528,18 +548,40 @@ namespace RTSCL.World.Unity
             nameText.horizontalOverflow = HorizontalWrapMode.Wrap;
             nameText.lineSpacing = LineSpacing;
 
-            var costGo = new GameObject("Cost");
+            // Cost row: a horizontal strip of [resource-icon + number] pairs (no resource names → never
+            // overflows). A CanvasGroup lets Refresh() dim the whole row when unaffordable.
+            var costGo = new GameObject("Cost", typeof(RectTransform));
             costGo.transform.SetParent(textGo.transform, false);
-            var costLabel = costGo.AddComponent<Text>();
-            costLabel.text = costText;
-            costLabel.font = _cardFont;
-            costLabel.fontSize = 12;
-            costLabel.color = new Color(0.85f, 0.75f, 0.45f);
-            costLabel.alignment = TextAnchor.MiddleLeft;
-            // Overflow (not Wrap) so the unit word never wraps to a clipped 2nd line (showed "200" not "200 Wood").
-            costLabel.horizontalOverflow = HorizontalWrapMode.Overflow;
-            costLabel.verticalOverflow = VerticalWrapMode.Overflow;
-            costLabel.lineSpacing = LineSpacing;
+            var costGroup = costGo.AddComponent<CanvasGroup>();
+            var costRow = costGo.AddComponent<HorizontalLayoutGroup>();
+            costRow.spacing = 8;
+            costRow.childForceExpandHeight = false;
+            costRow.childForceExpandWidth = false;
+            costRow.childControlHeight = true;
+            costRow.childControlWidth = true;
+            costRow.childAlignment = TextAnchor.MiddleLeft;
+            var costLE = costGo.AddComponent<LayoutElement>();
+            costLE.preferredHeight = 22;
+
+            if (costs == null || costs.Count == 0)
+                AddCostText(costGo.transform, "Free");
+            else
+                foreach (var (kind, amount) in costs)
+                {
+                    var sprite = IconFor(kind);
+                    if (sprite != null)
+                    {
+                        var ig = new GameObject($"Cost_{kind}", typeof(RectTransform));
+                        ig.transform.SetParent(costGo.transform, false);
+                        var im = ig.AddComponent<Image>();
+                        im.sprite = sprite;
+                        im.preserveAspect = true;
+                        var ile = ig.AddComponent<LayoutElement>();
+                        ile.preferredWidth = 20; ile.preferredHeight = 20; ile.flexibleWidth = 0;
+                    }
+                    // Number (falls back to "20 Wood"-style text when no icon is wired for this kind).
+                    AddCostText(costGo.transform, sprite != null ? amount.ToString() : $"{amount} {kind}");
+                }
 
             btn.onClick.AddListener(() => onClick?.Invoke());
 
@@ -550,8 +592,25 @@ namespace RTSCL.World.Unity
                 Bg = bg,
                 Icon = iconImg,
                 Name = nameText,
-                Cost = costLabel,
+                CostGroup = costGroup,
             };
+        }
+
+        // One number/label chip inside the cost row.
+        private void AddCostText(Transform parent, string text)
+        {
+            var go = new GameObject("Amount", typeof(RectTransform));
+            go.transform.SetParent(parent, false);
+            var t = go.AddComponent<Text>();
+            t.text = text;
+            t.font = _cardFont;
+            t.fontSize = 14;
+            t.color = new Color(0.92f, 0.88f, 0.7f);
+            t.alignment = TextAnchor.MiddleLeft;
+            t.horizontalOverflow = HorizontalWrapMode.Overflow;
+            t.verticalOverflow = VerticalWrapMode.Overflow;
+            var le = go.AddComponent<LayoutElement>();
+            le.preferredHeight = 20; le.flexibleWidth = 0;
         }
 
         // ---------- Refresh enabled/affordable state ----------
@@ -580,7 +639,7 @@ namespace RTSCL.World.Unity
                 card.Button.interactable = enabled;
                 if (card.Bg != null)   card.Bg.color = enabled ? _cardEnabledBg : _cardDisabledBg;
                 if (card.Name != null) card.Name.color = enabled ? _cardTextNormal : _cardTextDisabled;
-                if (card.Cost != null) card.Cost.color = enabled ? new Color(0.85f, 0.75f, 0.45f) : _cardTextDisabled;
+                if (card.CostGroup != null) card.CostGroup.alpha = enabled ? 1f : 0.5f;
                 if (card.Icon != null) card.Icon.color = enabled ? Color.white : new Color(0.7f, 0.7f, 0.7f, 0.7f);
             }
             UpdateProgressUI();
@@ -692,31 +751,6 @@ namespace RTSCL.World.Unity
             null           => "Goblin",
             _              => kind,
         };
-
-        private static string FormatUnitCost(int woodCost, int foodCost)
-        {
-            if (woodCost > 0 && foodCost > 0) return $"{woodCost} Wood, {foodCost} Food";
-            if (woodCost > 0) return $"{woodCost} Wood";
-            if (foodCost > 0) return $"{foodCost} Food";
-            return "Free";
-        }
-
-        private static string FormatBuildingCost(int wood, int stone)
-        {
-            if (wood > 0 && stone > 0) return $"{wood} Wood, {stone} Stone";
-            if (wood > 0) return $"{wood} Wood";
-            if (stone > 0) return $"{stone} Stone";
-            return "Free";
-        }
-
-        private static string FormatUpgradeCost(int iron, int gold, int crystal)
-        {
-            var parts = new System.Collections.Generic.List<string>(3);
-            if (iron > 0) parts.Add($"{iron} Iron");
-            if (gold > 0) parts.Add($"{gold} Gold");
-            if (crystal > 0) parts.Add($"{crystal} Crystal");
-            return parts.Count == 0 ? "Free" : string.Join(", ", parts);
-        }
 
         // Derive a brief material/size description from the asset name.
         // Convention: "Keep_0" → sheet="Keep"; "Barracks_3" → sheet="Barracks".
