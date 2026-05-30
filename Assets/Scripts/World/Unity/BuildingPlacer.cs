@@ -160,7 +160,8 @@ namespace RTSCL.World.Unity
                 new Vector3(mp.x, mp.y, -_camera.transform.position.z));
             Vector3Int cell = _terrainMap.WorldToCell(world);
 
-            Vector3 ghostPos = _terrainMap.CellToWorld(cell);  // bottom-left of cell
+            // Bottom-left of cell + pivot correction so center-pivot sprites (e.g. Wheatfield) preview centered.
+            Vector3 ghostPos = _terrainMap.CellToWorld(cell) + SpritePivotOffset(_selected.Sprite);
             _ghost.transform.position = ghostPos;
             bool valid = IsValid(new Vector2Int(cell.x, cell.y));
             _ghostRenderer.color = valid ? _validTint : _invalidTint;
@@ -223,6 +224,16 @@ namespace RTSCL.World.Unity
                 foreach (var c in cluster.Cells)
                     if (c.x == x && c.y == y) return true;
             return false;
+        }
+
+        // World-space offset from a cell's bottom-left corner to where a sprite's transform must sit so its
+        // bottom-left corner lands on that corner — i.e. pivot fraction × sprite world size. Zero for the
+        // usual (0,0)-pivot building sprites; corrects center-pivot sprites like Wheatfield_0.
+        private static Vector3 SpritePivotOffset(Sprite s)
+        {
+            if (s == null) return Vector3.zero;
+            float wx = s.rect.width / s.pixelsPerUnit, wy = s.rect.height / s.pixelsPerUnit;
+            return new Vector3(s.pivot.x / s.rect.width * wx, s.pivot.y / s.rect.height * wy, 0f);
         }
 
         // A Dock is a coastal building: its body sits on land but it needs an adjacent water cell.
@@ -297,8 +308,11 @@ namespace RTSCL.World.Unity
 
             var go = new GameObject($"Building_{def.name}_{origin.x}_{origin.y}");
             if (_buildingsRoot != null) go.transform.SetParent(_buildingsRoot, false);
-            // Tilemaps place origin at the tile's bottom-left corner; building sprite pivot should match.
-            go.transform.position = _terrainMap.CellToWorld(new Vector3Int(origin.x, origin.y, 0));
+            // Position so the sprite's bottom-left corner sits at the cell origin, REGARDLESS of pivot.
+            // Most building sprites use a (0,0) pivot (offset = 0, unchanged); a center-pivot sprite (e.g.
+            // Wheatfield_0 at 0.5,0.5) would otherwise render half a cell off — add its pivot offset.
+            go.transform.position = _terrainMap.CellToWorld(new Vector3Int(origin.x, origin.y, 0))
+                                    + SpritePivotOffset(def.Sprite);
             var sr = go.AddComponent<SpriteRenderer>();
             sr.sprite = def.Sprite;
             sr.sortingOrder = 15;  // below goblins (25), above terrain tiles

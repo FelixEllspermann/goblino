@@ -536,7 +536,9 @@ namespace RTSCL.World.Unity
             costLabel.fontSize = 12;
             costLabel.color = new Color(0.85f, 0.75f, 0.45f);
             costLabel.alignment = TextAnchor.MiddleLeft;
-            costLabel.horizontalOverflow = HorizontalWrapMode.Wrap;
+            // Overflow (not Wrap) so the unit word never wraps to a clipped 2nd line (showed "200" not "200 Wood").
+            costLabel.horizontalOverflow = HorizontalWrapMode.Overflow;
+            costLabel.verticalOverflow = VerticalWrapMode.Overflow;
             costLabel.lineSpacing = LineSpacing;
 
             btn.onClick.AddListener(() => onClick?.Invoke());
