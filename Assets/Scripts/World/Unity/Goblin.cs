@@ -153,6 +153,10 @@ namespace RTSCL.World.Unity
         // Cached cell of the attack target's position; used to detect when target has moved
         // enough to warrant re-pathing (avoids per-frame RepathTo calls).
         private Vector2Int _lastAttackGoalCell = new Vector2Int(int.MinValue, int.MinValue);
+        // Cache of the last anti-camping reachability check, keyed by the target's cell, so a unit
+        // oscillating at the range boundary (separation jitter) doesn't re-run A* every frame.
+        private Vector2Int _reachCheckedCell = new Vector2Int(int.MinValue, int.MinValue);
+        private bool _reachOk;
         private Vector3Int _treeCell;
         private ResourceKind _harvestKind;   // kind of the node currently/last harvested — auto-find sticks to it
         private Vector2Int _buildOrigin;
@@ -162,6 +166,15 @@ namespace RTSCL.World.Unity
         private float _attackTimer;
         private Sprite _projectileSprite;   // non-null = ranged unit (shoots an Arrow instead of a melee lunge)
         private HitFeedback _hitFeedback;    // white flash + wobble + red spritz when hit
+        private float _bonusVsMonstersAndMelee = 1f;  // damage multiplier vs monsters + enemy melee (Speargoblin)
+
+        /// <summary>True if this unit attacks at range with a projectile (Archer). Melee units are false.</summary>
+        public bool IsRanged => _projectileSprite != null;
+        /// <summary>True for a melee unit with reach (range &gt; 1, e.g. Speargoblin). Used to gate the
+        /// anti-camping path check — ranged units are excluded (shooting across terrain is intended).</summary>
+        private bool IsMeleeReach => _projectileSprite == null && AttackRange > 1;
+        /// <summary>Cosmetic shove this unit's hits impart to targets (world cells). 0 = none.</summary>
+        public float Knockback { get; private set; }
         private bool _waterMode;             // true = boat: moves on water only (inverted passability)
         /// <summary>Seconds between build progress ticks. Reduce to make builders work faster.</summary>
         private const float BuildTickDuration = 1.0f;
@@ -239,6 +252,9 @@ namespace RTSCL.World.Unity
                 AttackDamage = def.AttackDamage;
                 AttackInterval = def.AttackInterval;
                 AttackRange = def.AttackRange;
+                _moveSpeed = Mathf.Max(0.1f, def.MoveSpeed);
+                _bonusVsMonstersAndMelee = def.BonusVsMonstersAndMelee;
+                Knockback = def.KnockbackStrength;
                 _projectileSprite = def.ProjectileSprite;
                 _waterMode = def.WaterUnit;
                 transform.localScale = Vector3.one * Mathf.Max(0.1f, def.WorldScale);
@@ -520,12 +536,56 @@ namespace RTSCL.World.Unity
         {
             if (CurrentHp <= 0) return;
             CurrentHp = Mathf.Max(0, CurrentHp - damage);
-            if (_hitFeedback != null) _hitFeedback.Play();   // flash + wobble + red spritz (all clients)
+            if (_hitFeedback != null)
+            {
+                // flash + wobble + red spritz (all clients); plus a light shove away from the attacker
+                // if the attacker hits hard (Speargoblin). Direction/strength resolved from the attacker.
+                Vector2 dir = attacker != null ? (Vector2)(transform.position - attacker.transform.position) : Vector2.zero;
+                _hitFeedback.Play(dir, attacker != null ? attacker.Knockback : 0f);
+            }
             if (CurrentHp <= 0) { EnterDying(); return; }
 
             // Auto-retaliate: only when idle and capable
             if (IsIdle && AttackDamage > 0 && attacker != null && attacker.CurrentHp > 0)
                 SetAttackCommand(attacker);
+        }
+
+        /// <summary>Damage this unit would deal to <paramref name="target"/>, after the per-target bonus
+        /// (Speargoblin scales up vs monsters + enemy melee). All other units return flat AttackDamage.</summary>
+        private int EffectiveDamageAgainst(Goblin target)
+        {
+            if (target == null) return AttackDamage;
+            return CombatBonus.Effective(AttackDamage, _bonusVsMonstersAndMelee,
+                target.IsNeutral, target.IsRanged, target.IsBoat, target.AttackDamage);
+        }
+
+        /// <summary>True if this unit can actually walk to the target's cell (same reachable landmass). Runs A*
+        /// without touching the active path. Used to stop melee reach units striking across water/cliffs they
+        /// cannot cross. The target cell is NOT snapped to a nearby passable cell — snapping could land on the
+        /// attacker's own shore across a 1-cell channel and falsely report "reachable" (re-enabling camping).
+        /// Valid melee targets (land units, building stand-cells) already sit on passable terrain, so an
+        /// impassable goal means the target is genuinely un-walkable-to → not reachable.</summary>
+        private bool CanReachForAttack(Vector3 worldTarget)
+        {
+            var goal = CellOfPos(worldTarget);
+            if (!IsCellPassable(goal.x, goal.y)) return false;
+            var start = CellOfPos(transform.position);
+            if (start == goal) return true;
+            var cells = Pathfinder.FindPath(new int2(start.x, start.y), new int2(goal.x, goal.y),
+                                            WorldGrid.Width, WorldGrid.Height, IsCellPassable);
+            return cells != null && cells.Count > 0;
+        }
+
+        /// <summary>Cached CanReachForAttack keyed by the target cell (avoids per-frame A* under jitter).</summary>
+        private bool CanReachForAttackCached(Vector3 worldTarget)
+        {
+            var cell = CellOfPos(worldTarget);
+            if (cell != _reachCheckedCell)
+            {
+                _reachCheckedCell = cell;
+                _reachOk = CanReachForAttack(worldTarget);
+            }
+            return _reachOk;
         }
 
         /// <summary>Toggle the selection ring and IsSelected flag. Called by GoblinSelectionController.</summary>
@@ -671,8 +731,15 @@ namespace RTSCL.World.Unity
                 case State.MovingToAttack:
                 {
                     if (_attackTarget == null || _attackTarget.CurrentHp <= 0) { _state = State.Idle; break; }
-                    if (ChebyshevDistance(transform.position, _attackTarget.transform.position) <= AttackRange)
+                    int cd = ChebyshevDistance(transform.position, _attackTarget.transform.position);
+                    if (cd <= AttackRange)
                     {
+                        // Melee REACH units (range > 1, no projectile): only strike a target we can actually
+                        // walk up to (same landmass). Without this, range 2 lets a Speargoblin hit across a
+                        // 1-cell water/cliff gap it can't cross ("camping"). Ranged units (archers) are exempt
+                        // — shooting across terrain is intended for them.
+                        if (IsMeleeReach && cd > 1 && !CanReachForAttackCached(_attackTarget.transform.position))
+                        { _state = State.Idle; break; }
                         _state = State.Attacking;
                         _attackTimer = AttackInterval; // pre-charge the timer so the first swing fires immediately
                         break;
@@ -684,6 +751,9 @@ namespace RTSCL.World.Unity
                         _lastAttackGoalCell = goalCell;
                         RepathTo(_attackTarget.transform.position);
                     }
+                    // Target is unreachable on foot (no path) and out of range → give up instead of
+                    // hanging in MovingToAttack forever (e.g. enemy on another landmass).
+                    if (_path.Count == 0) { _state = State.Idle; break; }
                     MoveAlongPath();
                     break;
                 }
@@ -716,7 +786,7 @@ namespace RTSCL.World.Unity
                                 Mathf.FloorToInt(_attackTarget.transform.position.x),
                                 Mathf.FloorToInt(_attackTarget.transform.position.y), 0));
                             if (IsLocalOwner)
-                                NetCommandIssuer.IssueDamage(_attackTarget, AttackDamage, this);
+                                NetCommandIssuer.IssueDamage(_attackTarget, EffectiveDamageAgainst(_attackTarget), this);
                         }
                     }
                     break;
@@ -725,8 +795,13 @@ namespace RTSCL.World.Unity
                 case State.MovingToAttackBuilding:
                 {
                     if (!BuildingAlive(_buildingTarget)) { _state = State.Idle; _hasBuildingTarget = false; break; }
-                    if (ChebyshevToFootprint(_buildingTarget, FootprintOf(_buildingTarget)) <= AttackRange)
+                    int bd = ChebyshevToFootprint(_buildingTarget, FootprintOf(_buildingTarget));
+                    if (bd <= AttackRange)
                     {
+                        // Melee reach: same anti-camping rule as units — don't shell a building across a
+                        // gap we can't path to (the nearest standing cell must be reachable).
+                        if (IsMeleeReach && bd > 1 && !CanReachForAttackCached(NearestStandToFootprint(_buildingTarget)))
+                        { _state = State.Idle; _hasBuildingTarget = false; break; }
                         _state = State.AttackingBuilding;
                         _attackTimer = AttackInterval; // first hit promptly
                         break;

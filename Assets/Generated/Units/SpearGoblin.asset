@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e5a02d3f8b674a2c91e8d7c4f3a1b2c9, type: 3}
+  m_Name: SpearGoblin
+  m_EditorClassIdentifier: RTSCL.World.Unity::RTSCL.World.Unity.GoblinUnitDefinition
+  DisplayName: Spear Goblin
+  Icon: {fileID: 8082417263053353483, guid: b29f2eaf7e2fcc24490a5b82a4089f63, type: 3}
+  WoodCost: 20
+  FoodCost: 110
+  PopulationCost: 3
+  MaxHp: 60
+  AttackDamage: 8
+  AttackInterval: 2
+  AttackRange: 2
+  MoveSpeed: 1.5
+  BonusVsMonstersAndMelee: 1.75
+  KnockbackStrength: 0.12
+  ProjectileSprite: {fileID: 0}
+  WorldScale: 1
+  WaterUnit: 0
+  SpawnDuration: 10
+  SpawnerKindName: SpearGoblin

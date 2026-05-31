@@ -78,7 +78,6 @@ namespace RTSCL.World.Unity
 
             // Phase 4: military + attack plans.
             public float MilTrainTimer = -1f;
-            public bool MilNextArcher;          // alternate club/archer
             public GoblinUnitDefinition PendingMil;
             public bool PlanAttacking;          // currently executing the attack
             public bool Defending;              // currently reacting to a nearby threat (for log transitions)
@@ -101,7 +100,7 @@ namespace RTSCL.World.Unity
 
         private readonly Dictionary<ulong, BotState> _states = new();
         private BuildingDefinition _hutDef, _barracksDef, _dockDef, _workshopDef, _wheatDef, _millDef;
-        private GoblinUnitDefinition _farmerDef, _clubDef, _archerDef, _boatDef;
+        private GoblinUnitDefinition _farmerDef, _clubDef, _archerDef, _boatDef, _spearDef;
         private WorldGeneratorBootstrap _worldSource;
         private float _t;
 
@@ -125,6 +124,7 @@ namespace RTSCL.World.Unity
             {
                 if (_barracksDef.TrainsUnits.Length > 0) _clubDef = _barracksDef.TrainsUnits[0];
                 if (_barracksDef.TrainsUnits.Length > 1) _archerDef = _barracksDef.TrainsUnits[1];
+                if (_barracksDef.TrainsUnits.Length > 2) _spearDef = _barracksDef.TrainsUnits[2];
             }
         }
 
@@ -472,13 +472,29 @@ namespace RTSCL.World.Unity
             return found;
         }
 
-        // Train military one at a time (alternating Club/Archer) up to the planned size, paid from BotEconomy.
+        // Pick a random available military unit (Club / Archer / Spear). Used for normal army building;
+        // monster raids override this to always pick the Speargoblin.
+        private GoblinUnitDefinition PickRandomMilitary()
+        {
+            _milPick.Clear();
+            if (_clubDef != null) _milPick.Add(_clubDef);
+            if (_archerDef != null) _milPick.Add(_archerDef);
+            if (_spearDef != null) _milPick.Add(_spearDef);
+            if (_milPick.Count == 0) return null;
+            return _milPick[Random.Range(0, _milPick.Count)];
+        }
+        private readonly List<GoblinUnitDefinition> _milPick = new();
+
+        // Train military one at a time (random Club/Archer/Spear; Speargoblin during raids) up to the
+        // planned size, paid from BotEconomy.
         private void TrainMilitary(ulong owner, BotState st, float dt, bool hasBarracks, Vector2Int barracks, int military, int targetSize)
         {
             if (hasBarracks && st.MilTrainTimer < 0f && military < targetSize)
             {
-                var def = (st.MilNextArcher && _archerDef != null) ? _archerDef : _clubDef;
-                if (def == null) def = _clubDef ?? _archerDef;
+                // Monster raids → train Speargoblins (bonus vs monsters). Otherwise pick a random
+                // available military unit (Club / Archer / Spear).
+                var def = (st.Raiding && _spearDef != null) ? _spearDef : PickRandomMilitary();
+                if (def == null) def = _clubDef ?? _archerDef ?? _spearDef;
                 if (def != null
                     && BotEconomy.Get(owner, ResourceKind.Food) >= def.FoodCost
                     && BotEconomy.Get(owner, ResourceKind.Wood) >= def.WoodCost
@@ -489,7 +505,6 @@ namespace RTSCL.World.Unity
                     BotEconomy.AddUsed(owner, def.PopulationCost);
                     st.MilTrainTimer = Mathf.Max(0.1f, def.SpawnDuration);
                     st.PendingMil = def;
-                    st.MilNextArcher = !st.MilNextArcher;
                 }
             }
             else if (st.MilTrainTimer >= 0f)

@@ -286,7 +286,7 @@ MonoBehaviour:
     - {fileID: 5497634280663653374, guid: b29f2eaf7e2fcc24490a5b82a4089f63, type: 3}
     - {fileID: 7927552047727035442, guid: b29f2eaf7e2fcc24490a5b82a4089f63, type: 3}
     - {fileID: 5675830802738329296, guid: b29f2eaf7e2fcc24490a5b82a4089f63, type: 3}
-    Definition: {fileID: 0}
+    Definition: {fileID: 11400000, guid: 7871efe2a1239914690da9fca39e4fdf, type: 2}
   - Name: FarmerGoblin
     WalkFrames:
     - {fileID: -697968371510223532, guid: 893be7a1426f90b43b8bb1220da96544, type: 3}
@@ -166536,25 +166536,6 @@ MonoBehaviour:
   _progressFill: {fileID: 2139489142}
   _progressLabel: {fileID: 1159623304}
   _progressRow: {fileID: 384575254}
-  _cardSprite: {fileID: 0}
-  _cardFont: {fileID: 12800000, guid: 9e2df1d63f1cf514aa45d7730f0b04cb, type: 3}
-  _cardEnabledBg: {r: 0.18, g: 0.18, b: 0.22, a: 0.95}
-  _cardDisabledBg: {r: 0.1, g: 0.1, b: 0.12, a: 0.7}
-  _cardTextNormal: {r: 1, g: 1, b: 1, a: 1}
-  _cardTextDisabled: {r: 0.55, g: 0.55, b: 0.55, a: 1}
-  _resourceIcons:
-  - Kind: 0
-    Icon: {fileID: -8911251428918342384, guid: 0965b3772d6ef87478985d1a0ba49132, type: 3}
-  - Kind: 1
-    Icon: {fileID: -9158380238242527104, guid: 115e00acaffee7d4cb0f11d35340aa41, type: 3}
-  - Kind: 2
-    Icon: {fileID: 1887494081247492234, guid: 269e7f27a92d2e54c844b48ddc51cd37, type: 3}
-  - Kind: 3
-    Icon: {fileID: -6400913422314380486, guid: 684b114cbb93cab4a9c846580e6081a4, type: 3}
-  - Kind: 4
-    Icon: {fileID: 429713409, guid: 684b114cbb93cab4a9c846580e6081a4, type: 3}
-  - Kind: 5
-    Icon: {fileID: 2110156539, guid: 684b114cbb93cab4a9c846580e6081a4, type: 3}
   _rallyIcon: {fileID: 9000459946942271136, guid: a6a41ceea81c16246af0a410a4470f6c, type: 3}
 --- !u!114 &1575836962
 MonoBehaviour:

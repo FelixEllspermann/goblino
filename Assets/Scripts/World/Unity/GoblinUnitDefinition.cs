@@ -40,8 +40,24 @@ namespace RTSCL.World.Unity
         public int AttackDamage = 0;
         /// <summary>Seconds between attacks. Tune here; Goblin.Update reads this.</summary>
         public float AttackInterval = 1.5f;
-        /// <summary>Attack reach in world cells. Melee = 1; ranged units (e.g. Archer) use a larger value.</summary>
+        /// <summary>Attack reach in world cells. Melee = 1; ranged units (e.g. Archer) use a larger value.
+        /// A melee unit with range &gt; 1 is a "reach" fighter (e.g. Speargoblin pokes from 2 cells away).</summary>
         public int AttackRange = 1;
+
+        /// <summary>World cells per second this unit walks. Default matches the historical hard-coded 2.0.
+        /// Lower = slower (e.g. heavy Speargoblin). Existing assets without this key keep the 2.0 default.</summary>
+        [Tooltip("Movement speed in cells/sec (default 2.0). Lower = slower unit.")]
+        public float MoveSpeed = 2.0f;
+
+        /// <summary>Damage multiplier this unit deals against neutral monsters and enemy melee combatants
+        /// (Speargoblin = 1.75). 1 = no bonus (all other units). See CombatBonus.Effective.</summary>
+        [Tooltip("Bonus damage multiplier vs monsters + enemy melee units. 1 = none.")]
+        public float BonusVsMonstersAndMelee = 1f;
+
+        /// <summary>How hard this unit's hits shove the target (cosmetic, self-cancelling visual nudge in
+        /// world cells). 0 = no knockback (default). Speargoblin uses a small value.</summary>
+        [Tooltip("Cosmetic knockback strength applied to targets on hit. 0 = none.")]
+        public float KnockbackStrength = 0f;
 
         /// <summary>If set, this unit is RANGED: on each attack swing it fires this sprite as a
         /// homing projectile (see Arrow.cs) instead of a melee lunge. Null = melee.</summary>
