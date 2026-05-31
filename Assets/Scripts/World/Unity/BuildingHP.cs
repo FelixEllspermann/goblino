@@ -23,6 +23,7 @@ namespace RTSCL.World.Unity
         {
             if (def == null) return 100;
             if (def.name.StartsWith("Keep")) return 500;
+            if (def.name.StartsWith("Wall")) return 300;   // tanky but cheap; meant to be spammed
             if (def.name.StartsWith("Tower")) return 250;
             if (def.name.StartsWith("Barracks")) return 350;
             return 150; // default for Hut, Market, and other structures

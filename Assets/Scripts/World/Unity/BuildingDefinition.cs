@@ -69,5 +69,12 @@ namespace RTSCL.World.Unity
         public float AttackInterval = 1.5f;
         [Tooltip("Projectile sprite fired at targets (reuse the Archer arrow). Null = no attack.")]
         public Sprite ProjectileSprite;
+
+        // --- Wall auto-tiling. If WallCornerSprite is set the building is a wall segment: it blocks unit
+        //     movement and auto-picks its sprite from its wall neighbours (corner / horizontal / vertical). ---
+        [Header("Wall (set the corner sprite → this building is an auto-tiling, movement-blocking wall)")]
+        public Sprite WallCornerSprite;       // bend / junction (both a vertical and horizontal neighbour)
+        public Sprite WallHorizontalSprite;   // east-west run (or isolated)
+        public Sprite WallVerticalSprite;     // north-south run
     }
 }

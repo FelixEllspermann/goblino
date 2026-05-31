@@ -105,6 +105,7 @@ namespace RTSCL.World.Unity
             PlayerUpgrades.Reset();
             TrainingSpeed.Clear();
             SightRange.Clear();
+            WallRegistry.Clear();
             HarvestReservations.Clear();
             RallyPoints.Clear();
             BotEconomy.Reset();

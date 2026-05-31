@@ -360,6 +360,9 @@ namespace RTSCL.World.Unity
             // Defensive buildings (towers) auto-fire arrows once built.
             if (def.AttackDamage > 0 && def.AttackRange > 0 && def.ProjectileSprite != null)
                 TowerCombat.AttachTo(go, origin, def.Footprint, owner, def);
+            // Walls block movement + auto-tile their sprite from neighbours.
+            if (def.WallCornerSprite != null)
+                WallSegment.AttachTo(go, origin, def);
             if (requireConstruction) BuildingConstruction.Register(origin, go);
             else if (WorldStartContext.IsSolo && owner != 0UL) BotEconomy.AddCap(owner, def.PopulationProvided); // bot instant-place
             else PopulationManager.AddCap(def.PopulationProvided); // instant-place (e.g. starting keep)
@@ -428,6 +431,9 @@ namespace RTSCL.World.Unity
             BuildingConstruction.Remove(origin);
             RallyPoints.Remove(origin);
             DockRegistry.Remove(origin);
+            // Walls: drop from the pathing/auto-tile registry now (don't wait on OnDestroy) so a destroyed
+            // wall stops blocking movement immediately, and re-tile the surviving neighbours.
+            if (def.WallCornerSprite != null) { WallRegistry.Unregister(origin); WallRegistry.RefreshAround(origin); }
 
             if (_originToGo.TryGetValue(origin, out var go) && go != null)
             {
