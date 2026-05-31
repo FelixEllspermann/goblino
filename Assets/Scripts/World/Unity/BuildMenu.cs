@@ -275,6 +275,7 @@ namespace RTSCL.World.Unity
             if (_placer == null || def == null) return;
             ulong owner = WorldStartContext.LocalPlayer;
             if (!BuildRequirements.IsUnlocked(def, OwnsCompleted(owner))) return;
+            if (def.NeedsResearch && !PlayerUpgrades.IsPurchased(owner, def.ResearchKind)) return;   // not researched yet
             if (ResourceBank.Wood < def.WoodCost) return;
             if (ResourceBank.Get(ResourceKind.Stone) < def.StoneCost) return;
             _placer.Select(def);
@@ -287,8 +288,14 @@ namespace RTSCL.World.Unity
             var owns = OwnsCompleted(owner);
             foreach (var (def, costGroup, btn, bg) in _buildCards)
             {
-                bool enabled = BuildRequirements.IsUnlocked(def, owns)
-                               && ResourceBank.Wood >= def.WoodCost
+                // Locked (tech-tree) buildings are HIDDEN entirely until their prerequisites are met;
+                // the grid re-flows around them. They reappear live when a prereq finishes (this method
+                // is called from BuildingConstruction.OnCompleted).
+                bool unlocked = BuildRequirements.IsUnlocked(def, owns)
+                                && (!def.NeedsResearch || PlayerUpgrades.IsPurchased(owner, def.ResearchKind));
+                if (bg.gameObject.activeSelf != unlocked) bg.gameObject.SetActive(unlocked);
+                if (!unlocked) continue;
+                bool enabled = ResourceBank.Wood >= def.WoodCost
                                && ResourceBank.Get(ResourceKind.Stone) >= def.StoneCost;
                 btn.interactable = enabled;
                 bg.color = enabled ? BgEnabled : BgDisabled;
@@ -422,6 +429,15 @@ namespace RTSCL.World.Unity
                     {
                         if (c.Root != null) c.Root.SetActive(false);
                         continue;
+                    }
+                    // Research chain: hide a card until its prerequisite upgrades are purchased
+                    // (e.g. "Research Wheatfield" stays hidden until "Research Mill" is done).
+                    if (c.Upgrade.RequiresUpgrades != null)
+                    {
+                        bool prereqMet = true;
+                        foreach (var req in c.Upgrade.RequiresUpgrades)
+                            if (!PlayerUpgrades.IsPurchased(owner, req)) { prereqMet = false; break; }
+                        if (!prereqMet) { if (c.Root != null) c.Root.SetActive(false); continue; }
                     }
                     if (c.Root != null && !c.Root.activeSelf) c.Root.SetActive(true);
                     int next = lvl + 1;
@@ -642,6 +658,9 @@ namespace RTSCL.World.Unity
                 UpgradeKind.SightRange           => "All your units and buildings see 25% farther.",
                 UpgradeKind.WallHp               => "Your walls have +50% HP (existing + future).",
                 UpgradeKind.TowerDamage          => "Your towers deal +50% arrow damage.",
+                UpgradeKind.UnlockMill           => "Unlocks the Mill for construction.",
+                UpgradeKind.UnlockWorkshop       => "Unlocks the Workshop for construction.",
+                UpgradeKind.UnlockWheatfield     => "Unlocks the Wheat Field for construction (needs Mill researched).",
                 _                                => "Permanent upgrade.",
             };
             return effect + "\nOne-time research, applies to all your units.";

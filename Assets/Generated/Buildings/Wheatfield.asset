@@ -22,8 +22,9 @@ MonoBehaviour:
   TrainsUnits: []
   ProvidesUpgrades: []
   Category: 0
-  Requires:
-  - {fileID: 11400000, guid: 4fd7a35917f30d247b098323352012df, type: 2}
+  Requires: []
+  NeedsResearch: 1
+  ResearchKind: 16
   AttackDamage: 0
   AttackRange: 0
   AttackInterval: 1.5

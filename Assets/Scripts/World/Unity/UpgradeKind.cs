@@ -25,5 +25,9 @@ namespace RTSCL.World.Unity
         // --- Workshop (defensive building upgrades, owner-level) ---
         WallHp              = 12, // +50 % wall HP (existing + future walls)
         TowerDamage         = 13, // +50 % tower arrow damage
+        // --- Research Center: building unlocks (no stat effect; the purchase IS the unlock) ---
+        UnlockMill          = 14,
+        UnlockWorkshop      = 15,
+        UnlockWheatfield    = 16, // gated: requires UnlockMill first
     }
 }

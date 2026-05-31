@@ -27,8 +27,9 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 5484f6cd14513e547941f046812d0fc1, type: 2}
   - {fileID: 11400000, guid: 5aeaf02f736acd3429e1c7a2daeaff31, type: 2}
   Category: 0
-  Requires:
-  - {fileID: 11400000, guid: 924164fcca98590488a02cdc7e22dbda, type: 2}
+  Requires: []
+  NeedsResearch: 1
+  ResearchKind: 14
   AttackDamage: 0
   AttackRange: 0
   AttackInterval: 1.5

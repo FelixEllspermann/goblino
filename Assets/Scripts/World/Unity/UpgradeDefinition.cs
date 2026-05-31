@@ -38,6 +38,11 @@ namespace RTSCL.World.Unity
         [Tooltip("Number of purchasable levels (1 = one-time). Cost of level N = base cost × N.")]
         public int MaxLevel = 1;
 
+        /// <summary>Other upgrades that must already be purchased before this one is offered (research chain,
+        /// e.g. Unlock Wheatfield requires Unlock Mill). Empty = always available once its building is built.</summary>
+        [Tooltip("Upgrades that must be purchased first (research chain). Empty = no prerequisite.")]
+        public UpgradeKind[] RequiresUpgrades;
+
         // Cost to buy a given level (1-based). Level 1 = base cost, level 2 = 2×, level 3 = 3× …
         public int WoodFor(int level)    => WoodCost    * Mathf.Max(1, level);
         public int IronFor(int level)    => IronCost    * Mathf.Max(1, level);

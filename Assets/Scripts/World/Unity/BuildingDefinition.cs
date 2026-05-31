@@ -58,6 +58,13 @@ namespace RTSCL.World.Unity
         [Tooltip("Prerequisite buildings (must be owned + finished). Empty = always buildable.")]
         public BuildingDefinition[] Requires;
 
+        // --- Research gating: if NeedsResearch is set, this building is hidden from the farmer build menu
+        //     until ResearchKind has been researched (purchased) at the Research Center. ---
+        [Tooltip("If true, this building stays hidden in the build menu until researched at the Research Center.")]
+        public bool NeedsResearch = false;
+        [Tooltip("The UpgradeKind that unlocks this building (the Research Center's 'Research X' card).")]
+        public UpgradeKind ResearchKind;
+
         // --- Defensive combat (towers). A building with AttackDamage > 0, AttackRange > 0 and a
         //     ProjectileSprite auto-fires arrows at hostile units in range once built (TowerCombat). ---
         [Header("Defensive combat (towers; leave 0/null for non-combat buildings)")]
