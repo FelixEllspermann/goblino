@@ -112,8 +112,9 @@ namespace RTSCL.World.Unity
 
         private void OnBuildingInspected(Vector2Int origin, BuildingDefinition def, bool isLocal)
         {
-            // Only OWN buildings with something to do (train or upgrade) open the actions panel.
-            bool hasActions = isLocal && def != null &&
+            // Only OWN, FINISHED buildings with something to do (train or upgrade) open the actions panel.
+            // A building still under construction is not usable yet — no train/upgrade cards.
+            bool hasActions = isLocal && def != null && !BuildingConstruction.IsUnderConstruction(origin) &&
                 ((def.TrainsUnits != null && def.TrainsUnits.Length > 0) ||
                  (def.ProvidesUpgrades != null && def.ProvidesUpgrades.Length > 0));
             if (!hasActions) { _buildingActive = false; Resolve(); return; }
@@ -368,6 +369,7 @@ namespace RTSCL.World.Unity
         private void OnTrainClicked(GoblinUnitDefinition unit)
         {
             if (!_buildingActive || unit == null) return;
+            if (BuildingConstruction.IsUnderConstruction(_buildingOrigin)) return;   // not built yet
             if (!GoblinProduction.CanQueue(_buildingOrigin)) return;
             if (ResourceBank.Wood < unit.WoodCost) return;
             if (ResourceBank.Food < unit.FoodCost) return;
@@ -381,6 +383,7 @@ namespace RTSCL.World.Unity
         private void OnUpgradeClicked(UpgradeDefinition upgrade)
         {
             if (upgrade == null) return;
+            if (BuildingConstruction.IsUnderConstruction(_buildingOrigin)) return;   // not built yet
             ulong owner = WorldStartContext.LocalPlayer;
             if (PlayerUpgrades.IsPurchased(owner, upgrade.Kind)) return;
             if (ResourceBank.Get(ResourceKind.Iron) < upgrade.IronCost) return;

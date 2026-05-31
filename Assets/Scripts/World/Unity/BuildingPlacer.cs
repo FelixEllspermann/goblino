@@ -104,6 +104,7 @@ namespace RTSCL.World.Unity
                 if (System.Array.IndexOf(DepositNames, def.name) < 0) continue;
                 if (!_cellToOwner.TryGetValue(kvp.Key, out ulong cellOwner) || cellOwner != owner) continue;
                 if (!_cellToOrigin.TryGetValue(kvp.Key, out var thisOrigin)) continue;
+                if (BuildingConstruction.IsUnderConstruction(thisOrigin)) continue;  // unbuilt → not a drop-off yet
                 int dx = thisOrigin.x - from.x, dy = thisOrigin.y - from.y, d = dx * dx + dy * dy;
                 if (d < bestDistSq) { bestDistSq = d; origin = thisOrigin; footprint = def.Footprint; found = true; }
             }
