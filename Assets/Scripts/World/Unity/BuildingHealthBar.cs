@@ -28,8 +28,20 @@ namespace RTSCL.World.Unity
         {
             var go = new GameObject("HealthBar");
             go.transform.SetParent(buildingGo.transform, false);
-            // Building GO sits at the footprint's SW corner (0,0-pivot sprites) → bar at top-center.
-            go.transform.localPosition = new Vector3(footprint.x * 0.5f, footprint.y + YOffsetAboveTop, 0f);
+            // Position above the actual rendered sprite top (works for tall towers + any pivot); fall back
+            // to the footprint top if there's no sprite yet.
+            var sr = buildingGo.GetComponent<SpriteRenderer>();
+            if (sr != null && sr.sprite != null)
+            {
+                // sprite.bounds = the asset's pivot-relative local bounds in world units (correct even
+                // before the renderer has drawn a frame). Top-center of the sprite, above its peak.
+                var lb = sr.sprite.bounds;
+                go.transform.localPosition = new Vector3(lb.center.x, lb.max.y + YOffsetAboveTop, 0f);
+            }
+            else
+            {
+                go.transform.localPosition = new Vector3(footprint.x * 0.5f, footprint.y + YOffsetAboveTop, 0f);
+            }
             var hb = go.AddComponent<BuildingHealthBar>();
             hb._origin = origin;
             hb._barWidth = Mathf.Max(0.75f, footprint.x * 0.9f);

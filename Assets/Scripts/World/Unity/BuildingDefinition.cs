@@ -57,5 +57,17 @@ namespace RTSCL.World.Unity
         /// Empty = always buildable. Drives the build menu's locked/greyed state (tech-tree foundation).</summary>
         [Tooltip("Prerequisite buildings (must be owned + finished). Empty = always buildable.")]
         public BuildingDefinition[] Requires;
+
+        // --- Defensive combat (towers). A building with AttackDamage > 0, AttackRange > 0 and a
+        //     ProjectileSprite auto-fires arrows at hostile units in range once built (TowerCombat). ---
+        [Header("Defensive combat (towers; leave 0/null for non-combat buildings)")]
+        [Tooltip("Damage per shot. 0 = this building does not attack.")]
+        public int AttackDamage = 0;
+        [Tooltip("Firing range in world cells. 0 = no attack.")]
+        public int AttackRange = 0;
+        [Tooltip("Seconds between shots.")]
+        public float AttackInterval = 1.5f;
+        [Tooltip("Projectile sprite fired at targets (reuse the Archer arrow). Null = no attack.")]
+        public Sprite ProjectileSprite;
     }
 }

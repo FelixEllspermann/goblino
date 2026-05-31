@@ -34,6 +34,31 @@ namespace RTSCL.World.Unity
         private bool _buildingMode;
         private Vector2Int _buildingOrigin;
 
+        // Tower-source mode: fired BY a building (no goblin attacker). On impact the owner client applies
+        // damage via the building-source path instead of the goblin-attacker path.
+        private bool _towerSource;
+        private ulong _towerOwner;
+
+        /// <summary>Spawn an arrow fired by a TOWER (building) at <paramref name="target"/>. Damage is applied
+        /// only on the tower owner's client (<paramref name="dealsDamage"/>), broadcast via the building-source
+        /// damage path.</summary>
+        public static void SpawnFromTower(Vector3 from, Goblin target, int damage, ulong towerOwner, bool dealsDamage, Sprite sprite)
+        {
+            if (target == null || sprite == null) return;
+            var go = new GameObject("Arrow");
+            go.transform.position = from;
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite = sprite;
+            sr.sortingOrder = 30;
+            var a = go.AddComponent<Arrow>();
+            a._target = target;
+            a._fallbackPos = target.transform.position;
+            a._damage = damage;
+            a._dealsDamage = dealsDamage;
+            a._towerSource = true;
+            a._towerOwner = towerOwner;
+        }
+
         /// <summary>Spawn an arrow travelling from <paramref name="from"/> toward <paramref name="target"/>.
         /// <paramref name="dealsDamage"/> must be true ONLY on the attacker's owner client.</summary>
         public static void Spawn(Vector3 from, Goblin target, int damage, Goblin attacker, bool dealsDamage, Sprite sprite)
@@ -85,7 +110,10 @@ namespace RTSCL.World.Unity
                 if (_buildingMode)
                     BuildingHitFeedback.Play(_buildingOrigin);          // flash + spritz on the building
                 else if (_dealsDamage && _target != null && _target.CurrentHp > 0)
-                    NetCommandIssuer.IssueDamage(_target, _damage, _attacker);  // owner applies + broadcasts
+                {
+                    if (_towerSource) NetCommandIssuer.IssueTowerDamage(_target, _damage, _towerOwner);
+                    else NetCommandIssuer.IssueDamage(_target, _damage, _attacker);  // owner applies + broadcasts
+                }
                 Destroy(gameObject);
                 return;
             }

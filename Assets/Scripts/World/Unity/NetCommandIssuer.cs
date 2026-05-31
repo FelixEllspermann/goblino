@@ -152,6 +152,19 @@ namespace RTSCL.World.Unity
             NetCommandBridge.Send(NetWireFormat.PackEvDamage(wTgt, damage, wAtk));
         }
 
+        /// <summary>Apply + broadcast damage dealt by a BUILDING (tower) which has no Goblin NetId.
+        /// Uses a sentinel attacker id (the tower's owner + ushort.MaxValue index): it passes the
+        /// sender==owner anti-cheat check, and resolves to a null attacker on remotes (no goblin with
+        /// that index) → TakeDamage(dmg, null). Reuses the existing EvDamage wire (no new message).</summary>
+        public static void IssueTowerDamage(Goblin target, int damage, ulong towerOwner)
+        {
+            if (target == null || damage <= 0) return;
+            target.TakeDamage(damage, null);
+            var wTgt = new NetWireFormat.WireNetIdLocal(target.NetId.Owner, target.NetId.LocalIndex);
+            var wAtk = new NetWireFormat.WireNetIdLocal(towerOwner, ushort.MaxValue);   // building source sentinel
+            NetCommandBridge.Send(NetWireFormat.PackEvDamage(wTgt, damage, wAtk));
+        }
+
         /// <summary>Purchases an upgrade for owner: marks it purchased + applies effects to all owned units,
         /// then broadcasts CmdPurchaseUpgrade. Guards against double-purchase.</summary>
         public static void IssuePurchaseUpgrade(UpgradeKind kind, ulong owner)
