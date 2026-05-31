@@ -55,10 +55,13 @@ namespace RTSCL.World.Unity
             Arrow.SpawnFromTower(_muzzle, target, _damage, _owner, dealsDamage: true, _projectile);
         }
 
-        // Nearest living hostile unit within range: a neutral monster, or any unit of a different owner.
+        // Nearest living hostile unit within range AND in vision: a neutral monster, or any unit of a
+        // different owner. A target hidden in fog of war is NOT shot (no sniping through the fog).
         private Goblin FindTarget()
         {
             float r2 = (float)_range * _range;
+            // Only the local player's towers respect fog (the player's vision). Bot towers have no fog map.
+            bool gateOnFog = (_owner == WorldStartContext.LocalPlayer || _owner == 0UL) && FogOfWar.Instance != null;
             Goblin best = null;
             float bestSq = float.MaxValue;
             foreach (var g in Goblin.All)
@@ -66,7 +69,9 @@ namespace RTSCL.World.Unity
                 if (g == null || g.CurrentHp <= 0 || !g.gameObject.activeInHierarchy) continue;
                 if (!(g.IsNeutral || g.Owner != _owner)) continue;   // skip own units
                 float d = (g.transform.position - _muzzle).sqrMagnitude;
-                if (d <= r2 && d < bestSq) { bestSq = d; best = g; }
+                if (d > r2 || d >= bestSq) continue;
+                if (gateOnFog && !FogOfWar.Instance.IsVisible(g.transform.position)) continue;   // in fog → don't shoot
+                bestSq = d; best = g;
             }
             return best;
         }

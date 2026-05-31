@@ -36,6 +36,7 @@ namespace RTSCL.World.Unity
         [SerializeField] private int _goblinRadius   = 5;
         [SerializeField] private int _keepRadius     = 10;
         [SerializeField] private int _buildingRadius = 4;
+        [SerializeField] private int _towerRadius    = 9;   // towers see far (they're lookout posts)
 
         [Header("Tint")]
         [SerializeField] private Color _hiddenTint   = new(0f, 0f, 0f, 1.00f);
@@ -134,8 +135,10 @@ namespace RTSCL.World.Unity
                 {
                     if (!_buildingPlacer.TryGetBuildingOwner(kv.Key, out var o) || !IsLocalPlayer(o)) continue;
                     var def = kv.Value;
-                    // Keep buildings have a larger radius; all others use _buildingRadius.
-                    int r = (def != null && def.name.StartsWith("Keep")) ? _keepRadius : _buildingRadius;
+                    // Keeps see farthest, towers are lookout posts (see far), everything else is short.
+                    int r = (def != null && def.name.StartsWith("Keep")) ? _keepRadius
+                          : (def != null && def.AttackDamage > 0 && def.ProjectileSprite != null) ? _towerRadius
+                          : _buildingRadius;
                     MarkCircle(kv.Key.x, kv.Key.y, SightRange.Scale(r, o));
                 }
             }

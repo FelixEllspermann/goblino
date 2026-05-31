@@ -1179,7 +1179,9 @@ namespace RTSCL.World.Unity
             if (_waterMode) return water;
             // Land units: water, shore and cliffs block; harvestable decorations also block.
             if (water || t.name == "Cliff") return false;
-            if (WallRegistry.IsWall(x, y)) return false;   // walls block land movement
+            // Walls block land movement — but only once BUILT (a wall still under construction is passable
+            // so farmers can reach it and units aren't blocked by a not-yet-real wall).
+            if (WallRegistry.IsWall(x, y) && !BuildingConstruction.IsUnderConstruction(new Vector2Int(x, y))) return false;
             if (_decorationMap != null)
             {
                 var d = _decorationMap.GetTile(new Vector3Int(x, y, 0));
