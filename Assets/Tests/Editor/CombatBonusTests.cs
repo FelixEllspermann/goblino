@@ -94,5 +94,34 @@ namespace RTSCL.World.Tests
             // 5 * 1.5 = 7.5 → 8.
             Assert.AreEqual(8, CombatBonus.WithArmorPierce(5, 1.5f, targetHasArmor: true));
         }
+
+        // --- Siege (Minotaur bonus vs buildings, extra vs defenses) ---
+
+        [Test]
+        public void VsBuilding_NormalBuilding_UsesBuildingBonus()
+        {
+            // 20 * 2.5 = 50 vs a normal building.
+            Assert.AreEqual(50, CombatBonus.EffectiveVsBuilding(20, 2.5f, 4f, targetIsDefensive: false));
+        }
+
+        [Test]
+        public void VsBuilding_DefensiveBuilding_UsesLargerDefenseBonus()
+        {
+            // Walls/towers take the bigger multiplier: 20 * 4 = 80.
+            Assert.AreEqual(80, CombatBonus.EffectiveVsBuilding(20, 2.5f, 4f, targetIsDefensive: true));
+        }
+
+        [Test]
+        public void VsBuilding_NoBonus_ReturnsBase()
+        {
+            Assert.AreEqual(20, CombatBonus.EffectiveVsBuilding(20, 1f, 1f, targetIsDefensive: true));
+        }
+
+        [Test]
+        public void VsBuilding_DefensiveNeverLessThanNormal()
+        {
+            // Even if the defense multiplier is left at 1, a defensive target uses the (larger) building bonus.
+            Assert.AreEqual(40, CombatBonus.EffectiveVsBuilding(20, 2f, 1f, targetIsDefensive: true));
+        }
     }
 }

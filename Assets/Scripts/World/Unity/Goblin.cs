@@ -168,6 +168,8 @@ namespace RTSCL.World.Unity
         private HitFeedback _hitFeedback;    // white flash + wobble + red spritz when hit
         private float _bonusVsMonstersAndMelee = 1f;  // damage multiplier vs monsters + enemy melee (Speargoblin)
         private float _bonusVsArmored = 1f;           // damage multiplier vs armored targets (Archer armor-piercing)
+        private float _bonusVsBuildings = 1f;         // siege multiplier vs enemy buildings (Minotaur)
+        private float _bonusVsDefensiveBuildings = 1f;// extra siege multiplier vs walls + towers (Minotaur)
 
         /// <summary>True if this unit attacks at range with a projectile (Archer). Melee units are false.</summary>
         public bool IsRanged => _projectileSprite != null;
@@ -274,6 +276,8 @@ namespace RTSCL.World.Unity
                 _moveSpeed = Mathf.Max(0.1f, def.MoveSpeed);
                 _bonusVsMonstersAndMelee = def.BonusVsMonstersAndMelee;
                 _bonusVsArmored = def.BonusVsArmored;
+                _bonusVsBuildings = def.BonusVsBuildings;
+                _bonusVsDefensiveBuildings = def.BonusVsDefensiveBuildings;
                 Knockback = def.KnockbackStrength;
                 Armor = def.Armor;
                 _projectileSprite = def.ProjectileSprite;
@@ -586,6 +590,16 @@ namespace RTSCL.World.Unity
             return CombatBonus.WithArmorPierce(dmg, _bonusVsArmored, target.Armor > 0f);
         }
 
+        /// <summary>Damage this unit deals to the building at <paramref name="origin"/> — siege bonus vs
+        /// buildings, extra vs defensive ones (walls/towers). All other units return flat AttackDamage.</summary>
+        private int EffectiveBuildingDamage(Vector2Int origin)
+        {
+            bool defensive = false;
+            if (NetCommandApplier.Placer != null && NetCommandApplier.Placer.TryGetBuildingAt(origin, out var bdef) && bdef != null)
+                defensive = bdef.WallCornerSprite != null || (bdef.AttackDamage > 0 && bdef.ProjectileSprite != null);
+            return CombatBonus.EffectiveVsBuilding(AttackDamage, _bonusVsBuildings, _bonusVsDefensiveBuildings, defensive);
+        }
+
         /// <summary>True if this unit can actually walk to the target's cell (same reachable landmass). Runs A*
         /// without touching the active path. Used to stop melee reach units striking across water/cliffs they
         /// cannot cross. The target cell is NOT snapped to a nearby passable cell — snapping could land on the
@@ -871,7 +885,7 @@ namespace RTSCL.World.Unity
                         }
                         if (IsLocalOwner)
                         {
-                            BuildingHP.Damage(_buildingTarget, AttackDamage);
+                            BuildingHP.Damage(_buildingTarget, EffectiveBuildingDamage(_buildingTarget));
                             if (!BuildingAlive(_buildingTarget))
                             {
                                 NetCommandApplier.Placer?.RemoveBuilding(_buildingTarget);

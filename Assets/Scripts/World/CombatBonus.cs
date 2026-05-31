@@ -36,5 +36,15 @@ namespace RTSCL.World
             if (bonusVsArmored <= 1f || !targetHasArmor) return damage;
             return (int)System.Math.Round(damage * (double)bonusVsArmored, System.MidpointRounding.AwayFromZero);
         }
+
+        /// <summary>Damage dealt to a building (siege). Normal buildings use <paramref name="bonusVsBuildings"/>;
+        /// defensive buildings (walls/towers) use the LARGER of the two multipliers so they always take at
+        /// least as much. Multiplier &lt;= 1 returns the base damage unchanged. Rounded (half away from zero).</summary>
+        public static int EffectiveVsBuilding(int baseDamage, float bonusVsBuildings, float bonusVsDefensive, bool targetIsDefensive)
+        {
+            float mul = targetIsDefensive ? System.Math.Max(bonusVsBuildings, bonusVsDefensive) : bonusVsBuildings;
+            if (mul <= 1f) return baseDamage;
+            return (int)System.Math.Round(baseDamage * (double)mul, System.MidpointRounding.AwayFromZero);
+        }
     }
 }

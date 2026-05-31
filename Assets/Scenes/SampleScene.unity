@@ -329,6 +329,13 @@ MonoBehaviour:
     - {fileID: -2369018739697091014, guid: 1643cd0390ee9414fb27677111889f5a, type: 3}
     - {fileID: 8849086363888833396, guid: 1643cd0390ee9414fb27677111889f5a, type: 3}
     Definition: {fileID: 11400000, guid: 1c639a79eb1b8144a8daf206e2ffe877, type: 2}
+  - Name: Minotaur
+    WalkFrames:
+    - {fileID: -7744424781442014258, guid: 8d55fe3034166094aa652bc2cec0f337, type: 3}
+    - {fileID: 2756279280897339716, guid: 8d55fe3034166094aa652bc2cec0f337, type: 3}
+    - {fileID: 225525293087343, guid: 8d55fe3034166094aa652bc2cec0f337, type: 3}
+    - {fileID: 5361578082729364726, guid: 8d55fe3034166094aa652bc2cec0f337, type: 3}
+    Definition: {fileID: 11400000, guid: b399c06113f12804abcaab90e7a71edb, type: 2}
 --- !u!4 &164504309
 Transform:
   m_ObjectHideFlags: 0
@@ -166231,6 +166238,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 97c87519473b35e4eb485e49efc9f6b8, type: 2}
   - {fileID: 11400000, guid: 4c9cb57bfb71a5642ade1c8f6d0a8c0d, type: 2}
   - {fileID: 11400000, guid: 924164fcca98590488a02cdc7e22dbda, type: 2}
+  - {fileID: 11400000, guid: 21d86654991544a429cd51310fa17580, type: 2}
   _font: {fileID: 12800000, guid: 9e2df1d63f1cf514aa45d7730f0b04cb, type: 3}
   _cardSprite: {fileID: 0}
   _resourceIcons:

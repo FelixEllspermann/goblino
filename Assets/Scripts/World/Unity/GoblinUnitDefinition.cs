@@ -70,6 +70,14 @@ namespace RTSCL.World.Unity
         [Tooltip("Damage multiplier vs targets that have Armor > 0 (armor-piercing). 1 = none — Archer counters armored units.")]
         public float BonusVsArmored = 1f;
 
+        /// <summary>Damage multiplier this unit deals to ENEMY BUILDINGS (siege). 1 = none (Minotaur &gt; 1).</summary>
+        [Tooltip("Damage multiplier vs enemy buildings. 1 = none — Minotaur sieges buildings.")]
+        public float BonusVsBuildings = 1f;
+        /// <summary>Damage multiplier vs DEFENSIVE buildings (walls + towers) specifically — used instead of
+        /// BonusVsBuildings when it is larger, so the Minotaur hits defenses even harder. 1 = none.</summary>
+        [Tooltip("Damage multiplier vs walls + towers (used if larger than BonusVsBuildings). 1 = none.")]
+        public float BonusVsDefensiveBuildings = 1f;
+
         /// <summary>If set, this unit is RANGED: on each attack swing it fires this sprite as a
         /// homing projectile (see Arrow.cs) instead of a melee lunge. Null = melee.</summary>
         [Tooltip("Set for ranged units (e.g. Archer's arrow). Null = melee.")]
