@@ -1,65 +1,56 @@
 # Council Requirements
 
-> Task: Speargoblin — neue Kampfeinheit (Nahkämpfer mit Reichweite) in Goblino
-> Created by council-questions. Verified by council-review.
+> Task: Armor as a per-unit stat for goblins (percentage damage reduction)
+> Created by council-questions (lightweight — 2 clarifying questions). Verified by council-review.
+> (Previous feature "Speargoblin" is shipped — commit 15c4d09.)
 
 ## Kernentscheidungen (vom Nutzer bestätigt)
 
-- **Mechanik:** Nahkämpfer mit **erhöhter Reichweite** (Reach, `range` 2). **Kein Wurf**, kein `ProjectileSprite`, kein fliegender Speer.
-- **Rolle/Konter:** stark gegen **Club** (Nahkampf-Goblins) und **neutrale Monster** (Bonusschaden); **schwach gegen Archer** (wird gekitet — langsam + keine Distanzwaffe).
-- **Trainiert in:** Barracks (3. Trainingskarte neben Club + Archer), kein Tech-Prereq.
-- **Sprite:** bereits im MiniWorldSprites-Frameset vorhanden (Speargoblin existiert) — wiederverwenden, kein neues Pixel-Art.
-- **Bot:** baut ihn normal **random** in der Militär-Rotation; **bei Monster-Raids gezielt Speargoblins** (wegen Monster-Bonus).
-- **Multiplayer:** voll eingehängt (NetworkCatalog defIndex↔def + NetId-Vorreservierung beim Training).
+- **Modell:** Diminishing Returns — `reduction = armor / (armor + 36)`. Asymptote, erreicht 100% nie.
+- **Zielwerte:** Archer **0** (keine), Club armor **4** (≈ 10%), Speargoblin armor **15** (≈ 29% — bewusst deutlich über Club, damit der Unterschied im Kampf sichtbar ist).
+- **Rundung:** `Apply` **rundet ab (floor)** zugunsten des Verteidigers — so reduziert auch kleine Rüstung jeden Ganzzahl-Treffer zuverlässig (kaufmännische Rundung ließ Club 10% gegen 5er/4er-Treffer wirkungslos). Über-Erfüllung bei kleinen Treffern ist bei Integer-Schaden inhärent + akzeptiert.
+- **Untergrenze/Deckel:** harter Deckel **80%** Reduktion (nie immun), **min. 1 Schaden** pro Treffer.
+- **Seite:** Rüstung wirkt auf der **Verteidiger-Seite** (im `TakeDamage`), also NACH dem Spear-Angriffsbonus.
 
 ## Acceptance Criteria
 
 ### Logic
-- [ ] Neue `GoblinUnitDefinition` (unter `Assets/Generated/Units/`) + `GoblinSpawner._kinds`-Eintrag (Name "Speargoblin" + WalkFrames + Definition).
-- [ ] `range` = 2 (Reach). Club = 1, Archer ≈ 5. Nahkampf-Logik (kein Projektil), greift Einheiten **und** Gebäude an.
-- [ ] HP **höher** als Club; Damage **höher** als Club; `attack-interval` **langsamer** als Club; Bewegungsgeschwindigkeit **langsamer** als Club.
-- [ ] Bonusschaden gegen (a) neutrale Monster (`IsNeutral`) und (b) Nahkampf-Goblins (Club / Einheiten ohne `ProjectileSprite`).
-- [ ] Trainierbar in Barracks; Kosten (wood/food/pop) gesetzt, im selben Korridor wie Club/Archer.
-- [ ] „Fertig" = Asset + Spawner-Kind + Barracks-Karte + Bot trainiert ihn + korrekter MP-Spawn — **alle 5 Pflicht**.
+- [ ] `GoblinUnitDefinition.Armor` (float, default 0) — Archer 0, Club 4, Spear 15.
+- [ ] `ArmorMath.Reduction(armor) = armor/(armor+36)`, geclamped auf ≤ 0.8.
+- [ ] `ArmorMath.Apply(dmg, armor)` = `floor(dmg * (1-reduction))`, min 1 (bei dmg>0), 0 bleibt 0.
+- [ ] Club und Spear unterscheiden sich bei jedem üblichen Treffer (5/4/8 dmg) sichtbar.
+- [ ] `Goblin.TakeDamage` reduziert eingehenden Schaden per Armor; `Goblin.Armor` aus der Definition gesetzt.
+- [ ] Reduktion erreicht nie 100% (Formel + Deckel).
 
 ### Critic (must-handle cases)
-- [ ] **Reach-FSM:** range-2-Nahkampf darf NICHT in Lauf↔Stopp-Oszillation kippen; Einheit greift aus Distanz 2 an statt in die Zielzelle zu rennen. Verifiziert (kein endloses Re-Pathing).
-- [ ] **NetworkCatalog:** neue Def registriert (über `MainBaseSetup.OnNewWorld`), `defIndex` deterministisch über Clients; NetId-Vorreservierung beim Training identisch (kein MP-Desync).
-- [ ] **Bot kennt die Einheit:** keine tote Content / kein still ignorierter Kind-Eintrag; Bot trainiert + kommandiert ihn.
-- [ ] **Balance:** Werte so, dass weder Club noch Archer obsolet werden (Spear teurer/langsamer; Archer kontert ihn; Club bleibt billige Massentruppe).
-- [ ] **No friendly fire** bleibt invariant; Bonusschaden trifft nur cross-owner/neutral.
-- [ ] **Reach gegen Wasser/Klippe/andere Landmasse:** kein „unangreifbares Camping" über unpassierbares Terrain hinweg, kein Hängenbleiben wenn Ziel unerreichbar.
+- [ ] **MP-Lockstep:** Armor wird genau EINMAL angewandt (Verteidiger-`TakeDamage`), der Wire-Betrag ist pre-armor; lokaler + Remote-Pfad (`EvDamage`→`ApplyDamage`→`TakeDamage`) ergeben identische HP.
+- [ ] Kein Double-Dip mit dem Spear-Bonus (Bonus = Angreifer-Seite, Armor = Verteidiger-Seite, getrennt).
+- [ ] Min-1-Floor: ein Treffer macht immer ≥ 1 Schaden, selbst bei sehr hoher Rüstung.
+- [ ] 0-Schaden bleibt 0 (kein erzwungenes 1 für Nicht-Kampf-Interaktionen).
+- [ ] Bestehende Einheiten ohne Armor-Key im Asset → Default 0 (kein Verhalten geändert).
 
 ### Feeling
-- [ ] Fühlt sich als **solider Frontkämpfer** an (etwas schwerer/langsamer als Club, „hält die Linie").
-- [ ] Treffer = bestehendes Hit-FX (Flash + Wobble + roter Spritz) **plus sehr leichter Knockback** am Ziel.
+- [ ] Rüstung als feiner Tank-Edge spürbar: Spear hält länger, Club etwas, Archer gar nicht.
+- [ ] Im Stat-Sheet sichtbar (Armor: X%), damit der Spieler den Effekt versteht.
 
 ### Quality
-- [ ] MCP-Compile sauber (0 Fehler), via Community-MCP (`mcp__UnityMCP__*`).
-- [ ] Deterministische Play-Mode-Probes grün: Spawn, Owner, NetId-Reservierung, Reichweiten-/Bonus-Berechnung, Catalog-Registrierung.
-- [ ] EditMode-Tests angepasst/ergänzt falls die neue Mechanik (Reach + Bonusschaden) testbare Pure-Logic einführt; Suite bleibt vollständig grün.
-- [ ] `GoblinUnitDefinition`-Felder konsistent zu Club/Archer/Boat (kein Feld vergessen).
-- [ ] CLAUDE.md aktualisiert (Einheitenliste, Bot-AI, ggf. Testzahl). Commit direkt auf `main`.
+- [ ] MCP-Compile 0 Fehler; EditMode-Tests grün (neue ArmorMath-Tests + bestehende = 63).
+- [ ] `ArmorMath` Unity-frei + deterministisch + dokumentiert; Felder konsistent.
+- [ ] CLAUDE.md aktualisiert (Armor-Feld, Damage-Flow, Testzahl 63). Commit auf `main`.
 
 ### Wildcard
-- [ ] **Kein** Angriff von Bord eines Boots (normale Passagier-Regeln).
-- [ ] **Kein** Bot-Monokultur-Kollaps: feste Random-Quote normal, Spear nur gezielt für Monster-Raids.
-- [ ] **Kein** Formationsbonus (kollidiert mit Anti-Stacking — bewusst raus).
-- [ ] Monster-Bonus kippt die Monster-Raid-Balance nicht ins Triviale (moderater Multiplikator).
+- [ ] Monster/Farmer/Boote bleiben armorlos (0), kein ungewollter Tank-Effekt.
+- [ ] Gebäudeschaden unberührt (Buildings sind keine Goblins, eigener HP-Pfad).
+- [ ] Hohe-Rüstung-Edge: kein Integer-Overflow/negativer Schaden, kein Heilen durch Rundung.
 
 ### Optics
-- [ ] Walk-Sprite aus vorhandenem MiniWorldSprites-Speargoblin-Frameset; gleiche Pivot/Padding-Konvention → korrekte `SelectionBounds`.
-- [ ] Kein Projektil-Sprite (Nahkampf).
-- [ ] Train-/Inspector-Icon = zugeschnittener Frame aus dem Walk-Sheet (wie Club/Archer).
-- [ ] Faction-Tint: kein Sonderfall, gleiche Behandlung wie andere Einheiten.
+- [ ] Stat-Sheet zeigt „Armor: X%" nur wenn Armor > 0; Layout konsistent mit HP/Damage/Range.
 
-## Known accepted edges
-- **cd==1 Diagonal-über-Eckwasser:** Der Anti-Camping-Guard greift nur bei `cd > 1`. Bei Chebyshev-Distanz 1 (direkt/diagonal benachbart) schlägt der Speer zu, auch wenn die diagonale Zwischenzelle Wasser ist. Das ist **identisch zum bestehenden Club-Verhalten** (range 1) und damit kein Speer-Regress — bewusst akzeptiert.
+## Known accepted decisions
+- **Spear gewinnt 1v1 klar gegen Club** (Spear macht ~12–14/Treffer an Club, Club nur ~3 an Spear). Das ist **gewollt** — die designte Rolle des Spears ist „stark gegen Club" (Bonus 1.75 + 60 HP + ~29% Rüstung), balanciert durch höhere Kosten (110 Food/3 Pop), langsame Bewegung/Trainingszeit und das Gekitet-werden durch Archer. Magnitude im Playtest gegenprüfen; bei Bedarf Spear-Armor (15) oder -Bonus (1.75) zurücknehmen.
+- **Floor-Über-Erfüllung:** angezeigte %-Reduktion ist der nominale Wert; effektiv ist sie bei kleinen Ganzzahltreffern etwas höher (zugunsten des Verteidigers). Bewusst akzeptiert.
 
 ## Out of Scope
-- Wurfspeer/Projektil-Variante.
-- Bonusschaden gegen Boote/Gebäude (nur Monster + Nahkampf-Goblins).
-- Brace-/Charge-/Anti-Ansturm-Mechanik.
-- Formationsbonus.
-- Angriff von Bord eines Boots.
-- Neue Pixel-Art / neues Trainingsgebäude / Tech-Tree-Gate.
+- Rüstung gegen Gebäude / für Gebäude.
+- Schadenstyp-spezifische Rüstung (pierce/blunt), Rüstungsdurchdringung.
+- Rüstung für Monster/Farmer/Boote.

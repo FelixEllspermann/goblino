@@ -235,6 +235,8 @@ namespace RTSCL.World.Unity
                 s += $"\nDamage: {g.AttackDamage}";
                 s += $"\nAttack Speed: {aps:0.0}/s";
                 s += $"\nRange: {g.AttackRange}";
+                if (g.Armor > 0f)
+                    s += $"\nArmor: {RTSCL.World.ArmorMath.Reduction(g.Armor) * 100f:0}%";
             }
             return s;
         }

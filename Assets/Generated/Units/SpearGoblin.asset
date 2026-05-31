@@ -24,6 +24,7 @@ MonoBehaviour:
   MoveSpeed: 1.5
   BonusVsMonstersAndMelee: 1.75
   KnockbackStrength: 0.12
+  Armor: 15
   ProjectileSprite: {fileID: 0}
   WorldScale: 1
   WaterUnit: 0

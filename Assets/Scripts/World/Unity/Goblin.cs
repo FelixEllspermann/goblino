@@ -175,6 +175,8 @@ namespace RTSCL.World.Unity
         private bool IsMeleeReach => _projectileSprite == null && AttackRange > 1;
         /// <summary>Cosmetic shove this unit's hits impart to targets (world cells). 0 = none.</summary>
         public float Knockback { get; private set; }
+        /// <summary>Armor points — reduces incoming damage via diminishing returns (see ArmorMath). 0 = none.</summary>
+        public float Armor { get; private set; }
         private bool _waterMode;             // true = boat: moves on water only (inverted passability)
         /// <summary>Seconds between build progress ticks. Reduce to make builders work faster.</summary>
         private const float BuildTickDuration = 1.0f;
@@ -255,6 +257,7 @@ namespace RTSCL.World.Unity
                 _moveSpeed = Mathf.Max(0.1f, def.MoveSpeed);
                 _bonusVsMonstersAndMelee = def.BonusVsMonstersAndMelee;
                 Knockback = def.KnockbackStrength;
+                Armor = def.Armor;
                 _projectileSprite = def.ProjectileSprite;
                 _waterMode = def.WaterUnit;
                 transform.localScale = Vector3.one * Mathf.Max(0.1f, def.WorldScale);
@@ -535,7 +538,10 @@ namespace RTSCL.World.Unity
         public void TakeDamage(int damage, Goblin attacker)
         {
             if (CurrentHp <= 0) return;
-            CurrentHp = Mathf.Max(0, CurrentHp - damage);
+            // Defender-side armor: reduce the incoming amount (after the attacker's bonus). Runs on every
+            // client with this unit's own armor, so it stays in lockstep — the wire amount is pre-armor.
+            int taken = ArmorMath.Apply(damage, Armor);
+            CurrentHp = Mathf.Max(0, CurrentHp - taken);
             if (_hitFeedback != null)
             {
                 // flash + wobble + red spritz (all clients); plus a light shove away from the attacker

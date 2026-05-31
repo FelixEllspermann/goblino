@@ -21,5 +21,12 @@ MonoBehaviour:
   AttackDamage: 5
   AttackInterval: 1.5
   AttackRange: 1
+  MoveSpeed: 2
+  BonusVsMonstersAndMelee: 1
+  KnockbackStrength: 0
+  Armor: 4
+  ProjectileSprite: {fileID: 0}
+  WorldScale: 1
+  WaterUnit: 0
   SpawnDuration: 8
   SpawnerKindName: ClubGoblin

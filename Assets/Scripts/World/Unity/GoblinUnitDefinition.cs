@@ -59,6 +59,12 @@ namespace RTSCL.World.Unity
         [Tooltip("Cosmetic knockback strength applied to targets on hit. 0 = none.")]
         public float KnockbackStrength = 0f;
 
+        /// <summary>Armor points. Reduces incoming damage by <c>armor/(armor+36)</c> (diminishing returns,
+        /// capped well below 100%). 0 = no armor (Archer). Club ≈ 4 (~10%), Speargoblin ≈ 9 (~20%).
+        /// See <see cref="RTSCL.World.ArmorMath"/>.</summary>
+        [Tooltip("Armor points — reduces incoming damage via diminishing returns (armor/(armor+36)). 0 = none.")]
+        public float Armor = 0f;
+
         /// <summary>If set, this unit is RANGED: on each attack swing it fires this sprite as a
         /// homing projectile (see Arrow.cs) instead of a melee lunge. Null = melee.</summary>
         [Tooltip("Set for ranged units (e.g. Archer's arrow). Null = melee.")]
