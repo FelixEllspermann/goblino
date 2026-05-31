@@ -27,6 +27,8 @@ namespace RTSCL.World.Unity
             public float Elapsed;
             /// <summary>Pre-reserved GoblinNetId local index so network clients assign the same ID as the host.</summary>
             public ushort ReservedIndex;
+            /// <summary>Owner of the producing building — drives the per-owner training-speed multiplier.</summary>
+            public ulong Owner;
             /// <summary>Normalised training progress 0..1. Used by the UI progress bar.</summary>
             public float Progress => Def == null || Def.SpawnDuration <= 0
                 ? 1f
@@ -65,7 +67,7 @@ namespace RTSCL.World.Unity
         /// or population cap is exceeded. Reserves population immediately on success.
         /// </summary>
         /// <param name="reservedIndex">Pre-allocated GoblinNetId.LocalIndex for deterministic MP identity.</param>
-        public static bool TryEnqueue(Vector2Int origin, GoblinUnitDefinition def, ushort reservedIndex = 0)
+        public static bool TryEnqueue(Vector2Int origin, GoblinUnitDefinition def, ushort reservedIndex = 0, ulong owner = 0UL)
         {
             if (def == null) return false;
             if (!_lines.TryGetValue(origin, out var line)) { line = new Line(); _lines[origin] = line; }
@@ -73,7 +75,7 @@ namespace RTSCL.World.Unity
             if (!PopulationManager.CanAfford(def.PopulationCost)) return false;
             // Reserve population now so the cap accounting is honest while producing/queued.
             PopulationManager.AddUsed(def.PopulationCost);
-            line.Jobs.Add(new Slot { Def = def, Elapsed = 0f, ReservedIndex = reservedIndex });
+            line.Jobs.Add(new Slot { Def = def, Elapsed = 0f, ReservedIndex = reservedIndex, Owner = owner });
             OnChanged?.Invoke();
             return true;
         }
@@ -92,7 +94,8 @@ namespace RTSCL.World.Unity
                 var jobs = kvp.Value.Jobs;
                 if (jobs.Count == 0) continue;
                 var active = jobs[0];
-                active.Elapsed += dt;
+                // Per-owner training-speed upgrade makes elapsed time accrue faster.
+                active.Elapsed += dt * TrainingSpeed.Get(active.Owner);
                 if (active.Elapsed >= active.Def.SpawnDuration)
                 {
                     done ??= new List<(Vector2Int, GoblinUnitDefinition, ushort)>();

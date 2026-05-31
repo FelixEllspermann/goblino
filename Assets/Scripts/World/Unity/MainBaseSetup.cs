@@ -103,6 +103,7 @@ namespace RTSCL.World.Unity
             // Net-state setup for this world.
             GoblinNetRegistry.Reset();
             PlayerUpgrades.Reset();
+            TrainingSpeed.Clear();
             HarvestReservations.Clear();
             RallyPoints.Clear();
             BotEconomy.Reset();

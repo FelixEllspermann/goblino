@@ -23,5 +23,8 @@ MonoBehaviour:
   ProvidesUpgrades:
   - {fileID: 11400000, guid: 5f68ed58744cfd4448526271420d022e, type: 2}
   - {fileID: 11400000, guid: e8d0500b522eb244a9c6cfa950d52caf, type: 2}
+  - {fileID: 11400000, guid: d813597fd98e13e45b2c96204d3081c5, type: 2}
+  - {fileID: 11400000, guid: 5484f6cd14513e547941f046812d0fc1, type: 2}
+  - {fileID: 11400000, guid: 5aeaf02f736acd3429e1c7a2daeaff31, type: 2}
   Category: 0
   Requires: []

@@ -111,7 +111,7 @@ namespace RTSCL.World.Unity
         public static void ApplyTrainUnit(Vector2Int buildingOrigin, GoblinUnitDefinition def, ulong owner, ushort reservedLocalIndex)
         {
             if (def == null) return;
-            GoblinProduction.TryEnqueue(buildingOrigin, def, reservedLocalIndex);
+            GoblinProduction.TryEnqueue(buildingOrigin, def, reservedLocalIndex, owner);
         }
 
         /// <summary>Applies an attack command on a remote client: routes attacker to target.
@@ -160,7 +160,7 @@ namespace RTSCL.World.Unity
             }
             if (PlayerUpgrades.IsPurchased(owner, kind)) return;
             PlayerUpgrades.MarkPurchased(owner, kind);
-            UpgradeEffects.ApplyToOwnedUnits(owner, kind);
+            UpgradeEffects.OnPurchased(owner, kind);
         }
 
         // ------------- Top-level dispatcher -------------

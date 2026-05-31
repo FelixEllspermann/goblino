@@ -23,5 +23,9 @@ MonoBehaviour:
   ProvidesUpgrades:
   - {fileID: 11400000, guid: 4c8d0c3a3f72f064781f01044028bdbe, type: 2}
   - {fileID: 11400000, guid: 45acee9168b9eaf4fa7b9caf7f985c13, type: 2}
+  - {fileID: 11400000, guid: 1226b3fbb9bf2fd49bd9dbcd443c2a96, type: 2}
+  - {fileID: 11400000, guid: a00af1f2ad5a4604e8546a9eece3cf44, type: 2}
+  - {fileID: 11400000, guid: 983ce8980e41e634594726368b73682a, type: 2}
+  - {fileID: 11400000, guid: ee04427b90aa12543847123207d37f09, type: 2}
   Category: 0
   Requires: []

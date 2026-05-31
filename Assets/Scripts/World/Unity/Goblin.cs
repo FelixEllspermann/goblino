@@ -214,8 +214,24 @@ namespace RTSCL.World.Unity
             HarvestSpeedMul = Mathf.Max(0.01f, mul);
             _chopTickDuration = 2.0f / HarvestSpeedMul;
         }
-        /// <summary>Maximum resource units a goblin can carry before returning to deposit.</summary>
-        private const int MaxCarried = 10;
+        /// <summary>Maximum resource units a goblin can carry before returning to deposit. Raised by the
+        /// Mill carry-capacity upgrade.</summary>
+        public int MaxCarried { get; private set; } = 10;
+        /// <summary>Current move speed in cells/sec (base from the definition, scaled by upgrades).</summary>
+        public float MoveSpeed => _moveSpeed;
+        /// <summary>Build-progress multiplier (Mill build-speed upgrade); 1 = base rate.</summary>
+        public float BuildSpeedMul { get; private set; } = 1f;
+
+        /// <summary>Scale move speed (Mill upgrade). Applied once per purchased upgrade per unit.</summary>
+        public void MultiplyMoveSpeed(float mul) => _moveSpeed = Mathf.Max(0.1f, _moveSpeed * mul);
+        /// <summary>Scale carry capacity (Mill upgrade), rounded, min 1.</summary>
+        public void MultiplyCarryCapacity(float mul) => MaxCarried = Mathf.Max(1, Mathf.RoundToInt(MaxCarried * mul));
+        /// <summary>Scale build speed (Mill upgrade).</summary>
+        public void MultiplyBuildSpeed(float mul) => BuildSpeedMul = Mathf.Max(0.01f, BuildSpeedMul * mul);
+        /// <summary>Add flat armor points (Workshop melee-armor upgrade).</summary>
+        public void AddArmor(float amount) => Armor = Mathf.Max(0f, Armor + amount);
+        /// <summary>Add attack range in cells (Workshop ranged-range upgrade), min 1.</summary>
+        public void AddAttackRange(int cells) => AttackRange = Mathf.Max(1, AttackRange + cells);
         /// <summary>What resource kind is currently in the carry slot (Wood, Food, Stone, …).</summary>
         public ResourceKind CarriedKind { get; private set; }
         /// <summary>Current amount carried. Deposited in full to ResourceBank on reaching the Keep.</summary>
@@ -733,7 +749,8 @@ namespace RTSCL.World.Unity
                     if (_buildTimer >= BuildTickDuration)
                     {
                         _buildTimer = 0f;
-                        BuildingConstruction.AddProgress(_buildOrigin, BuildProgressPerTick, out _);
+                        int progress = Mathf.Max(1, Mathf.RoundToInt(BuildProgressPerTick * BuildSpeedMul));
+                        BuildingConstruction.AddProgress(_buildOrigin, progress, out _);
                         StartHitAnim(new Vector3Int(_buildOrigin.x, _buildOrigin.y, 0));
                     }
                     break;

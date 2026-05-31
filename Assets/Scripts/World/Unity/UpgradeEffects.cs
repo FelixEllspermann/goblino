@@ -20,6 +20,13 @@ namespace RTSCL.World.Unity
         public const float FarmerHarvestSpeedMul = 1.25f;  // +25 % harvest rate
         public const float ClubAttackDamageMul   = 1.25f;  // +25 % attack damage
         public const float ClubMaxHpMul          = 1.5f;   // +50 % max HP
+        public const float FarmerMoveSpeedMul    = 1.25f;  // +25 % move speed (farmers)
+        public const float FarmerCarryMul        = 1.5f;   // +50 % carry capacity (farmers)
+        public const float BuildSpeedMul         = 1.5f;   // +50 % construction speed (farmers)
+        public const float MeleeArmorBonus       = 5f;     // +5 flat armor points (melee units)
+        public const int   RangedRangeBonus      = 1;      // +1 attack range (ranged units)
+        public const float AllDamageMul          = 1.25f;  // +25 % attack damage (all combat units)
+        public const float UnitTrainSpeedMul     = 1.25f;  // +25 % training speed (per-owner)
 
         /// <summary>
         /// Apply a single upgrade to all currently-living units owned by <paramref name="owner"/>.
@@ -32,6 +39,16 @@ namespace RTSCL.World.Unity
                 if (g == null || g.Owner != owner) continue;
                 ApplyOne(g, kind);
             }
+        }
+
+        /// <summary>Single entry point called once when <paramref name="owner"/> purchases <paramref name="kind"/>
+        /// (player via NetCommandApplier, bot via BotController). Applies owner-level effects (training speed)
+        /// AND the per-unit effects to all currently-living units. Newly-spawned units pick up per-unit
+        /// effects later via ApplyExistingTo.</summary>
+        public static void OnPurchased(ulong owner, UpgradeKind kind)
+        {
+            if (kind == UpgradeKind.UnitTrainSpeed) TrainingSpeed.Multiply(owner, UnitTrainSpeedMul);
+            ApplyToOwnedUnits(owner, kind);
         }
 
         /// <summary>
@@ -68,6 +85,30 @@ namespace RTSCL.World.Unity
                         g.SetMaxHp(newMax, Mathf.RoundToInt(newMax * ratio));
                     }
                     break;
+
+                // --- Mill economy upgrades (farmers only) ---
+                case UpgradeKind.FarmerMoveSpeed:
+                    if (g.Kind == "FarmerGoblin") g.MultiplyMoveSpeed(FarmerMoveSpeedMul);
+                    break;
+                case UpgradeKind.FarmerCarryCapacity:
+                    if (g.Kind == "FarmerGoblin") g.MultiplyCarryCapacity(FarmerCarryMul);
+                    break;
+                case UpgradeKind.BuildSpeed:
+                    if (g.Kind == "FarmerGoblin") g.MultiplyBuildSpeed(BuildSpeedMul);
+                    break;
+
+                // --- Workshop military upgrades (by combat role, not kind, so future units inherit) ---
+                case UpgradeKind.MeleeArmor:
+                    if (!g.IsRanged && !g.IsBoat && g.AttackDamage > 0) g.AddArmor(MeleeArmorBonus);
+                    break;
+                case UpgradeKind.RangedAttackRange:
+                    if (g.IsRanged) g.AddAttackRange(RangedRangeBonus);
+                    break;
+                case UpgradeKind.AllUnitsDamage:
+                    if (g.AttackDamage > 0) g.SetAttackDamage(Mathf.RoundToInt(g.AttackDamage * AllDamageMul));
+                    break;
+
+                // UnitTrainSpeed is owner-level (handled in OnPurchased), not a per-unit stat.
             }
         }
     }

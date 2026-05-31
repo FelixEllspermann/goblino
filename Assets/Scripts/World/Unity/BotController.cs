@@ -218,7 +218,7 @@ namespace RTSCL.World.Unity
                 BotEconomy.Add(owner, ResourceKind.Food, -_farmerDef.FoodCost);
                 BotEconomy.Add(owner, ResourceKind.Wood, -_farmerDef.WoodCost);
                 BotEconomy.AddUsed(owner, _farmerDef.PopulationCost);  // reserve pop now
-                st.TrainTimer = Mathf.Max(0.1f, _farmerDef.SpawnDuration);
+                st.TrainTimer = Mathf.Max(0.1f, _farmerDef.SpawnDuration / TrainingSpeed.Get(owner));
             }
             else if (st.TrainTimer >= 0f)
             {
@@ -503,7 +503,7 @@ namespace RTSCL.World.Unity
                     BotEconomy.Add(owner, ResourceKind.Food, -def.FoodCost);
                     BotEconomy.Add(owner, ResourceKind.Wood, -def.WoodCost);
                     BotEconomy.AddUsed(owner, def.PopulationCost);
-                    st.MilTrainTimer = Mathf.Max(0.1f, def.SpawnDuration);
+                    st.MilTrainTimer = Mathf.Max(0.1f, def.SpawnDuration / TrainingSpeed.Get(owner));
                     st.PendingMil = def;
                 }
             }
@@ -663,7 +663,7 @@ namespace RTSCL.World.Unity
                 if (up.GoldCost > 0) BotEconomy.Add(owner, ResourceKind.Gold, -up.GoldCost);
                 if (up.CrystalCost > 0) BotEconomy.Add(owner, ResourceKind.Crystal, -up.CrystalCost);
                 PlayerUpgrades.MarkPurchased(owner, up.Kind);
-                UpgradeEffects.ApplyToOwnedUnits(owner, up.Kind);
+                UpgradeEffects.OnPurchased(owner, up.Kind);
                 LogBot(owner, $"researched upgrade {up.Kind}.");
             }
         }
@@ -1033,7 +1033,7 @@ namespace RTSCL.World.Unity
                     BotEconomy.Add(owner, ResourceKind.Wood, -_boatDef.WoodCost);
                     BotEconomy.Add(owner, ResourceKind.Food, -_boatDef.FoodCost);
                     BotEconomy.AddUsed(owner, _boatDef.PopulationCost);
-                    st.BoatTrainTimer = Mathf.Max(0.1f, _boatDef.SpawnDuration);
+                    st.BoatTrainTimer = Mathf.Max(0.1f, _boatDef.SpawnDuration / TrainingSpeed.Get(owner));
                 }
                 else if (st.BoatTrainTimer >= 0f)
                 {

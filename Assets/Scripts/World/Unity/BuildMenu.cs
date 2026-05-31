@@ -596,6 +596,13 @@ namespace RTSCL.World.Unity
                 UpgradeKind.ClubAttackDamage     => "Club Goblins deal more damage.",
                 UpgradeKind.ClubMaxHp            => "Club Goblins have more HP.",
                 UpgradeKind.MillBountifulHarvest => "Wheat fields you build yield +100% food (1000 instead of 500).",
+                UpgradeKind.FarmerMoveSpeed      => "Workers move 25% faster.",
+                UpgradeKind.FarmerCarryCapacity  => "Workers carry 50% more resources per trip.",
+                UpgradeKind.BuildSpeed           => "Workers construct buildings 50% faster.",
+                UpgradeKind.MeleeArmor           => "Melee units (Club, Spear) gain +5 armor.",
+                UpgradeKind.RangedAttackRange    => "Ranged units (Archer) gain +1 attack range.",
+                UpgradeKind.AllUnitsDamage       => "All combat units deal 25% more damage.",
+                UpgradeKind.UnitTrainSpeed       => "Units train 25% faster.",
                 _                                => "Permanent upgrade.",
             };
             return effect + "\nOne-time research, applies to all your units.";

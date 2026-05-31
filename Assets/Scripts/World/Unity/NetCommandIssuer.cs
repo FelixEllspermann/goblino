@@ -118,7 +118,7 @@ namespace RTSCL.World.Unity
             // Reserve the index BEFORE the local enqueue so the counter is bumped identically on all clients.
             ushort reserved = GoblinNetRegistry.NextLocalIndex(owner);
             // Local-immediate: enqueue production with the reserved index (starts now or waits in line).
-            GoblinProduction.TryEnqueue(buildingOrigin, def, reserved);
+            GoblinProduction.TryEnqueue(buildingOrigin, def, reserved, owner);
             NetCommandBridge.Send(NetWireFormat.PackCmdTrainUnit(buildingOrigin.x, buildingOrigin.y, idx, owner, reserved));
         }
 
