@@ -105,6 +105,8 @@ namespace RTSCL.World.Unity
             PlayerUpgrades.Reset();
             TrainingSpeed.Clear();
             SightRange.Clear();
+            TowerPower.Clear();
+            WallStrength.Clear();
             WallRegistry.Clear();
             HarvestReservations.Clear();
             RallyPoints.Clear();
@@ -116,6 +118,7 @@ namespace RTSCL.World.Unity
             if (WorldStartContext.IsSolo)
                 WorldStartContext.GetPlayerColor = SoloBotColor;
             NetworkCatalog.PopulateFromCatalog(_catalog);
+            UpgradeCatalog.PopulateFromCatalog(_catalog);   // kind → def (MaxLevel + per-level costs)
             // Wire refs so NetCommandApplier can call PlaceForce / SpawnByKindAroundFootprint
             // without a direct reference to these MonoBehaviours (assembly-boundary constraint).
             NetCommandApplier.Placer = _buildingPlacer;

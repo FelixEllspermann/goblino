@@ -65,6 +65,9 @@ namespace RTSCL.World.Unity
             public Button Btn;
             public Image Bg;
             public CanvasGroup CostGroup;
+            public GameObject Root;                 // whole card (hidden when a single/maxed upgrade is done)
+            public Text Label;                      // name label (shows "(Lv n/max)" for leveled upgrades)
+            public int ShownLevel = -1;             // last level rendered, so cost/label rebuild only on change
         }
 
         private static readonly Color BgEnabled  = new(0.18f, 0.18f, 0.22f, 0.95f);
@@ -261,7 +264,7 @@ namespace RTSCL.World.Unity
 
         private (BuildingDefinition, CanvasGroup, Button, Image) MakeBuildCard(BuildingDefinition def)
         {
-            var (card, bg, btn, costGroup) = MakeCardShell(def.DisplayName, BuildingTooltip(def), () => OnBuildCardClicked(def));
+            var (card, bg, btn, costGroup, _) = MakeCardShell(def.DisplayName, BuildingTooltip(def), () => OnBuildCardClicked(def));
             AddCost(costGroup.transform, ResourceKind.Wood, def.WoodCost);
             AddCost(costGroup.transform, ResourceKind.Stone, def.StoneCost);
             return (def, costGroup, btn, bg);
@@ -351,19 +354,17 @@ namespace RTSCL.World.Unity
 
         private ActionCard MakeUnitCard(GoblinUnitDefinition u)
         {
-            var (card, bg, btn, costGroup) = MakeCardShell(u.DisplayName, UnitTooltip(u), () => OnTrainClicked(u));
+            var (card, bg, btn, costGroup, label) = MakeCardShell(u.DisplayName, UnitTooltip(u), () => OnTrainClicked(u));
             AddCost(costGroup.transform, ResourceKind.Wood, u.WoodCost);
             AddCost(costGroup.transform, ResourceKind.Food, u.FoodCost);
-            return new ActionCard { Unit = u, Btn = btn, Bg = bg, CostGroup = costGroup };
+            return new ActionCard { Unit = u, Btn = btn, Bg = bg, CostGroup = costGroup, Root = card, Label = label };
         }
 
         private ActionCard MakeUpgradeCard(UpgradeDefinition up)
         {
-            var (card, bg, btn, costGroup) = MakeCardShell(up.DisplayName, UpgradeTooltip(up), () => OnUpgradeClicked(up));
-            AddCost(costGroup.transform, ResourceKind.Iron, up.IronCost);
-            AddCost(costGroup.transform, ResourceKind.Gold, up.GoldCost);
-            AddCost(costGroup.transform, ResourceKind.Crystal, up.CrystalCost);
-            return new ActionCard { Upgrade = up, Btn = btn, Bg = bg, CostGroup = costGroup };
+            var (card, bg, btn, costGroup, label) = MakeCardShell(up.DisplayName, UpgradeTooltip(up), () => OnUpgradeClicked(up));
+            // Cost row is (re)built per current level in RefreshActions.
+            return new ActionCard { Upgrade = up, Btn = btn, Bg = bg, CostGroup = costGroup, Root = card, Label = label };
         }
 
         private void OnTrainClicked(GoblinUnitDefinition unit)
@@ -385,13 +386,15 @@ namespace RTSCL.World.Unity
             if (upgrade == null) return;
             if (BuildingConstruction.IsUnderConstruction(_buildingOrigin)) return;   // not built yet
             ulong owner = WorldStartContext.LocalPlayer;
-            if (PlayerUpgrades.IsPurchased(owner, upgrade.Kind)) return;
-            if (ResourceBank.Get(ResourceKind.Iron) < upgrade.IronCost) return;
-            if (ResourceBank.Get(ResourceKind.Gold) < upgrade.GoldCost) return;
-            if (ResourceBank.Get(ResourceKind.Crystal) < upgrade.CrystalCost) return;
-            if (upgrade.IronCost > 0) ResourceBank.Add(ResourceKind.Iron, -upgrade.IronCost);
-            if (upgrade.GoldCost > 0) ResourceBank.Add(ResourceKind.Gold, -upgrade.GoldCost);
-            if (upgrade.CrystalCost > 0) ResourceBank.Add(ResourceKind.Crystal, -upgrade.CrystalCost);
+            int next = PlayerUpgrades.Level(owner, upgrade.Kind) + 1;
+            if (next > Mathf.Max(1, upgrade.MaxLevel)) return;                        // already maxed
+            int wood = upgrade.WoodFor(next), iron = upgrade.IronFor(next), gold = upgrade.GoldFor(next), crystal = upgrade.CrystalFor(next);
+            if (ResourceBank.Wood < wood || ResourceBank.Get(ResourceKind.Iron) < iron
+                || ResourceBank.Get(ResourceKind.Gold) < gold || ResourceBank.Get(ResourceKind.Crystal) < crystal) return;
+            if (wood > 0)    ResourceBank.AddWood(-wood);
+            if (iron > 0)    ResourceBank.Add(ResourceKind.Iron, -iron);
+            if (gold > 0)    ResourceBank.Add(ResourceKind.Gold, -gold);
+            if (crystal > 0) ResourceBank.Add(ResourceKind.Crystal, -crystal);
             NetCommandIssuer.IssuePurchaseUpgrade(upgrade.Kind, owner);
             RefreshActions();
         }
@@ -413,11 +416,29 @@ namespace RTSCL.World.Unity
                 }
                 else
                 {
-                    bool owned = PlayerUpgrades.IsPurchased(owner, c.Upgrade.Kind);
-                    enabled = !owned
-                              && ResourceBank.Get(ResourceKind.Iron) >= c.Upgrade.IronCost
-                              && ResourceBank.Get(ResourceKind.Gold) >= c.Upgrade.GoldCost
-                              && ResourceBank.Get(ResourceKind.Crystal) >= c.Upgrade.CrystalCost;
+                    int max = Mathf.Max(1, c.Upgrade.MaxLevel);
+                    int lvl = PlayerUpgrades.Level(owner, c.Upgrade.Kind);
+                    if (lvl >= max)   // fully researched → hide the card (don't show finished upgrades)
+                    {
+                        if (c.Root != null) c.Root.SetActive(false);
+                        continue;
+                    }
+                    if (c.Root != null && !c.Root.activeSelf) c.Root.SetActive(true);
+                    int next = lvl + 1;
+                    int wood = c.Upgrade.WoodFor(next), iron = c.Upgrade.IronFor(next),
+                        gold = c.Upgrade.GoldFor(next), crystal = c.Upgrade.CrystalFor(next);
+                    // Rebuild the cost row + level label only when the level actually changed (avoids churn).
+                    if (c.ShownLevel != lvl)
+                    {
+                        c.ShownLevel = lvl;
+                        RebuildUpgradeCost(c.CostGroup, wood, iron, gold, crystal);
+                        if (c.Label != null)
+                            c.Label.text = max > 1 ? $"{c.Upgrade.DisplayName}  (Lv {next}/{max})" : c.Upgrade.DisplayName;
+                    }
+                    enabled = ResourceBank.Wood >= wood
+                              && ResourceBank.Get(ResourceKind.Iron) >= iron
+                              && ResourceBank.Get(ResourceKind.Gold) >= gold
+                              && ResourceBank.Get(ResourceKind.Crystal) >= crystal;
                 }
                 c.Btn.interactable = enabled;
                 c.Bg.color = enabled ? BgEnabled : BgDisabled;
@@ -451,7 +472,7 @@ namespace RTSCL.World.Unity
 
         // A card shell: bg + button + name label + an (empty) cost row. Returns the cost row's transform
         // (via its CanvasGroup) so the caller appends cost icons.
-        private (GameObject card, Image bg, Button btn, CanvasGroup costGroup) MakeCardShell(string title, string tooltip, UnityEngine.Events.UnityAction onClick)
+        private (GameObject card, Image bg, Button btn, CanvasGroup costGroup, Text label) MakeCardShell(string title, string tooltip, UnityEngine.Events.UnityAction onClick)
         {
             var card = new GameObject($"Card_{title}", typeof(RectTransform), typeof(Image), typeof(Button));
             card.transform.SetParent(_gridContent, false);
@@ -487,7 +508,7 @@ namespace RTSCL.World.Unity
             var chlg = costGo.GetComponent<HorizontalLayoutGroup>();
             chlg.spacing = 6; chlg.childForceExpandHeight = false; chlg.childForceExpandWidth = false;
             chlg.childControlHeight = true; chlg.childControlWidth = true;
-            return (card, bg, btn, costGroup);
+            return (card, bg, btn, costGroup, nameTxt);
         }
 
         private Button MakeTab(string label, UnityEngine.Events.UnityAction onClick)
@@ -508,6 +529,18 @@ namespace RTSCL.World.Unity
             var btn = go.GetComponent<Button>();
             if (onClick != null) btn.onClick.AddListener(onClick);
             return btn;
+        }
+
+        // Rebuild an upgrade card's cost row to reflect the current level's price.
+        private void RebuildUpgradeCost(CanvasGroup costGroup, int wood, int iron, int gold, int crystal)
+        {
+            if (costGroup == null) return;
+            var t = costGroup.transform;
+            for (int i = t.childCount - 1; i >= 0; i--) Destroy(t.GetChild(i).gameObject);
+            AddCost(t, ResourceKind.Wood, wood);
+            AddCost(t, ResourceKind.Iron, iron);
+            AddCost(t, ResourceKind.Gold, gold);
+            AddCost(t, ResourceKind.Crystal, crystal);
         }
 
         private void AddCost(Transform parent, ResourceKind kind, int amount)
@@ -607,6 +640,8 @@ namespace RTSCL.World.Unity
                 UpgradeKind.AllUnitsDamage       => "All combat units deal 25% more damage.",
                 UpgradeKind.UnitTrainSpeed       => "Units train 25% faster.",
                 UpgradeKind.SightRange           => "All your units and buildings see 25% farther.",
+                UpgradeKind.WallHp               => "Your walls have +50% HP (existing + future).",
+                UpgradeKind.TowerDamage          => "Your towers deal +50% arrow damage.",
                 _                                => "Permanent upgrade.",
             };
             return effect + "\nOne-time research, applies to all your units.";

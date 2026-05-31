@@ -28,6 +28,8 @@ namespace RTSCL.World.Unity
         public const float AllDamageMul          = 1.25f;  // +25 % attack damage (all combat units)
         public const float UnitTrainSpeedMul     = 1.25f;  // +25 % training speed (per-owner)
         public const float SightRangeMul         = 1.25f;  // +25 % vision radius (per-owner)
+        public const float WallHpMul             = 1.5f;   // +50 % wall HP (per-owner)
+        public const float TowerDamageMul        = 1.5f;   // +50 % tower damage (per-owner)
 
         /// <summary>
         /// Apply a single upgrade to all currently-living units owned by <paramref name="owner"/>.
@@ -48,8 +50,16 @@ namespace RTSCL.World.Unity
         /// effects later via ApplyExistingTo.</summary>
         public static void OnPurchased(ulong owner, UpgradeKind kind)
         {
-            if (kind == UpgradeKind.UnitTrainSpeed) TrainingSpeed.Multiply(owner, UnitTrainSpeedMul);
-            if (kind == UpgradeKind.SightRange)     SightRange.Multiply(owner, SightRangeMul);
+            switch (kind)
+            {
+                case UpgradeKind.UnitTrainSpeed: TrainingSpeed.Multiply(owner, UnitTrainSpeedMul); break;
+                case UpgradeKind.SightRange:     SightRange.Multiply(owner, SightRangeMul); break;
+                case UpgradeKind.TowerDamage:    TowerPower.Multiply(owner, TowerDamageMul); break;
+                case UpgradeKind.WallHp:
+                    WallStrength.Multiply(owner, WallHpMul);
+                    WallRegistry.ApplyHpMultiplierForOwner(owner, WallHpMul);   // bump existing walls too
+                    break;
+            }
             ApplyToOwnedUnits(owner, kind);
         }
 
@@ -61,8 +71,9 @@ namespace RTSCL.World.Unity
         public static void ApplyExistingTo(Goblin g)
         {
             if (g == null) return;
-            foreach (var kind in PlayerUpgrades.AllFor(g.Owner))
-                ApplyOne(g, kind);
+            // Apply each held upgrade once per LEVEL (additive effects like archer range scale with level).
+            foreach (var (kind, level) in PlayerUpgrades.AllForWithLevel(g.Owner))
+                for (int i = 0; i < level; i++) ApplyOne(g, kind);
         }
 
         /// <summary>Apply a single upgrade effect to one goblin. Guards on g.Kind so Farmer upgrades don't affect Clubs and vice versa.</summary>

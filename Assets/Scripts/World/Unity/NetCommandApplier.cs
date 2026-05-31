@@ -158,8 +158,8 @@ namespace RTSCL.World.Unity
                 Debug.LogWarning($"[Net] ApplyPurchaseUpgrade dropped: owner {owner} != sender {sender}");
                 return;
             }
-            if (PlayerUpgrades.IsPurchased(owner, kind)) return;
-            PlayerUpgrades.MarkPurchased(owner, kind);
+            if (PlayerUpgrades.Level(owner, kind) >= UpgradeCatalog.MaxLevel(kind)) return;   // maxed
+            PlayerUpgrades.LevelUp(owner, kind);
             UpgradeEffects.OnPurchased(owner, kind);
         }
 

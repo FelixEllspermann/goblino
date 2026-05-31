@@ -169,11 +169,11 @@ namespace RTSCL.World.Unity
         /// then broadcasts CmdPurchaseUpgrade. Guards against double-purchase.</summary>
         public static void IssuePurchaseUpgrade(UpgradeKind kind, ulong owner)
         {
-            if (PlayerUpgrades.IsPurchased(owner, kind)) return;
+            if (PlayerUpgrades.Level(owner, kind) >= UpgradeCatalog.MaxLevel(kind)) return;   // maxed
 
-            // Local-immediate: mark + apply to all owned units.
-            PlayerUpgrades.MarkPurchased(owner, kind);
-            UpgradeEffects.ApplyToOwnedUnits(owner, kind);
+            // Local-immediate: level up + apply this purchase (owner-level effects + per-unit).
+            PlayerUpgrades.LevelUp(owner, kind);
+            UpgradeEffects.OnPurchased(owner, kind);
 
             NetCommandBridge.Send(NetWireFormat.PackCmdPurchaseUpgrade((byte)kind, owner));
         }

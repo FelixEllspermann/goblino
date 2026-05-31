@@ -360,9 +360,13 @@ namespace RTSCL.World.Unity
             // Defensive buildings (towers) auto-fire arrows once built.
             if (def.AttackDamage > 0 && def.AttackRange > 0 && def.ProjectileSprite != null)
                 TowerCombat.AttachTo(go, origin, def.Footprint, owner, def);
-            // Walls block movement + auto-tile their sprite from neighbours.
+            // Walls block movement + auto-tile their sprite from neighbours; the owner's Wall-HP upgrade
+            // makes freshly-placed walls tougher.
             if (def.WallCornerSprite != null)
+            {
+                BuildingHP.ScaleMax(origin, WallStrength.Get(owner));
                 WallSegment.AttachTo(go, origin, def);
+            }
             if (requireConstruction) BuildingConstruction.Register(origin, go);
             else if (WorldStartContext.IsSolo && owner != 0UL) BotEconomy.AddCap(owner, def.PopulationProvided); // bot instant-place
             else PopulationManager.AddCap(def.PopulationProvided); // instant-place (e.g. starting keep)

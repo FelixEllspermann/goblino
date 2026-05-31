@@ -32,5 +32,16 @@ namespace RTSCL.World.Unity
         /// <summary>Enum tag identifying which effect to apply in UpgradeEffects.
         /// Cast to byte on the wire; keep values &lt; 256.</summary>
         public UpgradeKind Kind;
+
+        /// <summary>How many times this upgrade can be purchased (1 = single one-time upgrade; &gt;1 = leveled,
+        /// e.g. archer range L1→L2→L3). The cost of each level scales: level N costs the base cost × N.</summary>
+        [Tooltip("Number of purchasable levels (1 = one-time). Cost of level N = base cost × N.")]
+        public int MaxLevel = 1;
+
+        // Cost to buy a given level (1-based). Level 1 = base cost, level 2 = 2×, level 3 = 3× …
+        public int WoodFor(int level)    => WoodCost    * Mathf.Max(1, level);
+        public int IronFor(int level)    => IronCost    * Mathf.Max(1, level);
+        public int GoldFor(int level)    => GoldCost    * Mathf.Max(1, level);
+        public int CrystalFor(int level) => CrystalCost * Mathf.Max(1, level);
     }
 }

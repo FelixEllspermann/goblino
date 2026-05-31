@@ -56,6 +56,16 @@ namespace RTSCL.World.Unity
             _hp[originCell] = (v.max, cur);
         }
 
+        /// <summary>Scale a building's max HP (and current proportionally) by <paramref name="factor"/>.
+        /// Used by the Wall-HP upgrade. No-op for unknown origins.</summary>
+        public static void ScaleMax(Vector2Int originCell, float factor)
+        {
+            if (factor <= 0f || !_hp.TryGetValue(originCell, out var v)) return;
+            int newMax = Mathf.Max(1, Mathf.RoundToInt(v.max * factor));
+            int newCur = Mathf.Clamp(Mathf.RoundToInt(v.current * factor), 1, newMax);
+            _hp[originCell] = (newMax, newCur);
+        }
+
         /// <summary>Unregister a destroyed building. Call before or alongside GameObject.Destroy.</summary>
         public static void Remove(Vector2Int originCell) => _hp.Remove(originCell);
 

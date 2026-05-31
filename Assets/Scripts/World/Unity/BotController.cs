@@ -680,17 +680,20 @@ namespace RTSCL.World.Unity
 
             foreach (var up in def.ProvidesUpgrades)
             {
-                if (up == null || PlayerUpgrades.IsPurchased(owner, up.Kind)) continue;
-                if (BotEconomy.Get(owner, ResourceKind.Iron) < up.IronCost) continue;
-                if (BotEconomy.Get(owner, ResourceKind.Gold) < up.GoldCost) continue;
-                if (BotEconomy.Get(owner, ResourceKind.Crystal) < up.CrystalCost) continue;
+                if (up == null) continue;
+                int next = PlayerUpgrades.Level(owner, up.Kind) + 1;
+                if (next > Mathf.Max(1, up.MaxLevel)) continue;                // maxed (handles leveled upgrades)
+                int iron = up.IronFor(next), gold = up.GoldFor(next), crystal = up.CrystalFor(next);
+                if (BotEconomy.Get(owner, ResourceKind.Iron) < iron) continue;
+                if (BotEconomy.Get(owner, ResourceKind.Gold) < gold) continue;
+                if (BotEconomy.Get(owner, ResourceKind.Crystal) < crystal) continue;
 
-                if (up.IronCost > 0) BotEconomy.Add(owner, ResourceKind.Iron, -up.IronCost);
-                if (up.GoldCost > 0) BotEconomy.Add(owner, ResourceKind.Gold, -up.GoldCost);
-                if (up.CrystalCost > 0) BotEconomy.Add(owner, ResourceKind.Crystal, -up.CrystalCost);
-                PlayerUpgrades.MarkPurchased(owner, up.Kind);
+                if (iron > 0)    BotEconomy.Add(owner, ResourceKind.Iron, -iron);
+                if (gold > 0)    BotEconomy.Add(owner, ResourceKind.Gold, -gold);
+                if (crystal > 0) BotEconomy.Add(owner, ResourceKind.Crystal, -crystal);
+                PlayerUpgrades.LevelUp(owner, up.Kind);
                 UpgradeEffects.OnPurchased(owner, up.Kind);
-                LogBot(owner, $"researched upgrade {up.Kind}.");
+                LogBot(owner, $"researched upgrade {up.Kind} (level {next}).");
             }
         }
 

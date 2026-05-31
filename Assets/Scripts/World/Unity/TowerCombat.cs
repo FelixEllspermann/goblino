@@ -52,7 +52,9 @@ namespace RTSCL.World.Unity
             var target = FindTarget();
             if (target == null) return;
             _timer = _interval;
-            Arrow.SpawnFromTower(_muzzle, target, _damage, _owner, dealsDamage: true, _projectile);
+            // Owner's Tower-Damage upgrade scales the shot (read live → applies to existing towers too).
+            int dmg = Mathf.Max(1, Mathf.RoundToInt(_damage * TowerPower.Get(_owner)));
+            Arrow.SpawnFromTower(_muzzle, target, dmg, _owner, dealsDamage: true, _projectile);
         }
 
         // Nearest living hostile unit within range AND in vision: a neutral monster, or any unit of a

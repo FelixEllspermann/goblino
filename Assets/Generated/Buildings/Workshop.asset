@@ -27,5 +27,14 @@ MonoBehaviour:
   - {fileID: 11400000, guid: a00af1f2ad5a4604e8546a9eece3cf44, type: 2}
   - {fileID: 11400000, guid: 983ce8980e41e634594726368b73682a, type: 2}
   - {fileID: 11400000, guid: ee04427b90aa12543847123207d37f09, type: 2}
+  - {fileID: 11400000, guid: f8467bad1089cc540a6d6c89672e42ff, type: 2}
+  - {fileID: 11400000, guid: 6da16ef8de3d1d442880002fabdf0c24, type: 2}
   Category: 0
   Requires: []
+  AttackDamage: 0
+  AttackRange: 0
+  AttackInterval: 1.5
+  ProjectileSprite: {fileID: 0}
+  WallCornerSprite: {fileID: 0}
+  WallHorizontalSprite: {fileID: 0}
+  WallVerticalSprite: {fileID: 0}

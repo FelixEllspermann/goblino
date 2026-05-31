@@ -10,13 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: dfebe28c184de0141b987e458b0a493c, type: 3}
-  m_Name: Upgrade_RangedRange
+  m_Name: Upgrade_TowerDamage
   m_EditorClassIdentifier: RTSCL.World.Unity::RTSCL.World.Unity.UpgradeDefinition
-  DisplayName: Long Shafts
+  DisplayName: Sharpened Bolts
   Icon: {fileID: 0}
   WoodCost: 0
   IronCost: 150
-  GoldCost: 150
+  GoldCost: 100
   CrystalCost: 0
-  Kind: 8
-  MaxLevel: 3
+  Kind: 13
+  MaxLevel: 1

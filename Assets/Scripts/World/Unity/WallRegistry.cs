@@ -35,6 +35,18 @@ namespace RTSCL.World.Unity
             if (_walls.TryGetValue(cell, out var seg) && seg != null) seg.RecomputeSprite();
         }
 
+        /// <summary>Scale the max HP of every wall owned by <paramref name="owner"/> (Wall-HP upgrade,
+        /// retroactive to walls already placed). Owner is read from each wall's BuildingOwner.</summary>
+        public static void ApplyHpMultiplierForOwner(ulong owner, float factor)
+        {
+            foreach (var kv in _walls)
+            {
+                if (kv.Value == null) continue;
+                var bo = kv.Value.GetComponent<BuildingOwner>();
+                if (bo != null && bo.Owner == owner) BuildingHP.ScaleMax(kv.Key, factor);
+            }
+        }
+
         /// <summary>Wipe all wall cells. Called when a new world is generated.</summary>
         public static void Clear() => _walls.Clear();
     }

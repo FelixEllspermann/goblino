@@ -22,5 +22,8 @@ namespace RTSCL.World.Unity
         UnitTrainSpeed      = 10, // Units train 25 % faster (per-owner production speed)
         // --- Keep (main base) ---
         SightRange          = 11, // +25 % vision radius for all your units + buildings (per-owner)
+        // --- Workshop (defensive building upgrades, owner-level) ---
+        WallHp              = 12, // +50 % wall HP (existing + future walls)
+        TowerDamage         = 13, // +50 % tower arrow damage
     }
 }
