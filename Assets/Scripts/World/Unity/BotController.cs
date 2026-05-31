@@ -67,6 +67,7 @@ namespace RTSCL.World.Unity
             public float BuildElapsed;       // seconds since current build started (watchdog)
             public int WheatBuilt;           // completed wheat fields (they convert to decorations, so CountOwned can't track them)
             public int AssignCycle;
+            public int OreCycle;     // rotates the single ore slot across gold/iron/crystal
             public float StatusLogTimer;     // throttle for the periodic status log
 
             // Phase 3: the bot's own exploration of the map (it only "knows" what it has seen).
@@ -193,20 +194,19 @@ namespace RTSCL.World.Unity
             // Don't assign current scouts to harvest.
             idleFarmers.RemoveAll(f => st.Scouts.Contains(f));
 
-            // 3. Assign idle farmers to harvest. Round-robin over ALL six resource kinds (wood/food/stone
-            // weighted heavier since they're the staples, plus gold/iron/crystal ores for upgrades). Falls
-            // back to any nearby node if the rolled kind isn't reachable.
+            // 3. Assign idle farmers to harvest. FOOD + WOOD are the staples (food fuels military — units
+            // cost 90-110 food each — and wood builds), so they get the lion's share; stone for defenses;
+            // only a single rotating ore slot for upgrades (over-mining ore was starving the army of food).
+            // Falls back to any nearby node if the rolled kind isn't reachable.
             foreach (var f in idleFarmers)
             {
-                ResourceKind kind = (st.AssignCycle++ % 8) switch
-                {
-                    0 or 1 => ResourceKind.Wood,
-                    2 or 3 => ResourceKind.Food,
-                    4      => ResourceKind.Stone,
-                    5      => ResourceKind.Gold,
-                    6      => ResourceKind.Iron,
-                    _      => ResourceKind.Crystal,
-                };
+                int c = st.AssignCycle++ % 8;
+                ResourceKind kind =
+                    c < 3 ? ResourceKind.Food :                          // 3/8 food
+                    c < 6 ? ResourceKind.Wood :                          // 3/8 wood
+                    c == 6 ? ResourceKind.Stone :                        // 1/8 stone
+                    (st.OreCycle++ % 3) switch {                          // 1/8 ore, rotating
+                        0 => ResourceKind.Gold, 1 => ResourceKind.Iron, _ => ResourceKind.Crystal };
                 if (TryFindNode(keepWorld, kind, out var cell) || TryFindNode(keepWorld, null, out cell))
                     f.SetHarvestCommand(cell);
             }
@@ -352,27 +352,20 @@ namespace RTSCL.World.Unity
             if (st.PlanTargetSize == 0)
             {
                 st.PlanTimer += dt;
-                if (SeenNeutralMonster(owner, st, out var prey))
+                bool monster = SeenNeutralMonster(owner, st, out var prey);
+                st.Raiding = monster;   // raids train Speargoblins (bonus vs monsters)
+                if (monster)
                 {
-                    if (!st.Raiding)
-                    {
-                        st.Raiding = true;
-                        LogBot(owner, $"RAIDING a spotted monster; sending {military}, training to {_raidSquadSize}" + (hasBarracks ? "" : " (NO BARRACKS yet!)"));
-                    }
-                    foreach (var g in army) g.SetAttackCommand(prey);
-                    if (military < _raidSquadSize)
-                        TrainMilitary(owner, st, dt, hasBarracks, barracks, military, _raidSquadSize);
+                    foreach (var g in army) g.SetAttackCommand(prey);   // raid with the current army
                 }
-                else
+                else if (st.PlanTimer >= _attackCooldown && st.EnemyFound && st.DiscoveredEnemyBases.Count > 0)
                 {
-                    st.Raiding = false;
-                    // Maintain a standing army between attacks so the bot always has defenders + an attack
-                    // core ready (previously it trained zero military during downtime → near-empty base).
-                    if (military < _standingArmy)
-                        TrainMilitary(owner, st, dt, hasBarracks, barracks, military, _standingArmy);
-                    if (st.PlanTimer >= _attackCooldown && st.EnemyFound && st.DiscoveredEnemyBases.Count > 0)
-                        RollPlan(owner, st);
+                    RollPlan(owner, st);
                 }
+                // ALWAYS keep growing the standing army during downtime (raids no longer cap it at the
+                // tiny raid-squad size) so the bot always has defenders + an attack core ready.
+                if (st.PlanTargetSize == 0 && military < _standingArmy)
+                    TrainMilitary(owner, st, dt, hasBarracks, barracks, military, _standingArmy);
                 return;
             }
 
