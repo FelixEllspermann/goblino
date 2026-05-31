@@ -51,12 +51,26 @@ namespace RTSCL.World.Unity
         private bool _mouseDown;
         private bool _isDragBox;
 
+        // Control groups (Ctrl+digit assigns the current selection; digit recalls it; quick double-tap of
+        // the same digit also centres the camera on the group). Index 0..9 maps to keys 1..9, 0.
+        private static readonly Key[] DigitKeys =
+        {
+            Key.Digit1, Key.Digit2, Key.Digit3, Key.Digit4, Key.Digit5,
+            Key.Digit6, Key.Digit7, Key.Digit8, Key.Digit9, Key.Digit0,
+        };
+        private readonly List<Goblin>[] _groups = new List<Goblin>[DigitKeys.Length];
+        private int _lastGroupTapKey = -1;
+        private float _lastGroupTapTime = -1f;
+        private const float DoubleTapWindow = 0.35f;
+        private RTSCamera2D _rtsCam;
+
         // Gate: only the local player's goblins can be selected or commanded.
         private static bool IsLocalOwner(Goblin g) =>
             g != null && (g.Owner == WorldStartContext.LocalPlayer || g.Owner == 0UL);
 
         private void Update()
         {
+            HandleControlGroups();
             if (_camera == null || Mouse.current == null) return;
 
             // If user is mid-placement, leave clicks to BuildingPlacer
@@ -271,6 +285,48 @@ namespace RTSCL.World.Unity
                 g.SetSelected(true);
             }
             OnSelectionChanged?.Invoke();
+        }
+
+        // Ctrl+digit = save the current selection as that control group; digit = recall it (replacing the
+        // selection); a quick second tap of the same digit also centres the camera on the group.
+        private void HandleControlGroups()
+        {
+            var kb = Keyboard.current;
+            if (kb == null) return;
+            bool ctrl = kb.leftCtrlKey.isPressed || kb.rightCtrlKey.isPressed;
+            for (int i = 0; i < DigitKeys.Length; i++)
+            {
+                if (!kb[DigitKeys[i]].wasPressedThisFrame) continue;
+                if (ctrl)
+                {
+                    _groups[i] = new List<Goblin>(_selected);   // assign (empty selection clears the group)
+                }
+                else
+                {
+                    var grp = _groups[i];
+                    if (grp == null) return;
+                    grp.RemoveAll(g => g == null || g.CurrentHp <= 0 || !g.gameObject.activeInHierarchy);
+                    if (grp.Count == 0) return;
+                    SetSelection(new List<Goblin>(grp));
+                    bool doubleTap = _lastGroupTapKey == i && (Time.time - _lastGroupTapTime) <= DoubleTapWindow;
+                    _lastGroupTapKey = i; _lastGroupTapTime = Time.time;
+                    if (doubleTap) CenterCameraOnSelection();
+                }
+                return;   // handle at most one digit per frame
+            }
+        }
+
+        // Centre the camera on the centroid of the current selection (control-group double-tap).
+        private void CenterCameraOnSelection()
+        {
+            Vector3 sum = Vector3.zero; int n = 0;
+            foreach (var g in _selected) if (g != null) { sum += g.transform.position; n++; }
+            if (n == 0) return;
+            Vector3 c = sum / n;
+            if (_rtsCam == null && _camera != null) _rtsCam = _camera.GetComponent<RTSCamera2D>();
+            if (_rtsCam == null) _rtsCam = UnityEngine.Object.FindFirstObjectByType<RTSCamera2D>();
+            if (_rtsCam != null) _rtsCam.JumpTo(new Vector2(c.x, c.y));
+            else if (_camera != null) _camera.transform.position = new Vector3(c.x, c.y, _camera.transform.position.z);
         }
 
         // Issue a move command; IssueMove computes the grid formation offsets internally.
