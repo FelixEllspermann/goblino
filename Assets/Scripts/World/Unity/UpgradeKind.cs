@@ -29,5 +29,6 @@ namespace RTSCL.World.Unity
         UnlockMill          = 14,
         UnlockWorkshop      = 15,
         UnlockWheatfield    = 16, // gated: requires UnlockMill first
+        UnlockHordeHall     = 17, // unlocks the Horde Hall (Minotaurs) — costs gold + crystal
     }
 }

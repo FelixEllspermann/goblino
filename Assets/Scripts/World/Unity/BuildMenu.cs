@@ -717,6 +717,7 @@ namespace RTSCL.World.Unity
                 UpgradeKind.UnlockMill           => "Unlocks the Mill for construction.",
                 UpgradeKind.UnlockWorkshop       => "Unlocks the Workshop for construction.",
                 UpgradeKind.UnlockWheatfield     => "Unlocks the Wheat Field for construction (needs Mill researched).",
+                UpgradeKind.UnlockHordeHall      => "Unlocks the Horde Hall (trains Minotaurs).",
                 _                                => "Permanent upgrade.",
             };
             return effect + "\nOne-time research, applies to all your units.";

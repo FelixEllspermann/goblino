@@ -24,8 +24,8 @@ MonoBehaviour:
   ProvidesUpgrades: []
   Category: 1
   Requires: []
-  NeedsResearch: 0
-  ResearchKind: 0
+  NeedsResearch: 1
+  ResearchKind: 17
   AttackDamage: 0
   AttackRange: 0
   AttackInterval: 1.5
