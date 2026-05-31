@@ -396,6 +396,10 @@ namespace RTSCL.World.Unity
             {
                 var tgt = NearestHostile(g, _engageRadius);
                 if (tgt != null) { g.SetAttackCommand(tgt); continue; }   // engage hostile units in range
+                // Siege: smash the nearest enemy wall/tower near this unit — clears towers (which shoot us)
+                // and breaches walls that block the path to the base.
+                if (NearestEnemyDefenseNear(owner, g.transform.position, _engageRadius, out var defo))
+                { g.SetAttackBuildingCommand(defo); continue; }
                 int gc = CompAt(st, g.transform.position);
                 if (NearestAliveBaseOnComponent(st, g.transform.position, gc, out var bo))
                     g.SetAttackBuildingCommand(bo);                       // base reachable on foot → raze it
@@ -425,6 +429,27 @@ namespace RTSCL.World.Unity
                 st.NavalActive = true;
                 LogBot(owner, $"starting naval {(invade ? "invasion" : "scouting")} ferry → {target}.");
             }
+        }
+
+        // Nearest alive enemy DEFENSIVE building (wall or tower) within `radius` of `from`. Used so an
+        // attacking army razes the defences blocking/shooting it instead of stalling against them.
+        private bool NearestEnemyDefenseNear(ulong owner, Vector3 from, float radius, out Vector2Int origin)
+        {
+            origin = default;
+            float r2 = radius * radius, bestSq = float.MaxValue; bool found = false;
+            foreach (var kv in _placer.AllOccupied)
+            {
+                var def = kv.Value;
+                if (def == null) continue;
+                bool isDefense = def.WallCornerSprite != null || (def.AttackDamage > 0 && def.ProjectileSprite != null);
+                if (!isDefense) continue;
+                if (!_placer.TryGetBuildingOwner(kv.Key, out var o) || o == owner) continue;
+                if (!_placer.TryGetBuildingOrigin(kv.Key, out var bo)) bo = kv.Key;
+                if (!BuildingHP.TryGet(bo, out int cur, out _) || cur <= 0) continue;
+                float d = (new Vector3(bo.x + 0.5f, bo.y + 0.5f, 0f) - from).sqrMagnitude;
+                if (d <= r2 && d < bestSq) { bestSq = d; origin = bo; found = true; }
+            }
+            return found;
         }
 
         // Nearest alive discovered enemy base whose origin sits on land-component 'comp'.
