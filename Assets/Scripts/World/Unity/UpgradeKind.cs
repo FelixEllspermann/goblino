@@ -20,5 +20,7 @@ namespace RTSCL.World.Unity
         RangedAttackRange   = 8, // Ranged units (Archer) gain +1 attack range
         AllUnitsDamage      = 9, // All combat units deal 25 % more damage
         UnitTrainSpeed      = 10, // Units train 25 % faster (per-owner production speed)
+        // --- Keep (main base) ---
+        SightRange          = 11, // +25 % vision radius for all your units + buildings (per-owner)
     }
 }

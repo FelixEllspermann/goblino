@@ -603,6 +603,7 @@ namespace RTSCL.World.Unity
                 UpgradeKind.RangedAttackRange    => "Ranged units (Archer) gain +1 attack range.",
                 UpgradeKind.AllUnitsDamage       => "All combat units deal 25% more damage.",
                 UpgradeKind.UnitTrainSpeed       => "Units train 25% faster.",
+                UpgradeKind.SightRange           => "All your units and buildings see 25% farther.",
                 _                                => "Permanent upgrade.",
             };
             return effect + "\nOne-time research, applies to all your units.";

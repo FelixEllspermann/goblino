@@ -124,7 +124,7 @@ namespace RTSCL.World.Unity
             {
                 if (g == null || g.IsNeutral || !IsLocalPlayer(g.Owner)) continue;
                 var c = _fogMap.WorldToCell(g.transform.position);
-                MarkCircle(c.x, c.y, _goblinRadius);
+                MarkCircle(c.x, c.y, SightRange.Scale(_goblinRadius, g.Owner));
             }
 
             // Buildings — likewise, only the local player's buildings grant vision.
@@ -136,7 +136,7 @@ namespace RTSCL.World.Unity
                     var def = kv.Value;
                     // Keep buildings have a larger radius; all others use _buildingRadius.
                     int r = (def != null && def.name.StartsWith("Keep")) ? _keepRadius : _buildingRadius;
-                    MarkCircle(kv.Key.x, kv.Key.y, r);
+                    MarkCircle(kv.Key.x, kv.Key.y, SightRange.Scale(r, o));
                 }
             }
         }

@@ -99,7 +99,7 @@ namespace RTSCL.World.Unity
         }
 
         private readonly Dictionary<ulong, BotState> _states = new();
-        private BuildingDefinition _hutDef, _barracksDef, _dockDef, _workshopDef, _wheatDef, _millDef;
+        private BuildingDefinition _hutDef, _barracksDef, _dockDef, _workshopDef, _wheatDef, _millDef, _keepDef;
         private GoblinUnitDefinition _farmerDef, _clubDef, _archerDef, _boatDef, _spearDef;
         private WorldGeneratorBootstrap _worldSource;
         private float _t;
@@ -116,9 +116,9 @@ namespace RTSCL.World.Unity
             // Docks train boats ([0] = Boat) — used for naval scouting / invasion.
             if (_dockDef != null && _dockDef.TrainsUnits != null && _dockDef.TrainsUnits.Length > 0)
                 _boatDef = _dockDef.TrainsUnits[0];
-            var keepDef = FindBuilding(_keepName);
-            if (keepDef != null && keepDef.TrainsUnits != null && keepDef.TrainsUnits.Length > 0)
-                _farmerDef = keepDef.TrainsUnits[0];
+            _keepDef = FindBuilding(_keepName);
+            if (_keepDef != null && _keepDef.TrainsUnits != null && _keepDef.TrainsUnits.Length > 0)
+                _farmerDef = _keepDef.TrainsUnits[0];
             // Military unit defs come from the Barracks training list ([0]=Club, [1]=Archer).
             if (_barracksDef != null && _barracksDef.TrainsUnits != null)
             {
@@ -583,7 +583,8 @@ namespace RTSCL.World.Unity
         {
             monster = null;
             Vector3 keep = new(st.Keep.x + 0.5f, st.Keep.y + 0.5f, 0f);
-            int vr2 = (_visionRadius + 1) * (_visionRadius + 1);
+            int vr = Mathf.Max(1, Mathf.RoundToInt((_visionRadius + 1) * SightRange.Get(owner)));
+            int vr2 = vr * vr;
             float bestSq = float.MaxValue;
             foreach (var m in Goblin.All)
             {
@@ -641,6 +642,7 @@ namespace RTSCL.World.Unity
             // Mill: farmer harvest speed + bountiful harvest).
             TryResearchFrom(owner, st, _workshopDef, _workshopName);
             TryResearchFrom(owner, st, _millDef, "Mill");
+            TryResearchFrom(owner, st, _keepDef, _keepName);   // Keep: sight-range upgrade
         }
 
         // Buy any upgrade provided by a completed building of the given def/name that the bot can afford
@@ -738,16 +740,18 @@ namespace RTSCL.World.Unity
             if (st.Explored == null || st.Explored.GetLength(0) != world.Width || st.Explored.GetLength(1) != world.Height)
                 st.Explored = new bool[world.Width, world.Height];
 
+            float sr = SightRange.Get(owner);   // Keep sight-range upgrade widens the bot's vision too
             foreach (var g in Goblin.All)
             {
                 if (g == null || g.IsNeutral || g.Owner != owner) continue;
-                MarkExplored(st.Explored, Mathf.FloorToInt(g.transform.position.x), Mathf.FloorToInt(g.transform.position.y), _visionRadius);
+                MarkExplored(st.Explored, Mathf.FloorToInt(g.transform.position.x), Mathf.FloorToInt(g.transform.position.y),
+                             Mathf.Max(1, Mathf.RoundToInt(_visionRadius * sr)));
             }
             foreach (var kv in _placer.AllOccupied)
             {
                 if (!_placer.TryGetBuildingOwner(kv.Key, out var o) || o != owner) continue;
-                int r = (kv.Value != null && kv.Value.name.StartsWith("Keep")) ? _keepVisionRadius : _visionRadius;
-                MarkExplored(st.Explored, kv.Key.x, kv.Key.y, r);
+                int baseR = (kv.Value != null && kv.Value.name.StartsWith("Keep")) ? _keepVisionRadius : _visionRadius;
+                MarkExplored(st.Explored, kv.Key.x, kv.Key.y, Mathf.Max(1, Mathf.RoundToInt(baseR * sr)));
             }
         }
 

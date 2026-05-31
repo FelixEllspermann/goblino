@@ -27,6 +27,7 @@ namespace RTSCL.World.Unity
         public const int   RangedRangeBonus      = 1;      // +1 attack range (ranged units)
         public const float AllDamageMul          = 1.25f;  // +25 % attack damage (all combat units)
         public const float UnitTrainSpeedMul     = 1.25f;  // +25 % training speed (per-owner)
+        public const float SightRangeMul         = 1.25f;  // +25 % vision radius (per-owner)
 
         /// <summary>
         /// Apply a single upgrade to all currently-living units owned by <paramref name="owner"/>.
@@ -48,6 +49,7 @@ namespace RTSCL.World.Unity
         public static void OnPurchased(ulong owner, UpgradeKind kind)
         {
             if (kind == UpgradeKind.UnitTrainSpeed) TrainingSpeed.Multiply(owner, UnitTrainSpeedMul);
+            if (kind == UpgradeKind.SightRange)     SightRange.Multiply(owner, SightRangeMul);
             ApplyToOwnedUnits(owner, kind);
         }
 

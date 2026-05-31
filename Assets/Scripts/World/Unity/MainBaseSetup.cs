@@ -104,6 +104,7 @@ namespace RTSCL.World.Unity
             GoblinNetRegistry.Reset();
             PlayerUpgrades.Reset();
             TrainingSpeed.Clear();
+            SightRange.Clear();
             HarvestReservations.Clear();
             RallyPoints.Clear();
             BotEconomy.Reset();
