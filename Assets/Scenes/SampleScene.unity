@@ -959,6 +959,7 @@ MonoBehaviour:
   _defenseRadius: 30
   _defenseSquadSize: 4
   _raidSquadSize: 3
+  _standingArmy: 10
   _engageRadius: 8
   _attackCooldown: 300
 --- !u!114 &626648824
@@ -166227,6 +166228,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 77132853792871f498f0a6f55c91e322, type: 2}
   - {fileID: 11400000, guid: 87aaa3d4c4830484dbb3a7bd9502d961, type: 2}
   - {fileID: 11400000, guid: 4fd7a35917f30d247b098323352012df, type: 2}
+  - {fileID: 11400000, guid: 97c87519473b35e4eb485e49efc9f6b8, type: 2}
+  - {fileID: 11400000, guid: 4c9cb57bfb71a5642ade1c8f6d0a8c0d, type: 2}
   _font: {fileID: 12800000, guid: 9e2df1d63f1cf514aa45d7730f0b04cb, type: 3}
   _cardSprite: {fileID: 0}
   _resourceIcons:
