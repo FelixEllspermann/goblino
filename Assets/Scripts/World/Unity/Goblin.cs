@@ -892,6 +892,12 @@ namespace RTSCL.World.Unity
                     // the goblin returns to its starting Y, at which point it lands.
                     _dieVelocity.y += DeathGravity * Time.deltaTime;
                     transform.position += _dieVelocity * Time.deltaTime;
+                    // Flip onto its head over the rise: 0° at launch → 180° exactly at the apex
+                    // (where upward velocity hits 0), then stays upside-down all the way down.
+                    {
+                        float flip = Mathf.Clamp01(1f - _dieVelocity.y / DeathHopVelocity);
+                        transform.rotation = Quaternion.Euler(0f, 0f, 180f * flip);
+                    }
                     if (transform.position.y <= _dieStartPos.y && _dieVelocity.y <= 0f)
                     {
                         // Snap to ground, spawn burst, destroy.
@@ -1124,6 +1130,9 @@ namespace RTSCL.World.Unity
             SetSelected(false);
             // Clear any in-flight lunge so it doesn't fight the hop-arc transform writes.
             ResetHitAnim();
+            // Stop hit feedback (wobble/knockback both write the transform) so it can't fight the
+            // death arc + upside-down flip.
+            if (_hitFeedback != null) _hitFeedback.enabled = false;
             HarvestReservations.Release(this);
 
             // A sinking boat takes its passengers down with it.

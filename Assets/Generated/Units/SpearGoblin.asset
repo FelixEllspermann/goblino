@@ -21,12 +21,13 @@ MonoBehaviour:
   AttackDamage: 8
   AttackInterval: 2
   AttackRange: 2
-  MoveSpeed: 1.5
+  MoveSpeed: 1.2
   BonusVsMonstersAndMelee: 1.75
   KnockbackStrength: 0.12
   Armor: 15
+  BonusVsArmored: 1
   ProjectileSprite: {fileID: 0}
   WorldScale: 1
   WaterUnit: 0
-  SpawnDuration: 10
+  SpawnDuration: 13
   SpawnerKindName: SpearGoblin
