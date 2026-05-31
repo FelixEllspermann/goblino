@@ -18,6 +18,12 @@ namespace RTSCL.World.Unity
 
         private void Update()
         {
+            // Tick timed upgrade research; on completion apply + sync via the normal purchase path.
+            var researched = ResearchProgress.Tick(Time.deltaTime);
+            if (researched != null)
+                foreach (var (rOrigin, rOwner, rKind) in researched)
+                    NetCommandIssuer.IssuePurchaseUpgrade(rKind, rOwner);
+
             // Tick all active training jobs; returns non-null only when at least one finishes this frame.
             var done = GoblinProduction.Tick(Time.deltaTime);
             if (done == null) return;

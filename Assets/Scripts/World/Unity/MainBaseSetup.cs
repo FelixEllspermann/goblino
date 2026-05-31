@@ -107,6 +107,7 @@ namespace RTSCL.World.Unity
             SightRange.Clear();
             TowerPower.Clear();
             WallStrength.Clear();
+            ResearchProgress.Clear();
             WallRegistry.Clear();
             HarvestReservations.Clear();
             RallyPoints.Clear();

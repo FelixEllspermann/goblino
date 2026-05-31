@@ -38,6 +38,10 @@ namespace RTSCL.World.Unity
         [Tooltip("Number of purchasable levels (1 = one-time). Cost of level N = base cost × N.")]
         public int MaxLevel = 1;
 
+        /// <summary>Seconds the research takes to complete after purchase (progress bar in the actions panel).</summary>
+        [Tooltip("Seconds to research this upgrade (shown on the actions-panel progress bar).")]
+        public float ResearchDuration = 8f;
+
         /// <summary>Other upgrades that must already be purchased before this one is offered (research chain,
         /// e.g. Unlock Wheatfield requires Unlock Mill). Empty = always available once its building is built.</summary>
         [Tooltip("Upgrades that must be purchased first (research chain). Empty = no prerequisite.")]

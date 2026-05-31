@@ -433,6 +433,7 @@ namespace RTSCL.World.Unity
 
             BuildingHP.Remove(origin);
             BuildingConstruction.Remove(origin);
+            ResearchProgress.Remove(origin);   // a destroyed building cancels its in-progress research
             RallyPoints.Remove(origin);
             DockRegistry.Remove(origin);
             // Walls: drop from the pathing/auto-tile registry now (don't wait on OnDestroy) so a destroyed

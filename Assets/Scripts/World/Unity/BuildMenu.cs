@@ -41,6 +41,11 @@ namespace RTSCL.World.Unity
         private RectTransform _gridContent;
         private GridLayoutGroup _grid;
         private BuildCategory _activeCategory = BuildCategory.Economy;
+        // Actions-panel sub-tabs (shown only when a building offers BOTH units and upgrades, e.g. the Keep).
+        private enum ActionTab { Units, Upgrades }
+        private ActionTab _actionTab = ActionTab.Units;
+        private bool _actionSplit;
+        private Button _actionTabUnits, _actionTabUpgrades;
         private bool _built;
 
         // Build-mode state.
@@ -83,6 +88,7 @@ namespace RTSCL.World.Unity
             ResourceBank.OnChanged += OnResourceChanged;
             GoblinProduction.OnChanged += RefreshActions;
             BuildingConstruction.OnCompleted += OnConstructionCompleted;
+            ResearchProgress.OnChanged += OnConstructionCompleted2;
             Resolve();
         }
 
@@ -95,8 +101,12 @@ namespace RTSCL.World.Unity
             ResourceBank.OnChanged -= OnResourceChanged;
             GoblinProduction.OnChanged -= RefreshActions;
             BuildingConstruction.OnCompleted -= OnConstructionCompleted;
+            ResearchProgress.OnChanged -= OnConstructionCompleted2;
         }
 
+        // Research started/finished → refresh both the action cards and the farmer build list (a finished
+        // research can unlock a building).
+        private void OnConstructionCompleted2() { RefreshBuildAvailability(); RefreshActions(); }
         private void OnResourceChanged(ResourceKind k, int v) { RefreshBuildAvailability(); RefreshActions(); }
         private void OnConstructionCompleted(Vector2Int o) { RefreshBuildAvailability(); RefreshActions(); }
 
@@ -315,6 +325,20 @@ namespace RTSCL.World.Unity
             header.interactable = false;
             header.GetComponent<Image>().color = BgEnabled;
 
+            // Sub-tabs: a building offering BOTH units and upgrades (e.g. the Keep) splits its actions into
+            // "Units" and "Upgrades" tabs so the two card kinds don't clutter one list.
+            bool hasUnits    = _buildingDef != null && _buildingDef.TrainsUnits != null && _buildingDef.TrainsUnits.Length > 0;
+            bool hasUpgrades = _buildingDef != null && _buildingDef.ProvidesUpgrades != null && _buildingDef.ProvidesUpgrades.Length > 0;
+            _actionSplit = hasUnits && hasUpgrades;
+            _actionTabUnits = _actionTabUpgrades = null;
+            if (_actionSplit)
+            {
+                _actionTab = ActionTab.Units;
+                _actionTabUnits    = MakeTab("Units",    () => { _actionTab = ActionTab.Units;    RefreshActionTabs(); RefreshActions(); });
+                _actionTabUpgrades = MakeTab("Upgrades", () => { _actionTab = ActionTab.Upgrades; RefreshActionTabs(); RefreshActions(); });
+                RefreshActionTabs();
+            }
+
             // Single column of action cards spanning the grid width.
             float avail = _panelWidth - _tabWidth - 12f - _grid.padding.left - _grid.padding.right;
             _grid.cellSize = new Vector2(Mathf.Max(80f, avail), _cellSize.y);
@@ -392,6 +416,7 @@ namespace RTSCL.World.Unity
         {
             if (upgrade == null) return;
             if (BuildingConstruction.IsUnderConstruction(_buildingOrigin)) return;   // not built yet
+            if (ResearchProgress.IsBusy(_buildingOrigin)) return;                     // already researching here
             ulong owner = WorldStartContext.LocalPlayer;
             int next = PlayerUpgrades.Level(owner, upgrade.Kind) + 1;
             if (next > Mathf.Max(1, upgrade.MaxLevel)) return;                        // already maxed
@@ -402,8 +427,16 @@ namespace RTSCL.World.Unity
             if (iron > 0)    ResourceBank.Add(ResourceKind.Iron, -iron);
             if (gold > 0)    ResourceBank.Add(ResourceKind.Gold, -gold);
             if (crystal > 0) ResourceBank.Add(ResourceKind.Crystal, -crystal);
-            NetCommandIssuer.IssuePurchaseUpgrade(upgrade.Kind, owner);
+            // Research takes time: start a timed job (progress bar). It applies + syncs on completion.
+            ResearchProgress.TryStart(_buildingOrigin, owner, upgrade);
             RefreshActions();
+        }
+
+        // Highlight the active actions sub-tab (Units / Upgrades).
+        private void RefreshActionTabs()
+        {
+            if (_actionTabUnits != null) _actionTabUnits.GetComponent<Image>().color = _actionTab == ActionTab.Units ? BgEnabled : BgDisabled;
+            if (_actionTabUpgrades != null) _actionTabUpgrades.GetComponent<Image>().color = _actionTab == ActionTab.Upgrades ? BgEnabled : BgDisabled;
         }
 
         private void RefreshActions()
@@ -413,9 +446,16 @@ namespace RTSCL.World.Unity
             bool queueFull = !GoblinProduction.CanQueue(_buildingOrigin);
             foreach (var c in _actionCards)
             {
+                // Sub-tab filter (Keep): hide cards that aren't on the active Units/Upgrades sub-tab.
+                if (_actionSplit)
+                {
+                    bool match = (c.Unit != null) ? _actionTab == ActionTab.Units : _actionTab == ActionTab.Upgrades;
+                    if (!match) { if (c.Root != null) c.Root.SetActive(false); continue; }
+                }
                 bool enabled;
                 if (c.Unit != null)
                 {
+                    if (c.Root != null && !c.Root.activeSelf) c.Root.SetActive(true);
                     enabled = !queueFull
                               && ResourceBank.Wood >= c.Unit.WoodCost
                               && ResourceBank.Food >= c.Unit.FoodCost
@@ -451,7 +491,8 @@ namespace RTSCL.World.Unity
                         if (c.Label != null)
                             c.Label.text = max > 1 ? $"{c.Upgrade.DisplayName}  (Lv {next}/{max})" : c.Upgrade.DisplayName;
                     }
-                    enabled = ResourceBank.Wood >= wood
+                    enabled = !ResearchProgress.IsBusy(_buildingOrigin)   // one research at a time per building
+                              && ResourceBank.Wood >= wood
                               && ResourceBank.Get(ResourceKind.Iron) >= iron
                               && ResourceBank.Get(ResourceKind.Gold) >= gold
                               && ResourceBank.Get(ResourceKind.Crystal) >= crystal;
@@ -471,17 +512,32 @@ namespace RTSCL.World.Unity
         private void UpdateProgressLabel()
         {
             if (_progressRow == null) return;
+            var track = _progressRow.GetComponent<Image>();
+            // Research takes priority on the bar, then unit production.
+            var research = ResearchProgress.Get(_buildingOrigin);
             var slot = GoblinProduction.Get(_buildingOrigin);
-            if (slot == null) { _progressRow.SetActive(false); return; }   // idle → hide the whole widget
-            _progressRow.SetActive(true);
-            // Scale the fill bar horizontally from the left (pivot.x = 0) to the production fraction.
-            if (_progressFill != null)
-                _progressFill.localScale = new Vector3(Mathf.Clamp01(slot.Progress), 1f, 1f);
-            int waiting = GoblinProduction.QueuedBehind(_buildingOrigin);
-            string pct = $"{Mathf.RoundToInt(slot.Progress * 100f)}%";
-            _progressLabel.text = waiting > 0
-                ? $"{slot.Def.DisplayName}  {pct}  (+{waiting})"
-                : $"{slot.Def.DisplayName}  {pct}";
+
+            float progress; string text;
+            if (research != null) { progress = research.Progress; text = $"Researching {research.Def.DisplayName}  {Mathf.RoundToInt(progress * 100f)}%"; }
+            else if (slot != null)
+            {
+                progress = slot.Progress;
+                int waiting = GoblinProduction.QueuedBehind(_buildingOrigin);
+                string pct = $"{Mathf.RoundToInt(progress * 100f)}%";
+                text = waiting > 0 ? $"{slot.Def.DisplayName}  {pct}  (+{waiting})" : $"{slot.Def.DisplayName}  {pct}";
+            }
+            else
+            {
+                // Idle: keep the row so its HEIGHT is always reserved (cards never shift when production
+                // starts/stops); just make it invisible.
+                if (track != null) track.color = new Color(0f, 0f, 0f, 0f);
+                if (_progressFill != null) _progressFill.localScale = new Vector3(0f, 1f, 1f);
+                if (_progressLabel != null) _progressLabel.text = "";
+                return;
+            }
+            if (track != null) track.color = new Color(0f, 0f, 0f, 0.4f);
+            if (_progressFill != null) _progressFill.localScale = new Vector3(Mathf.Clamp01(progress), 1f, 1f);
+            if (_progressLabel != null) _progressLabel.text = text;
         }
 
         // ---------- Shared card/tab building ----------
