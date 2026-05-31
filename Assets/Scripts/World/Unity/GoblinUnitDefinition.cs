@@ -60,10 +60,15 @@ namespace RTSCL.World.Unity
         public float KnockbackStrength = 0f;
 
         /// <summary>Armor points. Reduces incoming damage by <c>armor/(armor+36)</c> (diminishing returns,
-        /// capped well below 100%). 0 = no armor (Archer). Club ≈ 4 (~10%), Speargoblin ≈ 9 (~20%).
+        /// capped well below 100%). 0 = no armor (Archer). Club ≈ 4 (~10%), Speargoblin ≈ 15 (~29%).
         /// See <see cref="RTSCL.World.ArmorMath"/>.</summary>
         [Tooltip("Armor points — reduces incoming damage via diminishing returns (armor/(armor+36)). 0 = none.")]
         public float Armor = 0f;
+
+        /// <summary>Damage multiplier this unit deals against ARMORED targets (Armor &gt; 0) — armor-piercing.
+        /// 1 = none (default). The Archer uses this to counter armored melee (Club/Speargoblin).</summary>
+        [Tooltip("Damage multiplier vs targets that have Armor > 0 (armor-piercing). 1 = none — Archer counters armored units.")]
+        public float BonusVsArmored = 1f;
 
         /// <summary>If set, this unit is RANGED: on each attack swing it fires this sprite as a
         /// homing projectile (see Arrow.cs) instead of a melee lunge. Null = melee.</summary>

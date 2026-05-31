@@ -64,5 +64,35 @@ namespace RTSCL.World.Tests
             // 5 * 1.75 = 8.75 → 9 (round half away from zero).
             Assert.AreEqual(9, CombatBonus.Effective(5, 1.75f, targetIsMonster: true, targetIsRanged: false, targetIsWater: false, targetAttackDamage: 0));
         }
+
+        // --- Armor-piercing (Archer bonus vs armored targets) ---
+
+        [Test]
+        public void ArmorPierce_VsArmoredTarget_AppliesBonus()
+        {
+            // Archer base 4 × 1.5 vs an armored target (Club/Spear) = 6 (before the target's own armor).
+            Assert.AreEqual(6, CombatBonus.WithArmorPierce(4, 1.5f, targetHasArmor: true));
+        }
+
+        [Test]
+        public void ArmorPierce_VsUnarmoredTarget_NoBonus()
+        {
+            // No armor → archer hits for the flat amount.
+            Assert.AreEqual(4, CombatBonus.WithArmorPierce(4, 1.5f, targetHasArmor: false));
+        }
+
+        [Test]
+        public void ArmorPierce_MultiplierOne_NoBonus()
+        {
+            // A non-piercing unit (multiplier 1) is unaffected even vs armored targets.
+            Assert.AreEqual(4, CombatBonus.WithArmorPierce(4, 1f, targetHasArmor: true));
+        }
+
+        [Test]
+        public void ArmorPierce_RoundsHalfAwayFromZero()
+        {
+            // 5 * 1.5 = 7.5 → 8.
+            Assert.AreEqual(8, CombatBonus.WithArmorPierce(5, 1.5f, targetHasArmor: true));
+        }
     }
 }

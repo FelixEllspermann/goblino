@@ -25,6 +25,7 @@ MonoBehaviour:
   BonusVsMonstersAndMelee: 1
   KnockbackStrength: 0
   Armor: 0
+  BonusVsArmored: 1.5
   ProjectileSprite: {fileID: 1237148648781045066, guid: 1be4c078556799e4e9dcc024310dacb9, type: 3}
   WorldScale: 1
   WaterUnit: 0

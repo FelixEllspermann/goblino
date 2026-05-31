@@ -27,5 +27,14 @@ namespace RTSCL.World
             if (!Qualifies(targetIsMonster, targetIsRanged, targetIsWater, targetAttackDamage)) return baseDamage;
             return (int)System.Math.Round(baseDamage * (double)bonusMult, System.MidpointRounding.AwayFromZero);
         }
+
+        /// <summary>Armor-piercing multiplier: scales <paramref name="damage"/> by <paramref name="bonusVsArmored"/>
+        /// when the target has any armor (Archer counters Club/Speargoblin). With multiplier &lt;= 1 or an
+        /// unarmored target it returns the damage unchanged. Rounds to the nearest int (half away from zero).</summary>
+        public static int WithArmorPierce(int damage, float bonusVsArmored, bool targetHasArmor)
+        {
+            if (bonusVsArmored <= 1f || !targetHasArmor) return damage;
+            return (int)System.Math.Round(damage * (double)bonusVsArmored, System.MidpointRounding.AwayFromZero);
+        }
     }
 }

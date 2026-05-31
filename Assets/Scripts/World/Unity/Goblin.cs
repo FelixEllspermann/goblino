@@ -167,6 +167,7 @@ namespace RTSCL.World.Unity
         private Sprite _projectileSprite;   // non-null = ranged unit (shoots an Arrow instead of a melee lunge)
         private HitFeedback _hitFeedback;    // white flash + wobble + red spritz when hit
         private float _bonusVsMonstersAndMelee = 1f;  // damage multiplier vs monsters + enemy melee (Speargoblin)
+        private float _bonusVsArmored = 1f;           // damage multiplier vs armored targets (Archer armor-piercing)
 
         /// <summary>True if this unit attacks at range with a projectile (Archer). Melee units are false.</summary>
         public bool IsRanged => _projectileSprite != null;
@@ -256,6 +257,7 @@ namespace RTSCL.World.Unity
                 AttackRange = def.AttackRange;
                 _moveSpeed = Mathf.Max(0.1f, def.MoveSpeed);
                 _bonusVsMonstersAndMelee = def.BonusVsMonstersAndMelee;
+                _bonusVsArmored = def.BonusVsArmored;
                 Knockback = def.KnockbackStrength;
                 Armor = def.Armor;
                 _projectileSprite = def.ProjectileSprite;
@@ -561,8 +563,11 @@ namespace RTSCL.World.Unity
         private int EffectiveDamageAgainst(Goblin target)
         {
             if (target == null) return AttackDamage;
-            return CombatBonus.Effective(AttackDamage, _bonusVsMonstersAndMelee,
+            int dmg = CombatBonus.Effective(AttackDamage, _bonusVsMonstersAndMelee,
                 target.IsNeutral, target.IsRanged, target.IsBoat, target.AttackDamage);
+            // Armor-piercing (Archer): extra damage vs armored targets, applied attacker-side before the
+            // defender's own armor reduction in TakeDamage — net effect is a partial counter to armor.
+            return CombatBonus.WithArmorPierce(dmg, _bonusVsArmored, target.Armor > 0f);
         }
 
         /// <summary>True if this unit can actually walk to the target's cell (same reachable landmass). Runs A*
@@ -782,7 +787,7 @@ namespace RTSCL.World.Unity
                             // on impact (owner client only); remotes spawn a visual-only arrow.
                             if (_renderer != null)
                                 _renderer.flipX = _attackTarget.transform.position.x < transform.position.x;
-                            Arrow.Spawn(transform.position, _attackTarget, AttackDamage, this, IsLocalOwner, _projectileSprite);
+                            Arrow.Spawn(transform.position, _attackTarget, EffectiveDamageAgainst(_attackTarget), this, IsLocalOwner, _projectileSprite);
                         }
                         else
                         {
