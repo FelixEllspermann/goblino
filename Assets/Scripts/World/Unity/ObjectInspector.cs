@@ -59,6 +59,7 @@ namespace RTSCL.World.Unity
         private bool _selDecoHarvestable;         // whether the selected tile yields a resource
         private string _selDecoBaseDesc = "";     // description without the live resource amount line
         private string _lastAmountLine = "";      // cached amount text to avoid redundant label updates
+        private string _lastBuildingDesc = "";    // cached building description (Building mode) for live HP refresh
 
         // Extra line spacing applied to all info-panel text for a roomier, more readable layout.
         private const float LineSpacing = 1.45f;
@@ -103,6 +104,7 @@ namespace RTSCL.World.Unity
             if (_selKind == SelKind.Goblins) UpdateCarryUI();
             if (_selKind == SelKind.Decoration) UpdateResourceAmount();
             if (_selKind == SelKind.UnitInfo) UpdateInspectedUnit();
+            if (_selKind == SelKind.Building) UpdateBuildingInfo();
 
             // Right-click while a unit-training building is selected → set/move its rally point.
             if (Mouse.current.rightButton.wasPressedThisFrame
@@ -209,6 +211,17 @@ namespace RTSCL.World.Unity
             OnInspectionCleared?.Invoke();   // inspecting a unit closes the BuildMenu actions panel
         }
 
+        // Live-refresh the inspected building's HP each frame; hide once the building is destroyed/removed.
+        private void UpdateBuildingInfo()
+        {
+            if (_selDef == null) return;
+            if (!BuildingHP.TryGet(_selOrigin, out int cur, out int max)) { Hide(); return; }   // destroyed
+            string desc = DescribeBuilding(_selDef) + $"\nHP: {cur} / {max}";
+            if (desc == _lastBuildingDesc) return;
+            _lastBuildingDesc = desc;
+            if (_descriptionLabel != null) _descriptionLabel.text = desc;
+        }
+
         // Live-refresh the inspected unit's HP; hide once it dies or is removed (e.g. boards a boat).
         private void UpdateInspectedUnit()
         {
@@ -259,6 +272,7 @@ namespace RTSCL.World.Unity
             string desc = DescribeBuilding(def);
             if (BuildingHP.TryGet(origin, out int cur, out int max))
                 desc += $"\nHP: {cur} / {max}";
+            _lastBuildingDesc = desc;
             SetHeader(def.DisplayName, desc);
 
             _popupRoot?.SetActive(true);

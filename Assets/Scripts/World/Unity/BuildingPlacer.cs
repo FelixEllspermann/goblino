@@ -355,6 +355,7 @@ namespace RTSCL.World.Unity
             _originToGo[origin] = go;
 
             BuildingHP.Register(origin, BuildingHP.MaxHpFor(def));
+            BuildingHealthBar.AttachTo(go, origin, def.Footprint, owner);
             if (requireConstruction) BuildingConstruction.Register(origin, go);
             else if (WorldStartContext.IsSolo && owner != 0UL) BotEconomy.AddCap(owner, def.PopulationProvided); // bot instant-place
             else PopulationManager.AddCap(def.PopulationProvided); // instant-place (e.g. starting keep)

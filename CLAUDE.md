@@ -162,5 +162,6 @@ The Unity MCP server (`mcp__unity-mcp__*` tools) is the preferred way to drive t
 | `Assets/Scripts/World/Unity/DockRegistry.cs` | RTSCL.World.Unity | Dock origin → water cell (boat spawn) |
 | `Assets/Scripts/World/Unity/Arrow.cs` | RTSCL.World.Unity | Homing projectile (unit damage / visual-only building hit) |
 | `Assets/Scripts/World/Unity/HitFeedback.cs` / `BuildingHitFeedback.cs` | RTSCL.World.Unity | On-hit flash + wobble + red spritz (units / buildings) |
-| `Assets/Scripts/World/Unity/ObjectInspector.cs` | RTSCL.World.Unity | Bottom info panel: building / resource / unit stat sheet + action cards |
+| `Assets/Scripts/World/Unity/ObjectInspector.cs` | RTSCL.World.Unity | Bottom info panel: building / resource / unit stat sheet (HP live-updates every frame for buildings, own units, and inspected enemies) |
+| `Assets/Scripts/World/Unity/GoblinHealthBar.cs` / `BuildingHealthBar.cs` | RTSCL.World.Unity | Floating world-space HP bars (units / buildings); fed by live HP, hidden at full, shown when damaged |
 | `Assets/Scripts/Lobby/SoloSetupPanel.cs` | Assembly-CSharp | Solo setup menu (seed + bot count + map size) → `WorldStartContext.SoloBotCount` / `PendingMapSize` |
