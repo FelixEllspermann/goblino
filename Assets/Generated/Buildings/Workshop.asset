@@ -21,7 +21,6 @@ MonoBehaviour:
   PopulationProvided: 0
   TrainsUnits: []
   ProvidesUpgrades:
-  - {fileID: 11400000, guid: e8d0500b522eb244a9c6cfa950d52caf, type: 2}
   - {fileID: 11400000, guid: 4c8d0c3a3f72f064781f01044028bdbe, type: 2}
   - {fileID: 11400000, guid: 45acee9168b9eaf4fa7b9caf7f985c13, type: 2}
   Category: 0

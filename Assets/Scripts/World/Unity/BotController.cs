@@ -637,12 +637,22 @@ namespace RTSCL.World.Unity
         // applies to all of this bot's units. Requires a completed Workshop.
         private void TryBuyUpgrades(ulong owner, BotState st)
         {
-            if (_workshopDef == null || _workshopDef.ProvidesUpgrades == null) return;
-            // The workshop must exist AND be finished (not still under construction) to research.
-            if (!_placer.TryFindNearestBuildingByName(_workshopName, owner, st.Keep, out var ws)) return;
-            if (BuildingConstruction.IsUnderConstruction(ws)) return;
+            // Research from every upgrade-providing building the bot owns (Workshop: combat upgrades;
+            // Mill: farmer harvest speed + bountiful harvest).
+            TryResearchFrom(owner, st, _workshopDef, _workshopName);
+            TryResearchFrom(owner, st, _millDef, "Mill");
+        }
 
-            foreach (var up in _workshopDef.ProvidesUpgrades)
+        // Buy any upgrade provided by a completed building of the given def/name that the bot can afford
+        // and hasn't bought yet (paid in iron/gold/crystal). Mirrors the player's upgrade-purchase path.
+        private void TryResearchFrom(ulong owner, BotState st, BuildingDefinition def, string buildingName)
+        {
+            if (def == null || def.ProvidesUpgrades == null) return;
+            // The building must exist AND be finished (not still under construction) to research.
+            if (!_placer.TryFindNearestBuildingByName(buildingName, owner, st.Keep, out var b)) return;
+            if (BuildingConstruction.IsUnderConstruction(b)) return;
+
+            foreach (var up in def.ProvidesUpgrades)
             {
                 if (up == null || PlayerUpgrades.IsPurchased(owner, up.Kind)) continue;
                 if (BotEconomy.Get(owner, ResourceKind.Iron) < up.IronCost) continue;
