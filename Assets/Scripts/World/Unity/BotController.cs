@@ -48,10 +48,12 @@ namespace RTSCL.World.Unity
         [SerializeField] private int _defenseSquadSize = 4;
         [Tooltip("How many combat units the bot fields to proactively raid a neutral monster it has spotted.")]
         [SerializeField] private int _raidSquadSize = 3;
+        [Tooltip("Standing army the bot keeps trained at all times (even during downtime between attacks).")]
+        [SerializeField] private int _standingArmy = 10;
 
         [Header("Military / Attack plans")]
         [SerializeField] private float _engageRadius = 8f;     // a military unit attacks hostiles within this
-        [SerializeField] private float _attackCooldown = 300f; // seconds of downtime before rolling the next plan
+        [SerializeField] private float _attackCooldown = 120f; // seconds of downtime before rolling the next plan
                                                                // (and before the very first plan after game start)
 
         private sealed class BotState
@@ -84,7 +86,7 @@ namespace RTSCL.World.Unity
             public bool Raiding;                // currently hunting a spotted neutral monster (for log transitions)
             public int PlanTargetSize;          // planned army size; 0 = no plan (downtime)
             public float PlanTimer;             // counts up during downtime; a plan rolls at _attackCooldown
-            public readonly float[] PlanWeights = { 80f, 15f, 5f };  // small / medium / large roll weights
+            public readonly float[] PlanWeights = { 20f, 45f, 35f };  // small / medium / large roll weights
 
             // Naval: land connected-components so the bot knows what it can reach on foot, plus boat/ferry state.
             public int[,] Comp;                 // per-cell land-component id (−1 = water/oob); recomputed periodically
@@ -364,6 +366,10 @@ namespace RTSCL.World.Unity
                 else
                 {
                     st.Raiding = false;
+                    // Maintain a standing army between attacks so the bot always has defenders + an attack
+                    // core ready (previously it trained zero military during downtime → near-empty base).
+                    if (military < _standingArmy)
+                        TrainMilitary(owner, st, dt, hasBarracks, barracks, military, _standingArmy);
                     if (st.PlanTimer >= _attackCooldown && st.EnemyFound && st.DiscoveredEnemyBases.Count > 0)
                         RollPlan(owner, st);
                 }
@@ -557,7 +563,7 @@ namespace RTSCL.World.Unity
             float total = w[0] + w[1] + w[2];
             float r = Random.value * total;
             int i = r < w[0] ? 0 : (r < w[0] + w[1] ? 1 : 2);
-            st.PlanTargetSize = i == 0 ? Random.Range(1, 4) : i == 1 ? Random.Range(5, 9) : Random.Range(15, 26);
+            st.PlanTargetSize = i == 0 ? Random.Range(4, 8) : i == 1 ? Random.Range(8, 15) : Random.Range(18, 31);
             st.PlanAttacking = false;
 
             float removed = w[i] * 0.6f;
@@ -992,18 +998,48 @@ namespace RTSCL.World.Unity
         }
 
         // First buildable origin in expanding rings around the keep (terrain passable, empty, no resource).
+        private readonly List<Vector2Int> _siteSpaced = new();
+        private readonly List<Vector2Int> _siteAny = new();
+
+        // Pick a build site spread AROUND the keep instead of clumping in one corner: collect buildable
+        // cells across a ring band, prefer ones with a 1-cell gap from other buildings (keeps the base
+        // walkable + distributed), and choose RANDOMLY among them so the base grows in all directions.
         private bool TryFindBuildSite(Vector2Int keep, Vector2Int footprint, out Vector2Int site)
         {
             site = default;
-            for (int ring = 2; ring <= 18; ring++)   // search farther so a cluttered base keeps expanding
-            for (int dy = -ring; dy <= ring; dy++)
-            for (int dx = -ring; dx <= ring; dx++)
+            _siteSpaced.Clear(); _siteAny.Clear();
+            for (int ring = 3; ring <= 18; ring++)
             {
-                if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dy)) != ring) continue;
-                var o = new Vector2Int(keep.x + dx, keep.y + dy);
-                if (IsBuildable(o, footprint)) { site = o; return true; }
+                for (int dy = -ring; dy <= ring; dy++)
+                for (int dx = -ring; dx <= ring; dx++)
+                {
+                    if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dy)) != ring) continue;
+                    var o = new Vector2Int(keep.x + dx, keep.y + dy);
+                    if (!IsBuildable(o, footprint)) continue;
+                    _siteAny.Add(o);
+                    if (HasBuildingClearance(o, footprint)) _siteSpaced.Add(o);
+                }
+                // Enough spaced candidates gathered near the keep → stop widening the search.
+                if (_siteSpaced.Count >= 16) break;
             }
-            return false;
+            var pool = _siteSpaced.Count > 0 ? _siteSpaced : _siteAny;
+            if (pool.Count == 0) return false;
+            site = pool[Random.Range(0, pool.Count)];
+            return true;
+        }
+
+        // True if no building occupies the 1-cell border ring around the footprint (leaves walkable gaps
+        // between buildings so the base isn't a solid, path-blocking blob).
+        private bool HasBuildingClearance(Vector2Int origin, Vector2Int footprint)
+        {
+            for (int dy = -1; dy <= footprint.y; dy++)
+            for (int dx = -1; dx <= footprint.x; dx++)
+            {
+                bool border = dx == -1 || dy == -1 || dx == footprint.x || dy == footprint.y;
+                if (!border) continue;
+                if (_placer.TryGetBuildingAt(new Vector2Int(origin.x + dx, origin.y + dy), out _)) return false;
+            }
+            return true;
         }
 
         private bool IsBuildable(Vector2Int origin, Vector2Int footprint)
