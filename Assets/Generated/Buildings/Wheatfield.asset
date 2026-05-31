@@ -22,4 +22,12 @@ MonoBehaviour:
   TrainsUnits: []
   ProvidesUpgrades: []
   Category: 0
-  Requires: []
+  Requires:
+  - {fileID: 11400000, guid: 4fd7a35917f30d247b098323352012df, type: 2}
+  AttackDamage: 0
+  AttackRange: 0
+  AttackInterval: 1.5
+  ProjectileSprite: {fileID: 0}
+  WallCornerSprite: {fileID: 0}
+  WallHorizontalSprite: {fileID: 0}
+  WallVerticalSprite: {fileID: 0}

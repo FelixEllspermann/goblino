@@ -30,7 +30,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: f8467bad1089cc540a6d6c89672e42ff, type: 2}
   - {fileID: 11400000, guid: 6da16ef8de3d1d442880002fabdf0c24, type: 2}
   Category: 0
-  Requires: []
+  Requires:
+  - {fileID: 11400000, guid: 924164fcca98590488a02cdc7e22dbda, type: 2}
   AttackDamage: 0
   AttackRange: 0
   AttackInterval: 1.5

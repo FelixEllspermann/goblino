@@ -10,25 +10,19 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d4876abf20970884f8ec4d7fb315398a, type: 3}
-  m_Name: Mill
+  m_Name: ResearchCenter
   m_EditorClassIdentifier: RTSCL.World.Unity::RTSCL.World.Unity.BuildingDefinition
-  DisplayName: Mill
-  Sprite: {fileID: -1519500359, guid: 684b114cbb93cab4a9c846580e6081a4, type: 3}
+  DisplayName: Research Center
+  Sprite: {fileID: -523285521, guid: fbd645f06f5a96a48a800491ea7d267a, type: 3}
   WaterSprite: {fileID: 0}
   Footprint: {x: 1, y: 1}
-  WoodCost: 100
+  WoodCost: 120
   StoneCost: 0
   PopulationProvided: 0
   TrainsUnits: []
-  ProvidesUpgrades:
-  - {fileID: 11400000, guid: 5f68ed58744cfd4448526271420d022e, type: 2}
-  - {fileID: 11400000, guid: e8d0500b522eb244a9c6cfa950d52caf, type: 2}
-  - {fileID: 11400000, guid: d813597fd98e13e45b2c96204d3081c5, type: 2}
-  - {fileID: 11400000, guid: 5484f6cd14513e547941f046812d0fc1, type: 2}
-  - {fileID: 11400000, guid: 5aeaf02f736acd3429e1c7a2daeaff31, type: 2}
+  ProvidesUpgrades: []
   Category: 0
-  Requires:
-  - {fileID: 11400000, guid: 924164fcca98590488a02cdc7e22dbda, type: 2}
+  Requires: []
   AttackDamage: 0
   AttackRange: 0
   AttackInterval: 1.5
